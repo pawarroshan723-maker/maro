@@ -411,7 +411,7 @@ function buildTiles(){
   x.fillStyle = '#ffd23e'; x.beginPath(); x.moveTo(26,8); x.lineTo(44,14); x.lineTo(26,20); x.closePath(); x.fill();
   x.fillStyle = '#ffffff'; x.fillRect(28,11,6,2); // shine
   t.checkTop = c;
-  c = cv(TILE,TILE); x = g2(c);
+  c = cv(TILE,TILE); x = g2(c); pole(x);
   x.fillStyle = '#8a5a3a'; x.fillRect(14,36,20,12);
   x.fillStyle = '#a86a4a'; x.fillRect(16,38,16,4);
   x.fillStyle = '#6a4a2a'; x.fillRect(14,44,20,4);
@@ -667,7 +667,7 @@ const BONUS_ROWS = [
 const ENEMY_SPAWNS = [
   ['walker', 20],          // first room (19-27): the stomp lesson - beautiful start
   ['walker', 72],          // zone 70-104 - open area
-  ['plant', 86, 6],        // single pipe-plant timing puzzle - beautiful timing challenge
+  ['plant', 86, 7],        // single pipe-plant timing puzzle - beautiful timing challenge
   ['walker', 105],         // near star/shot blocks - moved from 98 for better spacing and AI consistency
   ['shell', 111],          // foot of the big staircase - guarding castle approach
   ['shell', 136],          // after the staircase, near the spikes

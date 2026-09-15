@@ -369,6 +369,13 @@ console.log('== pipe seams and diamond capture regressions ==');
       'pipe halves meet with no transparent vertical seam (' + left + ',' + right + ')');
   }
   fresh();
+  const plant = Game.enemies.find(e => e.kind === 'plant');
+  check(plant.baseY === 7*48 && plant.x + plant.w/2 === 87*48,
+    'flower is anchored at the center of the pipe rim');
+  check(Game.level.get(86, plant.baseY/48) === T.PIPE_TL &&
+    Game.level.get(87, plant.baseY/48) === T.PIPE_TR, 'flower base matches actual pipe top');
+  check(Array.from({length:48}, (_, y) => colorAt(G.ASSETS.tiles.checkBase,23,y)).every(Boolean),
+    'checkpoint pole continues all the way through its base tile');
   Game.enemies.length = 0;
   const tx = 7, ty = 8;
   Game.level.set(tx, ty, T.BRICK);

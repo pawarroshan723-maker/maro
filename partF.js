@@ -51,7 +51,7 @@ const Game = {
     for (const s of ENEMY_SPAWNS){
       if (s[0] === 'walker') this.enemies.push(new Enemy('walker', s[1]*TILE + 7, GROUND_ROW*TILE - 34));
       else if (s[0] === 'shell') this.enemies.push(new Enemy('shell', s[1]*TILE + 6, GROUND_ROW*TILE - 30));
-      else if (s[0] === 'plant') this.enemies.push(new Enemy('plant', (s[1]+0.5)*TILE - 15, s[2]*TILE));
+      else if (s[0] === 'plant') this.enemies.push(new Enemy('plant', (s[1]+1)*TILE - 15, s[2]*TILE));
     }
     for (const g of this.level.gemSpawns){
       this.items.push(new Item('gem', g.tx*TILE + 11, g.ty*TILE + 11));

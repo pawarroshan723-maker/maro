@@ -1011,6 +1011,14 @@ const STAGE_FX = [
   { kind:'fall',    colors:['#b098e0','#7a6aa8'], n:20, spd:14,  sway:10, size:2 }, // 14 shadow motes
   { kind:'fall',    colors:['#ffe49c','#ffd0e0'], n:26, spd:30,  sway:22, size:3 }, // 15 crown confetti
 ];
+// Deterministic 0..1 hash so every (stage, module) gets its own stable flavor.
+function shash(a, b, c){
+  let n = (a*374761393 + b*668265263 + c*2246822519) | 0;
+  n = Math.imul(n ^ (n >>> 13), 1274126177);
+  n = (n ^ (n >>> 16)) >>> 0;
+  return n / 4294967295;
+}
+
 function buildCampaignCourse(stage, blueprint){
   const [name,theme,modules,tip] = blueprint;
   const rows = Array.from({length:12}, (_,y) => Array(170).fill(y>=10?'#':'.'));
@@ -1035,9 +1043,15 @@ function buildCampaignCourse(stage, blueprint){
   };
   modules.forEach((type,i) => {
     const x = 8+i*26;
-    put(x+3,7,i===0?'BGB':i===2?'BSB':i===4?'BIB':i===1?'BMB':'B?B');
-    gems(x+3,6,3); gems(x,9,3);
-    if (type === 0){ pipe(x+12,8); gap(x+20); }
+    // Per-(stage,module) flavor so layouts, patrols and hazards shift course to course.
+    const vary = (salt) => shash(stage + salt*57, i + salt*11, stage*i + salt);
+    // Overhead mystery cluster: jitter its column so blocks never line up twice.
+    const bo = Math.floor(vary(11)*3);
+    put(x+3+bo,7,i===0?'BGB':i===2?'BSB':i===4?'BIB':i===1?'BMB':'B?B');
+    gems(x+3+bo,6,3); gems(x,9,3);
+    // Mid+ courses hang an extra one-way gem route overhead on many modules.
+    if (stage >= 6 && vary(13) > 0.5){ put(x+8,5,'==='); gems(x+8,4,3); }
+    if (type === 0){ pipe(x+12+(vary(17)>0.5?1:0),8); gap(x+20); }
     else if (type === 1){
       put(x+11,9,'######'); put(x+13,8,'##'); gems(x+11,7,6); gap(x+20);
     } else if (type === 2){
@@ -1046,22 +1060,28 @@ function buildCampaignCourse(stage, blueprint){
       // Thorn beds grow a tile wider on the two hardest tiers of the campaign.
       put(x+14,9,stage>=13?'^^^':stage>=10?'^^':'^'); put(x+12,7,'====='); gems(x+12,6,5);
     } else {
-      pipe(x+11,8); pipe(x+18,8);
-      if (stage >= 6 && i % 2 === 0) enemies.push(['plant',x+18,8]);
+      const p2 = x+18+(vary(19)>0.5?1:0);
+      pipe(x+11, vary(23)>0.6?7:8); pipe(p2,8);
+      if (stage >= 6 && i % 2 === 0) enemies.push(['plant',p2,8]);
     }
-    // Protected patrol pockets: never on a pit, spike, checkpoint, or pipe.
-    // Armored beetles join the rotation one course earlier than before.
-    const kind = stage >= 5 && i % 2 === 1 ? 'beetle' : (i % 2 === 0 ? 'hopper' : 'walker');
+    // Enemy rotation is seeded per stage, not a fixed parity pattern.
+    const r = vary(29);
+    const kind = stage >= 5 && r > 0.5 ? 'beetle' : (r > 0.25 ? 'hopper' : 'walker');
     enemies.push([kind,x+8,10,x+6,x+10]);
-    enemies.push([i%2===0?'shell':'walker',x+25,10,x+24,x+25]);
-    // Endgame courses post an armored second sentry in the same guarded pocket.
-    if (stage >= 11 && i % 2 === 0) enemies.push(['beetle',x+6,10,x+6,x+8]);
+    enemies.push([vary(31)>0.5?'shell':'walker',x+25,10,x+24,x+25]);
+    if (stage >= 11 && vary(37) > 0.4) enemies.push(['beetle',x+6,10,x+6,x+8]);
     if (stage >= 3 && i < Math.min(5,Math.floor((stage-1)/2))){
       enemies.push(['bat',x+15,5,x+11,x+20]);
     }
-    // A second, higher flight lane crowding the late-course routes.
     if (stage >= 12) enemies.push(['bat',x+21,4,x+17,x+24]);
+    // Surprise: a hidden lurker springs out when Maro steps close. More on later tiers.
+    if (stage >= 4 && vary(41) > (0.78 - stage*0.02)) enemies.push([vary(43)>0.5?'hopper':'walker',x+10,10,x+9,x+11,'lurk']);
   });
+  // Every course from stage 3 onward keeps at least one hidden ambusher.
+  if (stage >= 3 && !enemies.some(e => e[5] === 'lurk')){
+    const bx = 8 + 2*26;
+    enemies.push(['hopper', bx+10, 10, bx+9, bx+11, 'lurk']);
+  }
   // The bonus doorway and its return position stay clear on every course.
   put(42,9,'D');
   for (const x of checkpoints) for (let y=7;y<10;y++) put(x,y,'K');

@@ -69,6 +69,7 @@ const Game = {
       if (s[3] !== undefined){
         enemy.patrolMin=s[3]*TILE; enemy.patrolMax=(s[4]+1)*TILE; enemy.boundedPatrol=true;
       }
+      if (s[5] === 'lurk') enemy.lurk = true;
       if (this.course.speedScale && enemy.speed) enemy.speed *= this.course.speedScale;
     }
     // Predictable opening patrols make Stage 2 encounters learnable on retries.
@@ -1141,6 +1142,7 @@ function drawCampaignEnemy(e,x,y){
 }
 
 function drawEnemy(e, camX, camY){
+  if (e.lurk && !e.revealed) return;   // hidden ambushers are invisible until they spring
   const x = Math.round(e.x - camX), y = Math.round(e.y - camY);
   const kind = (xx, yy) => {
     if (e.kind === 'walker') drawWalker(e, xx, yy);

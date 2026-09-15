@@ -265,6 +265,7 @@ class Enemy {
     this.attackT = 1.6; this.warningT = 0;
     this.patrolMin = x-72; this.patrolMax = x+120;
     this.boundedPatrol = false;
+    this.lurk = false; this.revealed = false;
     // Tuned for accessibility: slower walkers, shells less aggressive
     if (kind === 'walker'){ this.w = 34; this.h = 34; this.speed = 42; }
     else if (kind === 'shell'){ this.w = 36; this.h = 30; this.speed = 38; }
@@ -279,6 +280,7 @@ class Enemy {
     }
   }
   box(){
+    if (this.lurk && !this.revealed) return { x:this.x, y:this.y, w:this.w, h:this.h, active:false };
     if (this.kind === 'plant'){
       return { x:this.x, y:this.baseY - 10 - this.rise*24, w:this.w, h:20 + this.rise*8, active:this.rise > 0.35 };
     }
@@ -333,6 +335,16 @@ class Enemy {
     if (!this.active){
       if (this.x > cam - 140 && this.x < cam + 1100) this.active = true;
       else return;
+    }
+    // Lurkers stay hidden until Maro is close, then burst out as a jump-scare.
+    if (this.lurk && !this.revealed){
+      const p = G.player;
+      if (Math.abs((p.x+p.w/2)-(this.x+this.w/2)) < 120 && Math.abs((p.y+p.h/2)-(this.y+this.h/2)) < 130){
+        this.revealed = true;
+        AudioSys.sfx.bounce();
+        G.shake(2, 0.15);
+        if (this.kind === 'hopper') this.vy = -430;
+      } else return;
     }
     if (this.dead){
       this.deadT += dt;

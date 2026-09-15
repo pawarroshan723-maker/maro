@@ -79,6 +79,8 @@ body.in-game #sysbar{ display:flex; }
   padding-bottom:calc(16px + var(--safe-b));
   padding-left:calc(16px + var(--safe-l));
   padding-right:calc(16px + var(--safe-r));
+  touch-action:none;
+  overscroll-behavior:none;
 }
 .overlay[hidden]{ display:none; }
 #ov-set{ z-index:31; background:rgba(5,9,20,.78); }
@@ -88,8 +90,16 @@ body.in-game #sysbar{ display:flex; }
   padding:24px 28px; width:min(560px, 100%);
   color:#eaf2ff; text-align:center;
   box-shadow:0 18px 60px rgba(0,0,0,.5);
-  max-height:100%; overflow:auto;
+  max-height:calc(100vh - 32px - var(--safe-t) - var(--safe-b));
+  max-height:calc(100dvh - 32px - var(--safe-t) - var(--safe-b));
+  overflow-y:auto; overflow-x:hidden;
+  -webkit-overflow-scrolling:touch;
+  overscroll-behavior:contain;
+  touch-action:pan-y;
+  pointer-events:auto;
 }
+.panel::-webkit-scrollbar{ width:8px; }
+.panel::-webkit-scrollbar-thumb{ background:rgba(255,255,255,.2); border-radius:4px; }
 .panel h2{ font-size:28px; letter-spacing:3px; margin-bottom:16px; color:var(--gold); }
 .logo{
   font-size:clamp(42px, 9vw, 68px); font-weight:900; letter-spacing:6px;
@@ -2999,10 +3009,20 @@ function wireKeys(){
 }
 
 function wireGlobal(){
-  // block scrolling / zooming / long-press menus
-  document.addEventListener('touchmove', (e) => e.preventDefault(), { passive:false });
+  // block scrolling / zooming / long-press menus, but allow scrolling inside .panel
+  document.addEventListener('touchmove', (e) => {
+    // Allow touch scroll inside overlay panels (How to Play, etc.)
+    const t = e.target;
+    if (t && t.closest && t.closest('.panel')) return;
+    e.preventDefault();
+  }, { passive:false });
   document.addEventListener('gesturestart', (e) => e.preventDefault());
-  document.addEventListener('contextmenu', (e) => e.preventDefault());
+  document.addEventListener('contextmenu', (e) => {
+    // Allow context menu inside panels for accessibility, block elsewhere
+    const t = e.target;
+    if (t && t.closest && t.closest('.panel')) return;
+    e.preventDefault();
+  });
   window.addEventListener('dblclick', (e) => e.preventDefault());
   // unlock audio on the first user interaction anywhere
   document.addEventListener('pointerdown', () => AudioSys.unlock());

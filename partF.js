@@ -1311,10 +1311,20 @@ function wireKeys(){
 }
 
 function wireGlobal(){
-  // block scrolling / zooming / long-press menus
-  document.addEventListener('touchmove', (e) => e.preventDefault(), { passive:false });
+  // block scrolling / zooming / long-press menus, but allow scrolling inside .panel
+  document.addEventListener('touchmove', (e) => {
+    // Allow touch scroll inside overlay panels (How to Play, etc.)
+    const t = e.target;
+    if (t && t.closest && t.closest('.panel')) return;
+    e.preventDefault();
+  }, { passive:false });
   document.addEventListener('gesturestart', (e) => e.preventDefault());
-  document.addEventListener('contextmenu', (e) => e.preventDefault());
+  document.addEventListener('contextmenu', (e) => {
+    // Allow context menu inside panels for accessibility, block elsewhere
+    const t = e.target;
+    if (t && t.closest && t.closest('.panel')) return;
+    e.preventDefault();
+  });
   window.addEventListener('dblclick', (e) => e.preventDefault());
   // unlock audio on the first user interaction anywhere
   document.addEventListener('pointerdown', () => AudioSys.unlock());

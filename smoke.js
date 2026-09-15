@@ -2,15 +2,19 @@
 'use strict';
 const fs = require('fs');
 
-const html = fs.readFileSync('/home/user/game/index.html', 'utf8');
+const html = fs.readFileSync(require('path').join(__dirname, 'index.html'), 'utf8');
 const m = html.match(/<script>([\s\S]*)<\/script>/);
 if (!m){ console.error('no script block'); process.exit(1); }
 let code = m[1];
 code += '\n;globalThis.__G = { Game, Input, AudioSys, Settings, Level, MAIN_ROWS, BONUS_ROWS, T, ' +
-  'toggleMute, doPause, doResume, rectSolid, moveAndCollide, Player, Enemy, Item, Projectile };\n';
+  'toggleMute, doPause, doResume, rectSolid, moveAndCollide, Player, Enemy, Item, Projectile, ASSETS };\n';
 
 function makeCtx(){
+  const ops = [];
   const special = {
+    ops,
+    fillRect: (...args) => ops.push(['rect', ...args]),
+    drawImage: (...args) => ops.push(['image', ...args]),
     measureText: () => ({ width: 10 }),
     createLinearGradient: () => ({ addColorStop(){} }),
     createRadialGradient: () => ({ addColorStop(){} }),
@@ -27,7 +31,7 @@ function makeEl(id){
     classList: { _s: new Set(), add(c){ this._s.add(c); }, remove(c){ this._s.delete(c); },
       toggle(c, f){ if (f === undefined) f = !this._s.has(c); f ? this._s.add(c) : this._s.delete(c); }, contains(c){ return this._s.has(c); } },
     addEventListener(){}, removeEventListener(){}, setPointerCapture(){}, releasePointerCapture(){},
-    setAttribute(){}, appendChild(){}, getContext(){ return makeCtx(); },
+    setAttribute(){}, appendChild(){}, getContext(){ return this.ctx || (this.ctx = makeCtx()); },
   };
 }
 const document = {
@@ -346,6 +350,53 @@ console.log('== game over flow ==');
   G.toggleMute();
   G.toggleMute();
   Game.toTitle();
+}
+
+console.log('== pipe seams and diamond capture regressions ==');
+{
+  // Replay the rectangle-only pipe artwork at a point, including tile slices.
+  function colorAt(canvas, x, y){
+    return canvas.getContext().ops.some(op => {
+      if (op[0] === 'rect') return x >= op[1] && x < op[1]+op[3] && y >= op[2] && y < op[2]+op[4];
+      if (op[0] === 'image' && op.length === 10)
+        return colorAt(op[1], op[2] + x - op[6], op[3] + y - op[7]);
+      return false;
+    });
+  }
+  for (const [left, right] of [[T.PIPE_TL,T.PIPE_TR], [T.PIPE_BL,T.PIPE_BR]]){
+    check(Array.from({length:48}, (_, y) =>
+      colorAt(G.ASSETS.tiles[left],47,y) && colorAt(G.ASSETS.tiles[right],0,y)).every(Boolean),
+      'pipe halves meet with no transparent vertical seam (' + left + ',' + right + ')');
+  }
+  fresh();
+  Game.enemies.length = 0;
+  const tx = 7, ty = 8;
+  Game.level.set(tx, ty, T.BRICK);
+  const gem = new G.Item('gem', tx*48+11, (ty-1)*48+11);
+  const neighbor = new G.Item('gem', (tx+1)*48+11, (ty-1)*48+11);
+  Game.items = [gem, neighbor];
+  const before = Game.gems, score = Game.score;
+  Game.onHeadBump(tx,ty);
+  check(gem.remove && !neighbor.remove, 'head bump captures only the diamond above the block');
+  check(Game.gems === before+1 && Game.score === score+200, 'head-bumped diamond awards one reward');
+  Game.collectItem(gem);
+  Game.onHeadBump(tx,ty);
+  check(Game.gems === before+1, 'captured diamond cannot be awarded twice');
+  Game.compact(Game.items);
+  check(!Game.items.includes(gem), 'captured diamond disappears from the item list');
+  fresh();
+  Game.enemies.length = 0;
+  const p = Game.player;
+  teleport(350, 300);
+  const floating = new G.Item('gem', p.x, p.y-27);
+  Game.items = [floating];
+  let touches = false;
+  for (let i=0; i<180 && !touches; i++){
+    teleport(350,300);
+    pump(1);
+    touches = floating.remove;
+  }
+  check(touches, 'bobbing diamond touching the head is captured');
 }
 
 G.AudioSys.stopMusic();

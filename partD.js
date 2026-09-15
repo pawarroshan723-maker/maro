@@ -342,57 +342,27 @@ function buildTiles(){
   }
   t[T.HAZARD] = c;
 
-  // pipes - beautiful seamless design, no vertical cut
-  // New palette: vibrant emerald with proper shading and highlights
+  // Paint each pipe as one two-tile-wide surface, then slice it.
+  // Shading belongs at the outside edges, never at the center join.
   const pipeDark = '#1a5c2a', pipeMid = '#2fb44a', pipeLight = '#5ee87a', pipeHi = '#a8f5b8';
-  // PIPE_TL - top left with rounded rim and seamless stem
-  c = cv(TILE,TILE); x = g2(c);
-  // top rim - more beautiful with rounded corners and highlight
-  x.fillStyle = pipeDark; x.fillRect(0,0,28,18);
-  x.fillStyle = pipeMid; x.fillRect(0,0,26,16);
-  x.fillStyle = pipeLight; x.fillRect(2,2,22,10); // top highlight
-  x.fillStyle = pipeHi; x.fillRect(4,2,12,3); // extra shine
-  x.fillStyle = pipeDark; x.fillRect(0,14,26,2); // bottom shadow of rim
-  // stem - seamless, with left highlight and right shadow that continues to BL
-  x.fillStyle = pipeDark; x.fillRect(2,16,26,32);
-  x.fillStyle = pipeMid; x.fillRect(4,16,22,32);
-  x.fillStyle = pipeLight; x.fillRect(6,16,6,32); // left highlight continues down
-  x.fillStyle = pipeHi; x.fillRect(8,16,2,32); // thin shine
-  x.fillStyle = pipeDark; x.fillRect(22,16,4,32); // right shadow
-  t[T.PIPE_TL] = c;
-
-  c = cv(TILE,TILE); x = g2(c);
-  x.fillStyle = pipeDark; x.fillRect(20,0,28,18);
-  x.fillStyle = pipeMid; x.fillRect(22,0,26,16);
-  x.fillStyle = pipeLight; x.fillRect(24,2,22,10);
-  x.fillStyle = pipeHi; x.fillRect(26,2,10,3);
-  x.fillStyle = pipeDark; x.fillRect(22,14,26,2);
-  x.fillStyle = pipeDark; x.fillRect(20,16,26,32);
-  x.fillStyle = pipeMid; x.fillRect(22,16,22,32);
-  x.fillStyle = pipeLight; x.fillRect(36,16,6,32);
-  x.fillStyle = pipeHi; x.fillRect(38,16,2,32);
-  x.fillStyle = pipeDark; x.fillRect(20,16,4,32);
-  t[T.PIPE_TR] = c;
-
-  // PIPE_BL - bottom left, seamless continuation from TL
-  c = cv(TILE,TILE); x = g2(c);
-  x.fillStyle = pipeDark; x.fillRect(2,0,26,48);
-  x.fillStyle = pipeMid; x.fillRect(4,0,22,48);
-  x.fillStyle = pipeLight; x.fillRect(6,0,6,48); // left highlight continues
-  x.fillStyle = pipeHi; x.fillRect(8,0,2,48);
-  x.fillStyle = pipeDark; x.fillRect(22,0,4,48); // right shadow continues
-  // subtle horizontal bands for texture, but seamless
-  x.fillStyle = 'rgba(0,0,0,0.08)'; x.fillRect(4,12,22,2); x.fillRect(4,28,22,2); x.fillRect(4,44,22,2);
-  t[T.PIPE_BL] = c;
-
-  c = cv(TILE,TILE); x = g2(c);
-  x.fillStyle = pipeDark; x.fillRect(20,0,26,48);
-  x.fillStyle = pipeMid; x.fillRect(22,0,22,48);
-  x.fillStyle = pipeLight; x.fillRect(36,0,6,48);
-  x.fillStyle = pipeHi; x.fillRect(38,0,2,48);
-  x.fillStyle = pipeDark; x.fillRect(20,0,4,48);
-  x.fillStyle = 'rgba(0,0,0,0.08)'; x.fillRect(22,12,22,2); x.fillRect(22,28,22,2); x.fillRect(22,44,22,2);
-  t[T.PIPE_BR] = c;
+  for (const top of [true, false]){
+    const pipe = cv(TILE*2, TILE), px = g2(pipe);
+    px.fillStyle = pipeDark; px.fillRect(4,0,TILE*2-8,TILE);
+    px.fillStyle = pipeMid; px.fillRect(8,0,TILE*2-18,TILE);
+    px.fillStyle = pipeLight; px.fillRect(12,0,12,TILE);
+    px.fillStyle = pipeHi; px.fillRect(16,0,4,TILE);
+    if (top){
+      px.fillStyle = pipeDark; px.fillRect(0,0,TILE*2,18);
+      px.fillStyle = pipeMid; px.fillRect(2,2,TILE*2-4,12);
+      px.fillStyle = pipeLight; px.fillRect(4,2,TILE*2-8,6);
+      px.fillStyle = pipeHi; px.fillRect(8,2,24,3);
+    }
+    for (let side = 0; side < 2; side++){
+      c = cv(TILE,TILE); x = g2(c);
+      x.drawImage(pipe, side*TILE, 0, TILE, TILE, 0, 0, TILE, TILE);
+      t[top ? (side ? T.PIPE_TR : T.PIPE_TL) : (side ? T.PIPE_BR : T.PIPE_BL)] = c;
+    }
+  }
 
   // bonus-room door
   c = cv(TILE,TILE); x = g2(c);

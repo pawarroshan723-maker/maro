@@ -349,6 +349,11 @@ class Item {
     this.emerge = 0; this.startY = y; this.y0 = y;   // y0 = final (rest) position
     this.staticItem = (type === 'gem');
   }
+  pickupBox(){
+    // Match the visible bob rather than leaving an invisible box behind.
+    const y = this.y + (this.staticItem ? Math.sin(gameT*3 + this.x*0.07)*3 : 0);
+    return { x: this.x, y, w: this.w, h: this.h };
+  }
   update(dt, G){
     this.t += dt;
     if (this.staticItem) return;

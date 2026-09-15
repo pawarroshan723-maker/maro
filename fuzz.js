@@ -1,6 +1,6 @@
 'use strict';
 const fs = require('fs');
-const html = fs.readFileSync('/home/user/game/index.html', 'utf8');
+const html = fs.readFileSync(require('path').join(__dirname, 'index.html'), 'utf8');
 let code = html.match(/<script>([\s\S]*)<\/script>/)[1];
 code += '\n;globalThis.__G = { Game, Input, AudioSys, T, rectSolid };\n';
 function makeCtx(){ const special = { measureText: () => ({ width: 10 }), createLinearGradient: () => ({ addColorStop(){} }) };

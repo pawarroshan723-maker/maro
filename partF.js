@@ -164,6 +164,11 @@ const Game = {
       AudioSys.sfx.bump();
     }
     this.bumpKillEnemies(tx, ty);
+    // A head bump also captures floating gems sitting just above this block.
+    const above = { x: tx*TILE, y: ty*TILE - TILE, w: TILE, h: TILE };
+    for (const it of this.items){
+      if ((c === T.BRICK || QCODES.has(c)) && !it.remove && it.type === 'gem' && aabb(it, above)) this.collectItem(it);
+    }
   },
   spawnContent(c){
     const bx = this.lastMultiX, by = this.lastMultiY;
@@ -588,7 +593,7 @@ const Game = {
     // items
     for (const it of this.items) if (!it.remove) it.update(dt, this);
     for (const it of this.items){
-      if (!it.remove && aabb(it, p)) this.collectItem(it);
+      if (!it.remove && aabb(it.pickupBox(), p)) this.collectItem(it);
     }
 
     // projectiles
@@ -669,6 +674,7 @@ const Game = {
   },
 
   collectItem(it){
+    if (it.remove) return; // A captured item can only award its reward once.
     it.remove = true;
     const p = this.player;
     switch (it.type){
@@ -830,8 +836,7 @@ function drawScene(camX, camY){
       case 'star': img = ASSETS.items.star; break;
       default: img = ASSETS.items.life; break;
     }
-    let y = it.y;
-    if (it.staticItem) y += Math.sin(gameT*3 + it.x*0.07)*3;
+    const y = it.pickupBox().y;
     ctx.drawImage(img, Math.round(it.x - camX + (it.w-30)/2), Math.round(y - camY + (it.h-30)/2));
   }
 

@@ -947,57 +947,27 @@ function buildTiles(){
   }
   t[T.HAZARD] = c;
 
-  // pipes - beautiful seamless design, no vertical cut
-  // New palette: vibrant emerald with proper shading and highlights
+  // Paint each pipe as one two-tile-wide surface, then slice it.
+  // Shading belongs at the outside edges, never at the center join.
   const pipeDark = '#1a5c2a', pipeMid = '#2fb44a', pipeLight = '#5ee87a', pipeHi = '#a8f5b8';
-  // PIPE_TL - top left with rounded rim and seamless stem
-  c = cv(TILE,TILE); x = g2(c);
-  // top rim - more beautiful with rounded corners and highlight
-  x.fillStyle = pipeDark; x.fillRect(0,0,28,18);
-  x.fillStyle = pipeMid; x.fillRect(0,0,26,16);
-  x.fillStyle = pipeLight; x.fillRect(2,2,22,10); // top highlight
-  x.fillStyle = pipeHi; x.fillRect(4,2,12,3); // extra shine
-  x.fillStyle = pipeDark; x.fillRect(0,14,26,2); // bottom shadow of rim
-  // stem - seamless, with left highlight and right shadow that continues to BL
-  x.fillStyle = pipeDark; x.fillRect(2,16,26,32);
-  x.fillStyle = pipeMid; x.fillRect(4,16,22,32);
-  x.fillStyle = pipeLight; x.fillRect(6,16,6,32); // left highlight continues down
-  x.fillStyle = pipeHi; x.fillRect(8,16,2,32); // thin shine
-  x.fillStyle = pipeDark; x.fillRect(22,16,4,32); // right shadow
-  t[T.PIPE_TL] = c;
-
-  c = cv(TILE,TILE); x = g2(c);
-  x.fillStyle = pipeDark; x.fillRect(20,0,28,18);
-  x.fillStyle = pipeMid; x.fillRect(22,0,26,16);
-  x.fillStyle = pipeLight; x.fillRect(24,2,22,10);
-  x.fillStyle = pipeHi; x.fillRect(26,2,10,3);
-  x.fillStyle = pipeDark; x.fillRect(22,14,26,2);
-  x.fillStyle = pipeDark; x.fillRect(20,16,26,32);
-  x.fillStyle = pipeMid; x.fillRect(22,16,22,32);
-  x.fillStyle = pipeLight; x.fillRect(36,16,6,32);
-  x.fillStyle = pipeHi; x.fillRect(38,16,2,32);
-  x.fillStyle = pipeDark; x.fillRect(20,16,4,32);
-  t[T.PIPE_TR] = c;
-
-  // PIPE_BL - bottom left, seamless continuation from TL
-  c = cv(TILE,TILE); x = g2(c);
-  x.fillStyle = pipeDark; x.fillRect(2,0,26,48);
-  x.fillStyle = pipeMid; x.fillRect(4,0,22,48);
-  x.fillStyle = pipeLight; x.fillRect(6,0,6,48); // left highlight continues
-  x.fillStyle = pipeHi; x.fillRect(8,0,2,48);
-  x.fillStyle = pipeDark; x.fillRect(22,0,4,48); // right shadow continues
-  // subtle horizontal bands for texture, but seamless
-  x.fillStyle = 'rgba(0,0,0,0.08)'; x.fillRect(4,12,22,2); x.fillRect(4,28,22,2); x.fillRect(4,44,22,2);
-  t[T.PIPE_BL] = c;
-
-  c = cv(TILE,TILE); x = g2(c);
-  x.fillStyle = pipeDark; x.fillRect(20,0,26,48);
-  x.fillStyle = pipeMid; x.fillRect(22,0,22,48);
-  x.fillStyle = pipeLight; x.fillRect(36,0,6,48);
-  x.fillStyle = pipeHi; x.fillRect(38,0,2,48);
-  x.fillStyle = pipeDark; x.fillRect(20,0,4,48);
-  x.fillStyle = 'rgba(0,0,0,0.08)'; x.fillRect(22,12,22,2); x.fillRect(22,28,22,2); x.fillRect(22,44,22,2);
-  t[T.PIPE_BR] = c;
+  for (const top of [true, false]){
+    const pipe = cv(TILE*2, TILE), px = g2(pipe);
+    px.fillStyle = pipeDark; px.fillRect(4,0,TILE*2-8,TILE);
+    px.fillStyle = pipeMid; px.fillRect(8,0,TILE*2-18,TILE);
+    px.fillStyle = pipeLight; px.fillRect(12,0,12,TILE);
+    px.fillStyle = pipeHi; px.fillRect(16,0,4,TILE);
+    if (top){
+      px.fillStyle = pipeDark; px.fillRect(0,0,TILE*2,18);
+      px.fillStyle = pipeMid; px.fillRect(2,2,TILE*2-4,12);
+      px.fillStyle = pipeLight; px.fillRect(4,2,TILE*2-8,6);
+      px.fillStyle = pipeHi; px.fillRect(8,2,24,3);
+    }
+    for (let side = 0; side < 2; side++){
+      c = cv(TILE,TILE); x = g2(c);
+      x.drawImage(pipe, side*TILE, 0, TILE, TILE, 0, 0, TILE, TILE);
+      t[top ? (side ? T.PIPE_TR : T.PIPE_TL) : (side ? T.PIPE_BR : T.PIPE_BL)] = c;
+    }
+  }
 
   // bonus-room door
   c = cv(TILE,TILE); x = g2(c);
@@ -1705,6 +1675,11 @@ class Item {
     this.emerge = 0; this.startY = y; this.y0 = y;   // y0 = final (rest) position
     this.staticItem = (type === 'gem');
   }
+  pickupBox(){
+    // Match the visible bob rather than leaving an invisible box behind.
+    const y = this.y + (this.staticItem ? Math.sin(gameT*3 + this.x*0.07)*3 : 0);
+    return { x: this.x, y, w: this.w, h: this.h };
+  }
   update(dt, G){
     this.t += dt;
     if (this.staticItem) return;
@@ -1967,6 +1942,11 @@ const Game = {
       AudioSys.sfx.bump();
     }
     this.bumpKillEnemies(tx, ty);
+    // A head bump also captures floating gems sitting just above this block.
+    const above = { x: tx*TILE, y: ty*TILE - TILE, w: TILE, h: TILE };
+    for (const it of this.items){
+      if ((c === T.BRICK || QCODES.has(c)) && !it.remove && it.type === 'gem' && aabb(it, above)) this.collectItem(it);
+    }
   },
   spawnContent(c){
     const bx = this.lastMultiX, by = this.lastMultiY;
@@ -2391,7 +2371,7 @@ const Game = {
     // items
     for (const it of this.items) if (!it.remove) it.update(dt, this);
     for (const it of this.items){
-      if (!it.remove && aabb(it, p)) this.collectItem(it);
+      if (!it.remove && aabb(it.pickupBox(), p)) this.collectItem(it);
     }
 
     // projectiles
@@ -2472,6 +2452,7 @@ const Game = {
   },
 
   collectItem(it){
+    if (it.remove) return; // A captured item can only award its reward once.
     it.remove = true;
     const p = this.player;
     switch (it.type){
@@ -2633,8 +2614,7 @@ function drawScene(camX, camY){
       case 'star': img = ASSETS.items.star; break;
       default: img = ASSETS.items.life; break;
     }
-    let y = it.y;
-    if (it.staticItem) y += Math.sin(gameT*3 + it.x*0.07)*3;
+    const y = it.pickupBox().y;
     ctx.drawImage(img, Math.round(it.x - camX + (it.w-30)/2), Math.round(y - camY + (it.h-30)/2));
   }
 

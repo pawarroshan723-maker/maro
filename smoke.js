@@ -352,6 +352,40 @@ console.log('== game over flow ==');
   Game.toTitle();
 }
 
+console.log('== hero artwork and poses ==');
+{
+  for (const [size,height,crouchHeight] of [['small',40,32],['big',64,48]]){
+    const frames = G.ASSETS.pip[size];
+    let bounded = true;
+    for (const [name,canvas] of Object.entries(frames)){
+      const h = name.includes('crouch') ? crouchHeight : height;
+      if (canvas.width !== 48 || canvas.height !== h) bounded = false;
+      for (const op of canvas.getContext().ops){
+        if (op[0] === 'rect' && (op[1]<0 || op[2]<0 || op[3]<=0 || op[4]<=0 ||
+            op[1]+op[3]>48 || op[2]+op[4]>h)) bounded = false;
+      }
+    }
+    check(bounded, size+' sprites stay within standing and crouching canvases');
+    const signature = name => JSON.stringify(frames[name].getContext().ops);
+    check(new Set([0,1,2,3].map(n => signature('walk'+n))).size === 4,
+      size+' has four distinct walking poses');
+    check(new Set([0,1,2,3].map(n => signature('run'+n))).size === 4,
+      size+' has four distinct running poses');
+    check(signature('jump') !== signature('fall') && signature('idle0') !== signature('blink'),
+      size+' has separate ascent, descent and blink poses');
+  }
+  fresh();
+  const p = Game.player;
+  for (const form of ['small','big']){
+    p.setForm(form);
+    const feet = p.y+p.h;
+    p.setCrouch(true);
+    check(p.y+p.h === feet && p.h === (form==='small'?32:48), form+' crouch keeps feet planted');
+    p.setCrouch(false);
+    check(p.y+p.h === feet && p.h === (form==='small'?40:64), form+' standing restores original collision height');
+  }
+}
+
 console.log('== bonus entrance layout ==');
 {
   fresh();

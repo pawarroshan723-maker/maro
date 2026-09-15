@@ -1002,11 +1002,11 @@ function drawPlayer(camX, camY){
   let name;
   if (p.dead) name = 'dead';
   else if (G.state === 'CLEARING') name = 'victory';
-  else if (p.crouching) name = 'crouch';
-  else if (!p.onGround) name = 'jump';
-  else if (Math.abs(p.vx) > 250) name = (((p.walkT*10)|0) % 2 === 0) ? 'run0' : 'run1';
+  else if (p.crouching) name = gameT % 3.5 > 3.25 ? 'crouch1' : 'crouch';
+  else if (!p.onGround) name = p.vy < 0 ? 'jump' : 'fall';
+  else if (Math.abs(p.vx) > 250) name = 'run' + (((p.walkT*12)|0) % 4);
   else if (Math.abs(p.vx) > 25) name = 'walk' + (((p.walkT*7)|0) % 4);
-  else name = (((gameT*1.4)|0) % 2 === 0) ? 'idle0' : 'idle1';
+  else name = gameT % 4 > 3.8 ? 'blink' : ((((gameT*1.8)|0) % 2 === 0) ? 'idle0' : 'idle1');
   let img = set[name] || set.idle0;
   if (p.invT > 0 && ((gameT*12)|0) % 2 === 0) img = set['g' + name] || img;
   const blink = (p.hurtT > 0 && ((gameT*16)|0) % 2 === 0) || (p.morphT > 0 && ((gameT*20)|0) % 2 === 0);

@@ -716,132 +716,127 @@ const PAL = {
 // Paint Maro (the hero, a flame-tailed fox - now cuter and more beautiful) into a fresh sprite canvas.
 function paintPip(x, o){
   const P = o.pal;
-  const R = (gx, gy, gw, gh, col) => { x.fillStyle = col; x.fillRect(gx*2, gy*2, gw*2, gh*2); };
-  const big = o.big;
-  const totalH = o.crouch ? (big ? 24 : 16) : (big ? 32 : 20);
-  const footY = totalH - 2;
+  const R = (gx, gy, w, h, color) => {
+    x.fillStyle = color; x.fillRect(Math.round(gx)*2, Math.round(gy)*2, w*2, h*2);
+  };
+  const big = o.big, crouch = o.crouch;
+  const H = crouch ? (big ? 24 : 16) : (big ? 32 : 20);
+  const phase = o.phase || 0;
+  const moving = o.pose === 'walk' || o.pose === 'run';
+  const running = o.pose === 'run';
+  const jump = o.pose === 'jump', fall = o.pose === 'fall';
+  const air = jump || fall;
+  const bob = moving ? (phase % 2) : (o.breathe || 0);
+  const headY = crouch ? (big ? 6 : 2) : bob;
+  const headH = big ? 13 : 10;
+  const bodyY = headY + headH - 1;
+  const hipY = crouch ? H-4 : (big ? 25 : 15);
+  const ink = '#65352f', light = '#ffa85c', boot = '#34495c';
+  const swing = moving ? [ -2, 0, 2, 0 ][phase % 4] : 0;
 
-  if (o.crouch){
-    const ty = footY - 12;
-    // crouch - cuter with rounder shape
-    R(ty-2, 3, 2, 2, P.teal); R(ty-2, 11, 2, 2, P.teal);
-    R(ty, 2, 12, 5, P.teal);
-    R(ty+1, 1, 14, 3, P.teal);
-    R(ty+1, 6, 8, 3, P.cream);
-    R(ty+1, 11, 2, 2, P.ink);
-    R(ty+3, 13, 1, 1, P.nose);
-    R(ty+5, 2, 12, 2, P.scarf);
-    R(ty+7, 3, 10, Math.max(1, footY-(ty+7)), P.teal);
-    R(ty+8, 5, 6, Math.max(1, footY-(ty+8)-1), P.cream);
-    R(ty+7, 1, 2, Math.max(1, footY-(ty+7)), P.feet);
-    R(ty+7, 13, 2, Math.max(1, footY-(ty+7)), P.feet);
-    return;
+  // Curved, cream-tipped tail behind the body; it lifts during a leap.
+  const tailY = Math.min(H-7, hipY-4) + (jump ? -3 : 0) + (o.flame === 1 ? -1 : 0);
+  R(3,tailY,5,7,ink); R(1,tailY-3,4,7,ink);
+  R(2,tailY-3,3,5,P.cream); R(3,tailY+1,4,5,P.teal);
+  R(4,tailY+2,4,3,light); R(2,tailY-2,2,2,'#ffffff');
+
+  // Far arm and leg use deeper shading for readable depth.
+  const armY = bodyY+1;
+  const farHand = crouch ? H-5 : armY+3-swing;
+  R(7,armY,3,Math.max(2,farHand-armY+2),P.tealD);
+  R(7,farHand,3,2,P.cream);
+  const footY = H-3;
+  const legLen = big ? 6 : 3;
+  const liftL = jump ? 3 : (moving ? [0,0,running ? 3 : 2,1][phase % 4] : 0);
+  const liftR = jump ? 1 : (moving ? [running ? 3 : 2,1,0,0][phase % 4] : 0);
+  const lx = crouch ? 7 : 9 + (running ? swing : 0);
+  const rx = crouch ? 15 : 15 - (running ? swing : 0);
+  for (const [px,lift] of [[lx,liftL],[rx,liftR]]){
+    R(px,footY-legLen-lift,3,legLen,ink);
+    R(px,footY-legLen-lift,2,Math.max(1,legLen-1),P.tealD);
+    R(px-1,footY-lift,5,3,ink);
+    R(px,footY-lift,4,2,boot);
+    R(px,footY-lift,3,1,'#7798aa');
   }
 
-  // flame tail - more beautiful with gradient and flicker
-  const tailY = (big ? 12 : 9) + (o.legs === 'jump' ? -2 : 0);
-  R(0, tailY, 2, 4, P.flameO);
-  R(0, tailY+1, 1, 3, P.flameY);
-  R(1, tailY+2, 1, 2, '#ffffff');
-  if (o.flame === 1) { R(0, tailY-1, 1, 1, P.flameO); R(1, tailY, 1, 1, P.flameY); }
-  if (o.flame === 2) { R(1, tailY-1, 2, 2, P.flameY); R(0, tailY, 1, 1, '#ffffff'); }
-
-  // ears - cuter, more pointed with inner fluff
-  R(2, 0, 3, 4, P.teal); R(11, 0, 3, 4, P.teal);
-  R(2, 0, 3, 1, P.tealD); R(11, 0, 3, 1, P.tealD); // ear tips darker
-  R(3, 1, 1, 2, P.cream); R(12, 1, 1, 2, P.cream);
-  R(3, 2, 1, 1, '#ff9aa2'); R(12, 2, 1, 1, '#ff9aa2'); // inner ear pink
-  // head - rounder, more beautiful
-  R(2, 3, 12, 5, P.teal);
-  R(1, 4, 14, 5, P.teal);
-  R(2, 3, 12, 1, '#ff8c5a'); // highlight top of head
-  // face - larger, cream with blush
-  R(5, 4, 10, 5, P.cream);
-  R(6, 4, 8, 1, '#ffffff'); // forehead highlight
-  if (o.face === 'dead'){
-    R(9, 4, 6, 3, P.ink);
-    R(10, 4, 1, 3, '#fff'); R(13, 4, 1, 3, '#fff');
-    R(13, 6, 1, 1, P.nose);
-    R(6, 8, 1, 1, '#ff9aa2'); R(13, 8, 1, 1, '#ff9aa2'); // blush when dead
-  } else {
-    // big beautiful eyes
-    R(7, 4, 3, 3, '#ffffff'); R(11, 4, 3, 3, '#ffffff'); // eye whites
-    R(8, 5, 2, 2, P.ink); R(12, 5, 2, 2, P.ink); // pupils
-    R(8, 5, 1, 1, '#7ef0ff'); R(12, 5, 1, 1, '#7ef0ff'); // eye shine
-    R(9, 6, 1, 1, '#ffffff'); R(13, 6, 1, 1, '#ffffff'); // extra shine
-    R(10, 7, 2, 1, P.nose); // cute nose
-    R(6, 8, 1, 1, '#ff9aa2'); R(13, 8, 1, 1, '#ff9aa2'); // blush
-    if (o.happy) {
-      R(8, 8, 4, 1, P.ink); // smile
-      R(7, 4, 1, 1, '#ff6b9d'); R(14, 4, 1, 1, '#ff6b9d'); // happy blush
-    }
-  }
-  // scarf - more beautiful with pattern
-  R(2, 9, 12, 2, P.scarf);
-  R(2, 10, 12, 1, P.scarfD);
-  R(3, 9, 2, 1, '#ffffff'); R(9, 9, 2, 1, '#ffffff'); // scarf shine
-  if (o.happy){ R(1, 7, 2, 3, P.scarf); R(13, 7, 2, 3, P.scarf); }
-  // body - more shading
-  const bodyTop = 11;
-  R(3, bodyTop, 10, footY-bodyTop, P.teal);
-  R(3, bodyTop, 10, 1, '#ff8c5a'); // body highlight
-  R(3, bodyTop, 1, footY-bodyTop, P.tealD); // body shadow left
-  R(12, bodyTop, 1, footY-bodyTop, P.tealD); // body shadow right
-  R(5, bodyTop+1, 6, Math.max(1, footY-bodyTop-2), P.cream);
-  R(5, bodyTop+1, 6, 1, '#ffffff'); // belly highlight
+  // Compact torso and rounded belly, not a stretched vertical rectangle.
+  R(8,bodyY,10,Math.max(3,hipY-bodyY+1),ink);
+  R(9,bodyY,8,Math.max(2,hipY-bodyY),P.teal);
+  R(10,bodyY+1,6,Math.max(2,hipY-bodyY-1),P.cream);
   if (big){
-    R(8, 12, 5, 7, P.scarf);   // gem backpack - more detailed
-    R(8, 12, 5, 1, '#ff8c5a');
-    R(9, 13, 3, 5, P.cream);
-    R(9, 13, 1, 1, '#7ef0ff'); R(11, 13, 1, 1, '#ffd23e'); // gems in backpack
-    R(10, 15, 1, 1, P.flameY);
+    R(9,hipY-2,8,2,boot); R(12,hipY-2,2,2,'#ffd36b');
   }
-  // feet - cuter with highlight
-  if (o.legs === 'jump'){
-    R(4, footY-2, 3, 2, P.feet);
-    R(9, footY-3, 3, 3, P.feet);
-    R(4, footY-2, 3, 1, '#8a5a3a'); // foot highlight
-    R(9, footY-3, 3, 1, '#8a5a3a');
-  } else if (o.legs){
-    const L = o.legs;
-    for (let i = 0; i < 2; i++){
-      const lx = L[i*2], lift = L[i*2+1];
-      R(lx, footY-2-lift, 3, 2, P.tealD);
-      R(lx, footY-lift, 3, 2, P.feet);
-      R(lx, footY-lift, 3, 1, '#8a5a3a');
+  // Red scarf with a fluttering end and a highlighted knot.
+  R(5,bodyY+(phase%2),5,2,P.scarfD);
+  R(4,bodyY+1+(phase%2),3,2,P.scarf);
+  R(8,bodyY,10,2,P.scarfD); R(9,bodyY,8,1,P.scarf);
+  R(16,bodyY,2,3,P.scarf); R(16,bodyY,1,1,'#ffb79c');
+
+  // Pointed ears, rounded cheeks and cream muzzle.
+  R(7,headY,4,6,ink); R(16,headY,4,6,ink);
+  R(8,headY+1,2,4,P.teal); R(17,headY+1,2,4,P.teal);
+  R(9,headY+2,1,2,'#ffc0a4'); R(17,headY+2,1,2,'#ffc0a4');
+  R(7,headY+4,13,headH-5,ink);
+  R(6,headY+5,15,headH-7,ink);
+  R(8,headY+3,11,headH-4,P.teal);
+  R(7,headY+5,13,headH-6,P.teal);
+  R(9,headY+3,7,1,light); R(8,headY+4,3,1,light);
+  const eyeY = headY + (big ? 6 : 4);
+  const muzzleY = headY+headH-4;
+  R(10,muzzleY,10,3,P.cream); R(12,muzzleY+2,6,1,P.cream);
+  R(19,muzzleY,2,2,ink); R(19,muzzleY,1,1,'#ac7770');
+  if (o.face === 'dead'){
+    for (const ex of [11,16]){
+      R(ex,eyeY,1,1,ink); R(ex+2,eyeY,1,1,ink);
+      R(ex+1,eyeY+1,1,1,ink); R(ex,eyeY+2,1,1,ink); R(ex+2,eyeY+2,1,1,ink);
     }
+  } else if (o.blink || o.happy){
+    R(11,eyeY+1,3,1,ink); R(16,eyeY+1,3,1,ink);
+    if (o.happy){ R(11,eyeY,1,1,ink); R(16,eyeY,1,1,ink); }
   } else {
-    R(4, footY, 3, 2, P.feet);
-    R(9, footY, 3, 2, P.feet);
-    R(4, footY, 3, 1, '#8a5a3a');
-    R(9, footY, 3, 1, '#8a5a3a');
+    for (const ex of [11,16]){
+      R(ex,eyeY,3,3,'#ffffff'); R(ex+1,eyeY+1,2,2,ink);
+      R(ex+1,eyeY,1,1,'#ffffff');
+    }
   }
+  R(8,muzzleY,2,1,'#ef987f'); R(15,muzzleY+2,2,1,ink);
+
+  // Foreground arm: counter-swings with the stride, reaches up in air,
+  // and rests on bent knees when crouching. Every pose stays inside its canvas.
+  let handY = crouch ? H-6 : armY+3+swing;
+  let handX = 18;
+  if (jump || o.happy){ handY = headY+3; handX = 21; }
+  else if (fall){ handY = armY; handX = 21; }
+  R(17,Math.min(armY,handY),3,Math.abs(handY-armY)+2,ink);
+  R(18,Math.min(armY,handY),2,Math.abs(handY-armY)+1,P.teal);
+  R(handX-1,handY,3,3,ink); R(handX,handY,2,2,P.cream);
 }
 
 function buildPip(){
-  const specs = { small:{ w:32, h:40, ch:32 }, big:{ w:32, h:64, ch:48 } };
-  const basePal = { teal:PAL.teal, tealD:PAL.tealD, cream:PAL.cream, scarf:PAL.scarf, scarfD:PAL.scarfD, feet:PAL.feet, flameO:PAL.flameO, flameY:PAL.flameY, ink:PAL.ink, nose:PAL.nose };
-  const goldPal = { teal:'#ffd23e', tealD:'#e0a52e', cream:'#fff3c4', scarf:'#ff8c42', scarfD:'#e06a28', feet:'#b0713a', flameO:'#fff3c4', flameY:'#ff8c42', ink:'#7a4a00', nose:'#8a5a10' };
+  const specs = { small:{ w:48, h:40, ch:32 }, big:{ w:48, h:64, ch:48 } };
+  const basePal = { ...PAL };
+  const goldPal = { ...PAL, teal:'#ffd35b', tealD:'#c28b36', cream:'#fff5cd', scarf:'#ed7843', scarfD:'#b44736' };
   for (const [fn, spec] of Object.entries(specs)){
     const make = (o) => {
       const c = cv(spec.w, o.crouch ? spec.ch : spec.h);
-      paintPip(g2(c), Object.assign({ big: fn==='big' }, o));
+      paintPip(g2(c), Object.assign({ big:fn==='big' }, o));
       return c;
     };
     const frames = {};
-    for (const [suf, pal] of [['', basePal], ['g', goldPal]]){
-      frames[suf+'idle0']   = make({ pal, legs:[4,0,9,0], flame:0 });
-      frames[suf+'idle1']   = make({ pal, legs:[4,0,9,0], flame:1 });
-      frames[suf+'walk0']   = make({ pal, legs:[4,0,9,2], flame:1 });
-      frames[suf+'walk1']   = make({ pal, legs:[4,0,9,0], flame:2 });
-      frames[suf+'walk2']   = make({ pal, legs:[4,2,9,0], flame:1 });
-      frames[suf+'walk3']   = make({ pal, legs:[4,0,9,0], flame:0 });
-      frames[suf+'run0']    = make({ pal, legs:[2,1,11,2], flame:2 });
-      frames[suf+'run1']    = make({ pal, legs:[4,2,12,1], flame:1 });
-      frames[suf+'jump']    = make({ pal, legs:'jump', flame:2 });
-      frames[suf+'crouch']  = make({ pal, crouch:true, flame:1 });
-      frames[suf+'dead']    = make({ pal, face:'dead', legs:[4,0,9,0] });
-      frames[suf+'victory'] = make({ pal, happy:true, legs:[4,0,9,0], flame:2 });
+    for (const [suf,pal] of [['',basePal],['g',goldPal]]){
+      frames[suf+'idle0'] = make({pal});
+      frames[suf+'idle1'] = make({pal,breathe:1,flame:1});
+      frames[suf+'blink'] = make({pal,blink:true});
+      for (let phase=0; phase<4; phase++){
+        frames[suf+'walk'+phase] = make({pal,pose:'walk',phase,flame:phase%2});
+        frames[suf+'run'+phase] = make({pal,pose:'run',phase,flame:phase%2});
+      }
+      frames[suf+'jump'] = make({pal,pose:'jump'});
+      frames[suf+'fall'] = make({pal,pose:'fall'});
+      frames[suf+'crouch'] = make({pal,crouch:true});
+      frames[suf+'crouch1'] = make({pal,crouch:true,flame:1,blink:true});
+      frames[suf+'dead'] = make({pal,face:'dead',pose:'fall'});
+      frames[suf+'victory'] = make({pal,happy:true});
     }
     ASSETS.pip[fn] = frames;
   }
@@ -2805,11 +2800,11 @@ function drawPlayer(camX, camY){
   let name;
   if (p.dead) name = 'dead';
   else if (G.state === 'CLEARING') name = 'victory';
-  else if (p.crouching) name = 'crouch';
-  else if (!p.onGround) name = 'jump';
-  else if (Math.abs(p.vx) > 250) name = (((p.walkT*10)|0) % 2 === 0) ? 'run0' : 'run1';
+  else if (p.crouching) name = gameT % 3.5 > 3.25 ? 'crouch1' : 'crouch';
+  else if (!p.onGround) name = p.vy < 0 ? 'jump' : 'fall';
+  else if (Math.abs(p.vx) > 250) name = 'run' + (((p.walkT*12)|0) % 4);
   else if (Math.abs(p.vx) > 25) name = 'walk' + (((p.walkT*7)|0) % 4);
-  else name = (((gameT*1.4)|0) % 2 === 0) ? 'idle0' : 'idle1';
+  else name = gameT % 4 > 3.8 ? 'blink' : ((((gameT*1.8)|0) % 2 === 0) ? 'idle0' : 'idle1');
   let img = set[name] || set.idle0;
   if (p.invT > 0 && ((gameT*12)|0) % 2 === 0) img = set['g' + name] || img;
   const blink = (p.hurtT > 0 && ((gameT*16)|0) % 2 === 0) || (p.morphT > 0 && ((gameT*20)|0) % 2 === 0);

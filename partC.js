@@ -92,6 +92,8 @@ const Settings = {
   vibrate: Store.get('vibrate', true),
   opacity: Store.get('opacity', 0.85),
   reduced: Store.get('reduced', false),
+  quality: Store.get('quality', 'high') === 'standard' ? 'standard' : 'high',
+  get effectsReduced(){ return this.reduced || this.quality === 'standard'; },
   apply(){
     const ui = document.getElementById('touch-ui');
     if (ui) ui.style.opacity = String(Settings.opacity);

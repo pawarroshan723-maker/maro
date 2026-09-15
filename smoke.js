@@ -7,7 +7,7 @@ const m = html.match(/<script>([\s\S]*)<\/script>/);
 if (!m){ console.error('no script block'); process.exit(1); }
 let code = m[1];
 code += '\n;globalThis.__G = { Game, Input, AudioSys, Settings, Level, MAIN_ROWS, BONUS_ROWS, T, ' +
-  'toggleMute, doPause, doResume, rectSolid, moveAndCollide, Player, Enemy, Item, Projectile, ASSETS, tileImage };\n';
+  'toggleMute, doPause, doResume, rectSolid, moveAndCollide, Player, Enemy, Item, Projectile, ASSETS, tileImage, Keyboard, keyboardDown, keyboardUp, setQuality };\n';
 
 function makeCtx(){
   const ops = [];
@@ -350,6 +350,65 @@ console.log('== game over flow ==');
   G.toggleMute();
   G.toggleMute();
   Game.toTitle();
+}
+
+console.log('== custom keyboard and quality settings ==');
+{
+  fresh();
+  const K = G.Keyboard;
+  const event = (key, extra={}) => ({key,preventDefault(){},repeat:false,...extra});
+  K.setMode('default');
+  G.keyboardDown(event('ArrowLeft'));
+  check(Input.left, 'default arrow keys still move');
+  G.keyboardUp(event('ArrowLeft'));
+  check(!Input.left, 'default key release stops movement');
+  K.setMode('custom');
+  K.beginCapture('left');
+  G.keyboardDown(event('j'));
+  check(K.bindings.left === 'j' && !Input.left, 'capturing a key saves it without moving the player');
+  G.keyboardDown(event('j',{target:{tagName:'BUTTON'}}));
+  check(Input.left, 'custom movement works even after clicking a game button');
+  G.keyboardUp(event('j'));
+  check(!Input.left && !K.resolve('a') && !K.resolve('arrowleft'), 'custom mode replaces default aliases');
+  K.beginCapture('jump');
+  G.keyboardDown(event('j'));
+  check(K.capture === 'jump' && K.bindings.jump === ' ', 'duplicate bindings are rejected');
+  G.keyboardDown(event('p'));
+  check(K.capture === 'jump' && Game.state === 'PLAYING', 'reserved pause key cannot be rebound or triggered while capturing');
+  G.keyboardDown(event('Escape'));
+  check(K.capture === null, 'Escape cancels key capture');
+  K.beginCapture('jump'); G.keyboardDown(event('k'));
+  G.keyboardDown(event('k'));
+  check(Input.jumpHeld && Input.jumpQueued, 'custom jump is held and queued');
+  G.keyboardUp(event('k')); Input.clearAll();
+  G.keyboardDown(event('j',{target:{tagName:'SELECT'}}));
+  G.keyboardDown(event('j',{ctrlKey:true}));
+  check(!Input.left, 'native form controls and browser shortcuts do not move player');
+  const saved = JSON.parse(localStorageObj.getItem('gemdash.keyBindings'));
+  K.load(saved);
+  check(K.bindings.left === 'j' && K.bindings.jump === 'k' &&
+    JSON.parse(localStorageObj.getItem('gemdash.keyboardMode')) === 'custom', 'custom bindings and mode persist');
+  K.load({left:'j',right:'j',down:'s',jump:' ',action:'shift'});
+  check(K.bindings.left === 'a' && K.bindings.right === 'd', 'invalid stored bindings fall back safely');
+  K.load(saved); Input.press('left'); K.setMode('default');
+  check(!Input.left && K.resolve('a') === 'left', 'switching presets clears held inputs');
+  K.setMode('custom'); check(K.bindings.left === 'j', 'switching back retains custom bindings');
+  K.reset(); K.setMode('default');
+  check(K.bindings.left === 'a' && K.bindings.jump === ' ', 'reset restores custom defaults');
+  G.Settings.reduced = false;
+  G.setQuality('standard');
+  check(elCache.game.width === 960 && elCache.game.height === 540 && G.Settings.effectsReduced,
+    'Standard uses 1x rendering and fewer effects');
+  const particles = Game.particles;
+  particles.clear(); particles.confetti(0,0);
+  const standardCount = particles.pool.filter(p=>p.on).length;
+  G.setQuality('high'); particles.clear(); particles.confetti(0,0);
+  check(elCache.game.width === 1920 && elCache.game.height === 1080 && !G.Settings.effectsReduced &&
+    particles.pool.filter(p=>p.on).length > standardCount, 'High uses 2x rendering and fuller effects');
+  check(JSON.parse(localStorageObj.getItem('gemdash.quality')) === 'high', 'quality preference persists');
+  G.Settings.reduced = true;
+  check(G.Settings.effectsReduced, 'explicit Reduced effects still overrides High quality');
+  G.Settings.reduced = false;
 }
 
 console.log('== hero artwork and poses ==');

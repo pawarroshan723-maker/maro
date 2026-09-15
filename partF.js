@@ -465,7 +465,7 @@ const Game = {
     a.length = w;
   },
   shake(mag, dur){
-    if (Settings.reduced) return;
+    if (Settings.effectsReduced) return;
     this.shakeMag = mag;
     this.shakeDur = dur;
     this.shakeT = dur;
@@ -558,7 +558,7 @@ const Game = {
         p.invLastSec = s;
         if (s > 0) AudioSys.sfx.tick();
       }
-      if (!Settings.reduced){
+      if (!Settings.effectsReduced){
         this.trailT -= dt;
         if (this.trailT <= 0){
           this.trailT = 0.07;
@@ -740,7 +740,7 @@ function resizeCanvas(){
   canvas.style.height = Math.floor(VIEW_H*scale) + 'px';
 }
 function setupCanvas(){
-  dpr = Math.min(window.devicePixelRatio || 1, 2);
+  dpr = Settings.quality === 'high' ? 2 : 1;
   if (degraded) dpr = 1;
   canvas.width = VIEW_W * dpr;
   canvas.height = VIEW_H * dpr;
@@ -752,6 +752,14 @@ function setupCanvas(){
 
 // sustained low FPS -> drop DPR once to 1 (battery/perf rescue)
 let fpsAcc = 0, fpsN = 0, fpsBad = 0;
+function setQuality(value){
+  Settings.quality = value === 'standard' ? 'standard' : 'high';
+  Store.set('quality', Settings.quality);
+  degraded = false;
+  fpsAcc = fpsN = fpsBad = 0;
+  setupCanvas();
+  updateToggles();
+}
 function fpsMonitor(dt){
   fpsAcc += dt;
   fpsN++;
@@ -1114,7 +1122,7 @@ function drawReady(){
 function render(){
   const G = Game;
   let camX = G.cam.x, camY = G.cam.y;
-  if (G.shakeT > 0 && !Settings.reduced){
+  if (G.shakeT > 0 && !Settings.effectsReduced){
     const m = G.shakeMag * (G.shakeT / G.shakeDur);
     camX += (Math.random()*2 - 1) * m;
     camY += (Math.random()*2 - 1) * m;
@@ -1178,6 +1186,8 @@ function updateToggles(){
   $('tg-vib').classList.toggle('on', Settings.vibrate);
   $('tg-reduced').textContent = Settings.reduced ? 'ON' : 'OFF';
   $('tg-reduced').classList.toggle('on', Settings.reduced);
+  $('sel-quality').value = Settings.quality;
+  updateKeyboardUI();
   $('rg-op').value = Math.round(Settings.opacity*100);
   $('sb-sound').classList.toggle('off', !Settings.sound);
   $('btn-snd-t').classList.toggle('off', !Settings.sound);
@@ -1219,6 +1229,7 @@ function doPause(){
   needRender = true;
 }
 function doResume(){
+  Keyboard.cancelCapture();
   if (Game.state !== 'PAUSED') return;
   hideOv('ov-pause');
   hideOv('ov-set');
@@ -1255,9 +1266,16 @@ function wireUI(){
     Game.restartLevel();
     AudioSys.startMusic();
   });
-  on('btn-settings', () => showOv('ov-set'));
+  on('btn-settings', () => { updateToggles(); showOv('ov-set'); });
+  $('sel-quality').addEventListener('change', e => setQuality(e.target.value));
+  $('sel-controls').addEventListener('change', e => Keyboard.setMode(e.target.value));
+  for (const action of Object.keys(Keyboard.defaults)){
+    on('key-'+action, () => Keyboard.beginCapture(action));
+  }
+  on('btn-reset-keys', () => Keyboard.reset());
   on('btn-to-title', () => Game.toTitle());
   on('btn-set-back', () => {
+    Keyboard.cancelCapture();
     hideOv('ov-set');
     showOv('ov-pause');
   });
@@ -1269,7 +1287,7 @@ function wireUI(){
     vib(15);
   });
   on('tg-reduced', () => {
-    Settings.reduced = !Settings.reduced;
+    Settings.reduced = !Settings.effectsReduced;
     Store.set('reduced', Settings.reduced);
     updateToggles();
   });
@@ -1293,30 +1311,100 @@ const KEYMAP = {
   ' ':'jump', arrowup:'jump', w:'jump', z:'jump',
   shift:'action', x:'action',
 };
-function wireKeys(){
-  window.addEventListener('keydown', (e) => {
-    const k = e.key.toLowerCase();
-    if (k === 'm'){ toggleMute(); e.preventDefault(); return; }
-    if (k === 'f'){ toggleFS(); e.preventDefault(); return; }
-    if (k === 'p' || k === 'escape'){ togglePause(); e.preventDefault(); return; }
-    if (Game.state === 'TITLE' && (k === 'enter' || k === ' ')){
-      if (!Store.get('seenTut', false)) showOv('ov-tut');
-      else Game.startGame();
-      e.preventDefault();
-      return;
+const Keyboard = {
+  defaults: { left:'a', right:'d', down:'s', jump:' ', action:'shift' },
+  mode: Store.get('keyboardMode', 'default') === 'custom' ? 'custom' : 'default',
+  bindings: {}, capture: null,
+  validKey(key){
+    return typeof key === 'string' && !['p','m','f'].includes(key) &&
+      (/^[a-z0-9]$/.test(key) || ['arrowleft','arrowright','arrowup','arrowdown',' ','shift'].includes(key));
+  },
+  load(saved){
+    const keys = Object.keys(this.defaults);
+    this.bindings = { ...this.defaults };
+    if (saved && keys.every(a => this.validKey(saved[a])) && new Set(keys.map(a => saved[a])).size === keys.length){
+      for (const a of keys) this.bindings[a] = saved[a];
     }
-    const key = KEYMAP[k];
-    if (!key) return;
+  },
+  resolve(key){
+    return this.mode === 'default' ? KEYMAP[key] : Object.keys(this.bindings).find(a => this.bindings[a] === key);
+  },
+  save(){ Store.set('keyboardMode', this.mode); Store.set('keyBindings', this.bindings); },
+  setMode(mode){
+    this.mode = mode === 'custom' ? 'custom' : 'default';
+    this.cancelCapture(); Input.clearAll(); this.save(); updateKeyboardUI();
+  },
+  beginCapture(action){
+    if (this.mode !== 'custom' || !Object.hasOwn(this.defaults, action)) return;
+    this.capture = action; Input.clearAll(); updateKeyboardUI();
+    $('key-status').textContent = 'Press a key for '+action+'. Esc cancels. P, M and F are reserved.';
+  },
+  cancelCapture(){ this.capture = null; updateKeyboardUI(); },
+  assign(key){
+    const action = this.capture;
+    if (!action) return false;
+    if (!this.validKey(key)){
+      $('key-status').textContent = 'Use a letter, number, arrow, Space or Shift. P, M and F are reserved. Esc cancels.';
+      return false;
+    }
+    const other = Object.keys(this.bindings).find(a => a !== action && this.bindings[a] === key);
+    if (other){ $('key-status').textContent = keyLabel(key)+' is already assigned to '+other+'. Choose another key.'; return false; }
+    this.bindings[action] = key; this.capture = null; this.save(); updateKeyboardUI();
+    $('key-status').textContent = 'Saved: '+action+' → '+keyLabel(key)+'.';
+    return true;
+  },
+  reset(){ this.bindings = { ...this.defaults }; this.capture = null; Input.clearAll(); this.save(); updateKeyboardUI(); },
+};
+Keyboard.load(Store.get('keyBindings', null));
+function keyLabel(key){
+  return ({' ':'Space',arrowleft:'←',arrowright:'→',arrowup:'↑',arrowdown:'↓',shift:'Shift'})[key] || key.toUpperCase();
+}
+function updateKeyboardUI(){
+  $('sel-controls').value = Keyboard.mode;
+  $('custom-keys').hidden = Keyboard.mode !== 'custom';
+  $('default-keys').hidden = Keyboard.mode !== 'default';
+  for (const action of Object.keys(Keyboard.defaults)){
+    const button = $('key-'+action);
+    button.textContent = Keyboard.capture === action ? 'Press key…' : keyLabel(Keyboard.bindings[action]);
+    button.classList.toggle('listening', Keyboard.capture === action);
+  }
+  $('key-status').textContent = 'P / Esc: pause · M: sound · F: fullscreen. Settings are saved on this device.';
+}
+function keyboardDown(e){
+  const k = e.key.toLowerCase();
+  if (Keyboard.capture){
     e.preventDefault();
     if (e.repeat) return;
-    AudioSys.unlock();
-    Input.press(key);
-    if (key === 'jump' || key === 'action') Input.queue(key);
-  });
-  window.addEventListener('keyup', (e) => {
-    const key = KEYMAP[e.key.toLowerCase()];
-    if (key) Input.release(key);
-  });
+    if (k === 'escape') Keyboard.cancelCapture();
+    else if (!e.ctrlKey && !e.altKey && !e.metaKey) Keyboard.assign(k);
+    return;
+  }
+  // Native settings controls and browser shortcuts must not trigger game actions.
+  if (e.ctrlKey || e.altKey || e.metaKey || (e.target &&
+      (['INPUT','SELECT','TEXTAREA'].includes(e.target.tagName) || e.target.isContentEditable))) return;
+  if (e.target && e.target.tagName === 'BUTTON' && Game.state !== 'PLAYING' && (k === ' ' || k === 'enter')) return;
+  if (k === 'm'){ if (!e.repeat) toggleMute(); e.preventDefault(); return; }
+  if (k === 'f'){ if (!e.repeat) toggleFS(); e.preventDefault(); return; }
+  if (k === 'p' || k === 'escape'){ if (!e.repeat) togglePause(); e.preventDefault(); return; }
+  if (Game.state === 'TITLE' && (k === 'enter' || k === ' ')){
+    if (!Store.get('seenTut', false)) showOv('ov-tut');
+    else Game.startGame();
+    e.preventDefault(); return;
+  }
+  const key = Keyboard.resolve(k);
+  if (!key || Game.state !== 'PLAYING') return;
+  e.preventDefault();
+  if (e.repeat) return;
+  AudioSys.unlock(); Input.press(key);
+  if (key === 'jump' || key === 'action') Input.queue(key);
+}
+function keyboardUp(e){
+  const key = Keyboard.resolve(e.key.toLowerCase());
+  if (key) Input.release(key);
+}
+function wireKeys(){
+  window.addEventListener('keydown', keyboardDown);
+  window.addEventListener('keyup', keyboardUp);
 }
 
 function wireGlobal(){

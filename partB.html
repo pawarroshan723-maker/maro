@@ -79,6 +79,19 @@
       <div class="set-row">Vibration <button type="button" class="btn tog" id="tg-vib" aria-label="Toggle vibration">ON</button></div>
       <div class="set-row">Touch opacity <input id="rg-op" type="range" min="20" max="100" value="85" aria-label="Touch control opacity"></div>
       <div class="set-row">Reduced effects <button type="button" class="btn tog" id="tg-reduced" aria-label="Toggle reduced effects">OFF</button></div>
+      <div class="set-row"><label for="sel-quality">Graphics quality</label><select id="sel-quality"><option value="standard">Standard</option><option value="high">High</option></select></div>
+      <p class="setting-help" id="quality-help">High: sharper rendering and full effects. Standard: lighter rendering and fewer effects.</p>
+      <div class="set-row"><label for="sel-controls">Keyboard controls</label><select id="sel-controls"><option value="default">Default</option><option value="custom">Custom</option></select></div>
+      <p class="setting-help" id="default-keys">Move: A/D or ←/→ · Crouch: S/↓ · Jump: Space/W/Z/↑ · Run/shoot: Shift/X</p>
+      <div id="custom-keys" hidden>
+        <div class="set-row">Move left <button type="button" class="btn key-bind" id="key-left" aria-label="Change move left key">A</button></div>
+        <div class="set-row">Move right <button type="button" class="btn key-bind" id="key-right" aria-label="Change move right key">D</button></div>
+        <div class="set-row">Crouch / enter door <button type="button" class="btn key-bind" id="key-down" aria-label="Change crouch key">S</button></div>
+        <div class="set-row">Jump <button type="button" class="btn key-bind" id="key-jump" aria-label="Change jump key">Space</button></div>
+        <div class="set-row">Run / shoot <button type="button" class="btn key-bind" id="key-action" aria-label="Change run and shoot key">Shift</button></div>
+        <button type="button" class="btn" id="btn-reset-keys">RESET CUSTOM KEYS</button>
+      </div>
+      <p class="setting-help" id="key-status" role="status" aria-live="polite">P / Esc: pause · M: sound · F: fullscreen. Settings are saved on this device.</p>
       <button type="button" class="btn btn-big" id="btn-set-back">BACK</button>
     </div>
   </div>

@@ -17,7 +17,7 @@ const Particles = {
     p.grav = o.grav || 0; p.kind = o.kind || 0;
   },
   debris(x, y){
-    const n = Settings.reduced ? 3 : 6;
+    const n = Settings.effectsReduced ? 3 : 6;
     const cols = ['#d9803f','#8a4a22','#f2a96b'];
     for (let i = 0; i < n; i++){
       this.spawn({ x:x, y:y, vx:(Math.random()*2-1)*170, vy:-260+Math.random()*120,
@@ -25,7 +25,7 @@ const Particles = {
     }
   },
   puff(x, y, col, n){
-    n = Settings.reduced ? Math.ceil((n||8)/2) : (n||8);
+    n = Settings.effectsReduced ? Math.ceil((n||8)/2) : (n||8);
     for (let i = 0; i < n; i++){
       const a = Math.random()*6.283, sp = 40+Math.random()*90;
       this.spawn({ x:x, y:y, vx:Math.cos(a)*sp, vy:Math.sin(a)*sp-30,
@@ -33,7 +33,7 @@ const Particles = {
     }
   },
   spark(x, y, col, n){
-    n = Settings.reduced ? Math.ceil((n||6)/2) : (n||6);
+    n = Settings.effectsReduced ? Math.ceil((n||6)/2) : (n||6);
     for (let i = 0; i < n; i++){
       const a = Math.random()*6.283, sp = 120+Math.random()*180;
       this.spawn({ x:x, y:y, vx:Math.cos(a)*sp, vy:Math.sin(a)*sp,
@@ -41,7 +41,7 @@ const Particles = {
     }
   },
   dust(x, y){
-    for (let i = 0; i < (Settings.reduced?2:4); i++){
+    for (let i = 0; i < (Settings.effectsReduced?2:4); i++){
       this.spawn({ x:x+(Math.random()*10-5), y:y-2, vx:(Math.random()*2-1)*40, vy:-20-Math.random()*30,
         life:0.4, size:3+Math.random()*3, col:'#d9c9a8', grav:60, kind:1 });
     }
@@ -55,7 +55,7 @@ const Particles = {
   },
   confetti(x, y){
     const cols = ['#ffe14d','#ff6a5e','#7ef0ff','#9fe870','#ff9dd5','#fff'];
-    const n = Settings.reduced ? 18 : 42;
+    const n = Settings.effectsReduced ? 18 : 42;
     for (let i = 0; i < n; i++){
       this.spawn({ x:x, y:y, vx:(Math.random()*2-1)*260, vy:-320+Math.random()*220,
         life:1.4+Math.random()*0.6, size:4+Math.random()*3, col:cols[i%6], grav:520, kind:0 });

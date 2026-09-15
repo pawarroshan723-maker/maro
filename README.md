@@ -24,6 +24,18 @@ This is a polished, fully-playable web game with no external dependencies. All g
 - Find the secret wooden door (D) — crouch (▼) to enter bonus room
 - Reach the flag pole (F) at col 152, then the destination door (E)
 
+## ⚙️ Controls and graphics settings
+
+Pause with **P / Esc**, then open **Settings**.
+
+- **Keyboard controls → Default:** original arrow/WASD controls and jump/action aliases.
+- **Keyboard controls → Custom:** click an action's key button, then press a new key. Supports letters, numbers, arrows, Space and Shift. Duplicate assignments are rejected. **Esc** cancels capture; **P**, **M** and **F** remain reserved for pause, sound and fullscreen. Reset Custom Keys restores the original primary bindings. Touch controls are unchanged.
+- **Graphics quality → Standard:** 960×540 backing canvas and fewer particles, trails and camera-shake effects for lighter rendering.
+- **Graphics quality → High:** 1920×1080 backing canvas and full effects, retaining the crisp pixel-art style. The existing low-FPS fallback can reduce rendering to 1× if necessary. Changing quality resets that fallback.
+- **Reduced effects** remains available independently and also works in High mode.
+
+Control presets, custom bindings and quality are saved in local storage on the current browser/device (when storage is available).
+
 ## 🏗️ Level Design
 
 - **Size:** 170 columns × 12 rows (8160×576 px world)
@@ -48,7 +60,7 @@ This is a polished, fully-playable web game with no external dependencies. All g
 - **Self-contained:** Single `index.html` (3022 lines) built from `partA.html + partB.html + partC.js + partD.js + partE.js + partF.js`
 - **No dependencies:** Vanilla JS, Canvas 2D, Web Audio API
 - **Mobile-first:** Touch controls, pointer events, safe-area insets, landscape lock attempt
-- **Performance:** DPR capped at 2, auto-degrade to 1 on sustained low FPS, particle pooling (240 max), fixed timestep (60Hz)
+- **Performance:** Standard 1× / High 2× rendering, auto-degrade to 1× on sustained low FPS, particle pooling (240 max), fixed timestep (60Hz)
 
 ## ✅ Quality Gates
 

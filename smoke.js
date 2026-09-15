@@ -352,6 +352,17 @@ console.log('== game over flow ==');
   Game.toTitle();
 }
 
+console.log('== bonus entrance layout ==');
+{
+  fresh();
+  const lv = Game.level;
+  check(lv.get(42,6) === T.EMPTY && lv.get(43,6) === T.EMPTY && lv.get(43,7) === T.EMPTY,
+    'no disconnected stonework above bonus entrance');
+  check(lv.get(42,9) === T.DOOR && lv.get(42,8) === T.Q_GEM,
+    'bonus entrance and reward block preserved');
+  check(!lv.solid(42,9) && lv.solid(42,10), 'bonus door remains passable and grounded');
+}
+
 console.log('== destination castle layout ==');
 {
   fresh();

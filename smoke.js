@@ -2,15 +2,19 @@
 'use strict';
 const fs = require('fs');
 
-const html = fs.readFileSync('/home/user/game/index.html', 'utf8');
+const html = fs.readFileSync(require('path').join(__dirname, 'index.html'), 'utf8');
 const m = html.match(/<script>([\s\S]*)<\/script>/);
 if (!m){ console.error('no script block'); process.exit(1); }
 let code = m[1];
 code += '\n;globalThis.__G = { Game, Input, AudioSys, Settings, Level, MAIN_ROWS, BONUS_ROWS, T, ' +
-  'toggleMute, doPause, doResume, rectSolid, moveAndCollide, Player, Enemy, Item, Projectile };\n';
+  'toggleMute, doPause, doResume, rectSolid, moveAndCollide, Player, Enemy, Item, Projectile, ASSETS, tileImage, Keyboard, keyboardDown, keyboardUp, setQuality, COURSES, TOTAL_STAGES, loadCampaignProgress, startSelectedStage, EnemyBolt, courseBackdrop };\n';
 
 function makeCtx(){
+  const ops = [];
   const special = {
+    ops,
+    fillRect: (...args) => ops.push(['rect', ...args]),
+    drawImage: (...args) => ops.push(['image', ...args]),
     measureText: () => ({ width: 10 }),
     createLinearGradient: () => ({ addColorStop(){} }),
     createRadialGradient: () => ({ addColorStop(){} }),
@@ -27,7 +31,7 @@ function makeEl(id){
     classList: { _s: new Set(), add(c){ this._s.add(c); }, remove(c){ this._s.delete(c); },
       toggle(c, f){ if (f === undefined) f = !this._s.has(c); f ? this._s.add(c) : this._s.delete(c); }, contains(c){ return this._s.has(c); } },
     addEventListener(){}, removeEventListener(){}, setPointerCapture(){}, releasePointerCapture(){},
-    setAttribute(){}, appendChild(){}, getContext(){ return makeCtx(); },
+    setAttribute(){}, appendChild(){}, getContext(){ return this.ctx || (this.ctx = makeCtx()); },
   };
 }
 const document = {
@@ -111,11 +115,12 @@ console.log('== level data ==');
   check(MAIN_ROWS.every(r => r.length === 170), 'main rows all 170 cols');
   const lv = new G.Level(MAIN_ROWS, false);
   check(lv.get(2, 10) === T.GROUND, 'ground under start');
-  check(lv.get(152, 0) === T.FLAG && lv.get(152, 9) === T.FLAG, 'flag pole rows 0-9 at col 152');
+  check(lv.get(152, 0) === T.EMPTY && lv.get(152, 2) === T.FLAG && lv.get(152, 9) === T.FLAG, 'flag pole rows 2-9 at col 152');
   check(lv.get(42, 9) === T.DOOR, 'bonus door at (42,9)');
   check(lv.get(7, 7) === T.Q_GEM, 'mystery gem at (7,7)');
   check(lv.get(155, 8) === T.END_DOOR && lv.get(155, 9) === T.END_DOOR, '2-tile destination door');
-  check(lv.get(28, 10) === T.EMPTY && lv.get(62, 10) === T.EMPTY && lv.get(105, 10) === T.EMPTY, 'pits exist');
+  // pits were narrowed for accessibility: original 62 and 105 are now ground, new pits at 66 and 107
+  check(lv.get(28, 10) === T.EMPTY && lv.get(66, 10) === T.EMPTY && lv.get(107, 10) === T.EMPTY, 'pits exist');
   check(lv.gemSpawns.length > 0, 'floating gems: ' + lv.gemSpawns.length);
   const blv = new G.Level(G.BONUS_ROWS, true);
   check(blv.w === 18 && blv.h === 10, 'bonus room 18x10');
@@ -345,6 +350,397 @@ console.log('== game over flow ==');
   G.toggleMute();
   G.toggleMute();
   Game.toTitle();
+}
+
+console.log('== stage 2 progression and level ==');
+{
+  fresh();
+  Game.score = 1234; Game.gems = 12; Game.lives = 4;
+  Game.player.setForm('big');
+  Game.finishClear();
+  const total = Game.score;
+  check(Game.stage2Unlocked && JSON.parse(localStorageObj.getItem('gemdash.stage2Unlocked')) === true,
+    'clearing Stage 1 unlocks Stage 2 persistently');
+  check(!elCache['btn-next-stage'].hidden, 'Stage 1 completion offers Next Stage');
+  Game.nextStage();
+  check(Game.stage === 2 && Game.state === 'READY' && Game.course.name === 'SUNSET RIDGE',
+    'Next Stage loads Sunset Ridge');
+  check(Game.score === total && Game.gems === 12 && Game.lives === 4 && Game.player.form === 'big',
+    'progression carries score, gems, lives and form');
+  check(Game.timeLeft === 320 && Game.checkX === 2 && !Game.inBonus && !Game.fade,
+    'new stage resets timer, checkpoint and room state');
+  Game.nextStage();
+  check(Game.score === total, 'repeated Next Stage does not reset an active stage');
+  const lv = Game.level;
+  check(lv.w === 170 && lv.h === 12 && Game.enemies.length === 9 && lv.gemSpawns.length >= 40,
+    'Stage 2 has a full course, nine enemies and new gem routes');
+  check([32,69,123].every(x => !lv.solid(x,10) && !lv.solid(x+2,11) && lv.solid(x+3,10)),
+    'three bounded ravines have safe landing ground');
+  check([60,114].every(x => lv.get(x,7) === T.CHECK && lv.get(x,9) === T.CHECK && lv.solid(x,10)),
+    'both Stage 2 checkpoints have grounded continuous poles');
+  for (const e of Game.enemies){
+    if (e.kind === 'plant') check(lv.get(88,e.baseY/48) === T.PIPE_TL, 'Stage 2 flower sits on its pipe');
+    else check(!lv.solid(Math.floor(e.x/48),9) && lv.solid(Math.floor(e.x/48),10), 'enemy has clear supported spawn');
+  }
+  pump(90);
+  Game.onCheckpoint(114);
+  Game.restartLevel();
+  check(Game.stage === 2 && Game.checkX === 114 && Game.level.get(123,10) === T.EMPTY && Game.timeLeft === 320,
+    'death/restart retains Stage 2 and its checkpoint');
+  Game.enemies.length = 0; pump(90);
+  Game.enterBonus(); pump(60);
+  check(Game.inBonus && Game.stage === 2, 'Stage 2 bonus room can be entered');
+  Game.exitBonus(); pump(60);
+  check(!Game.inBonus && Game.stage === 2 && Game.level === Game.mainLevel, 'bonus exit returns to Stage 2');
+  Game.onFlag(Game.player,6); pump(600);
+  check(Game.state === 'CLEAR' && !elCache['btn-next-stage'].hidden, 'Stage 2 finish offers Stage 3');
+  const finalScore = Game.score; Game.finishClear();
+  check(Game.score === finalScore, 'final completion cannot award time bonus twice');
+  Game.toTitle();
+  check(Game.stage === 1 && !elCache['btn-continue'].hidden, 'title restores Stage 1 preview and offers unlocked Stage 2');
+  Game.startGame(2);
+  check(Game.stage === 2 && Game.score === 0 && Game.lives === 3 && Game.player.form === 'small',
+    'direct Stage 2 replay starts a fresh run');
+  Game.startGame();
+  check(Game.stage === 1 && Game.level.get(28,10) === T.EMPTY, 'new adventure still starts at Stage 1');
+}
+
+console.log('== fifteen-stage campaign and progression ==');
+{
+  check(G.TOTAL_STAGES === 15 && G.COURSES.length === 15, 'exactly 15 campaign stages');
+  check(new Set(G.COURSES.map(c=>c.rows.join('\n'))).size === 15, 'all 15 terrain layouts are distinct');
+  for(let n=3;n<=15;n++){
+    const course=G.COURSES[n-1];
+    Game.startGame(n);
+    const lv=Game.level;
+    check(course.rows.every(r=>r.length===170) && lv.h===12 && lv.gemSpawns.length>=30,
+      'stage '+n+' is complete with a generous gem route');
+    check(course.gaps.every(g=>g.width<=4 && !lv.solid(g.x,10) && lv.solid(g.x-1,10) && lv.solid(g.x+g.width,10)),
+      'stage '+n+' ravines stay within jump bounds with supported edges');
+    check(course.checkpoints.every(x=>lv.get(x,7)===T.CHECK && lv.get(x,9)===T.CHECK && lv.solid(x,10) &&
+      !G.rectSolid(lv,x*48+10,416,28,64)), 'stage '+n+' checkpoints have safe grounded spawns');
+    check(lv.get(42,9)===T.DOOR && !G.rectSolid(lv,43*48+10,416,28,64), 'stage '+n+' bonus exit stays clear');
+    check(Game.enemies.every(e=>e.kind==='plant' || !G.rectSolid(lv,e.x,e.y,e.w,e.h)), 'stage '+n+' enemies never spawn inside solid tiles');
+    check(Game.enemies.filter(e=>e.kind==='guardian').length === (n%5===0?1:0), 'stage '+n+' guardian placement matches milestones');
+    check(G.courseBackdrop(n).sky.width===960, 'stage '+n+' themed backdrop builds');
+    if(n>3) check(course.speedScale>G.COURSES[n-2].speedScale && course.time<G.COURSES[n-2].time,
+      'stage '+n+' increases patrol speed and timer pressure');
+  }
+  const legacy=G.loadCampaignProgress(null,true);
+  check(legacy.unlocked===2 && legacy.cleared.length===0, 'old Stage 2 saves migrate without losing the unlock');
+  const corrupted=G.loadCampaignProgress({unlocked:999,cleared:[0,1,1,15,16,'3']},false);
+  check(corrupted.unlocked===15 && corrupted.cleared.join(',')==='1,15', 'stored progress is bounded and validated');
+  Game.progress=G.loadCampaignProgress(null,false); Game.toTitle();
+  check(elCache['stage-15'].disabled && !G.startSelectedStage(15) && Game.stage===1, 'locked stage buttons cannot start a course');
+  check(G.startSelectedStage(1) && elCache['ov-stages'].hidden, 'unlocked selection starts and dismisses all overlays');
+  Game.score=100; Game.gems=8; Game.lives=3; Game.player.setForm('big');
+  for(let n=1;n<=15;n++){
+    Game.state='PLAYING'; Game.timeLeft=10;
+    Game.finishClear();
+    check(Game.progress.cleared.includes(n) && Game.progress.unlocked===Math.min(15,n+1), 'stage '+n+' clear saves and unlocks the correct next stage');
+    const score=Game.score, lives=Game.lives;
+    Game.finishClear();
+    check(Game.score===score && Game.lives===lives, 'stage '+n+' rewards are idempotent');
+    if(n<15){
+      Game.nextStage();
+      check(Game.stage===n+1 && Game.score===score && Game.lives===lives && Game.gems===8 && Game.player.form==='big',
+        'stage '+n+' progression carries the adventure state');
+    }
+  }
+  check(Game.lives===8 && Game.progress.cleared.length===15, 'five milestone life rewards and 15 completion badges');
+  check(elCache['btn-next-stage'].hidden && elCache['clear-heading'].textContent==='CAMPAIGN COMPLETE!', 'stage 15 ends the campaign with no Stage 16');
+  Game.nextStage(); check(Game.stage===15 && Game.state==='CLEAR', 'Next Stage is a no-op after final victory');
+  const reload=G.loadCampaignProgress(JSON.parse(localStorageObj.getItem('gemdash.campaign')),false);
+  check(reload.unlocked===15 && reload.cleared.length===15, 'all unlocks and completion badges survive reload');
+  Game.toTitle();
+  check(!elCache['stage-15'].disabled && elCache['stage-15'].classList.contains('cleared'), 'stage selector reflects saved completion');
+  G.startSelectedStage(15); Game.checkX=136; Game.restartLevel();
+  check(Game.stage===15 && Game.checkX===136 && Game.player.hurtT>0 && Game.enemyShots.length===0,
+    'late-stage retry restores checkpoint with brief protection and no stale bolts');
+}
+
+Game.startGame(3); Game.lives=9; Game.state='PLAYING'; Game.finishClear();
+check(Game.lives===9, 'milestone life rewards respect the nine-life cap');
+
+console.log('== new enemies and guardian combat ==');
+{
+  Game.startGame(5); pump(90); Game.enemies.length=0;
+  const lv=Game.level;
+  function setupPlayer(){
+    Game.state='PLAYING'; Game.player.reset(2,'big',10); Game.player.hurtT=0;
+    Game.player.invT=0; Game.enemyShots.length=0;
+  }
+  setupPlayer();
+  const hopper=new G.Enemy('hopper',8*48,480-32);
+  hopper.active=true; hopper.onGround=true; hopper.hopT=0;
+  hopper.update(1/60,Game);
+  check(hopper.vy<0 && hopper.y<448, 'hopper jumps after its visible pause');
+  const bat=new G.Enemy('bat',12*48,220); bat.active=true;
+  const startY=bat.y;
+  for(let i=0;i<240;i++) bat.update(1/60,Game);
+  check(bat.y!==startY && bat.x>=bat.patrolMin && bat.x+bat.w<=bat.patrolMax, 'bat flies a bounded bobbing patrol');
+  function stomp(e){
+    Game.player.vy=200; Game.player.prevBottom=e.y-1;
+    Game.player.hurtT=0; Game.player.invT=0;
+    Game.playerVsEnemy(e,e.box());
+  }
+  for(const kind of ['hopper','bat']){
+    const e=new G.Enemy(kind,200,300); stomp(e);
+    check(e.dead, kind+' can be stomped');
+    const shotEnemy=new G.Enemy(kind,200,300), shot={x:200,y:300,vx:200};
+    Game.hitShot(shot,shotEnemy);
+    check(shotEnemy.dead && shot.remove, kind+' can be shot');
+  }
+  const beetle=new G.Enemy('beetle',200,450);
+  stomp(beetle); check(!beetle.dead && beetle.hp===1, 'first beetle stomp cracks armor');
+  stomp(beetle); check(!beetle.dead && beetle.hp===1, 'hit cooldown prevents duplicate frame damage');
+  beetle.hitT=0; stomp(beetle); check(beetle.dead, 'second separated stomp defeats beetle');
+  const shellVictim=new G.Enemy('beetle',200,450);
+  Game.defeatEnemy(shellVictim,200,'shell'); shellVictim.hitT=0; Game.defeatEnemy(shellVictim,200,'shell');
+  check(shellVictim.dead, 'moving-shell damage respects beetle armor');
+  for(const stage of [5,10,15]){
+    Game.startGame(stage); Game.state='PLAYING';
+    const boss=Game.enemies.find(e=>e.kind==='guardian');
+    check(boss.hp===2+stage/5, 'guardian '+stage+' has scaled hit points');
+    Game.onFlag(Game.player,8);
+    check(Game.state==='PLAYING', 'guardian '+stage+' prevents bypassing the finish');
+    const hp=boss.hp;
+    for(let n=0;n<hp;n++){ boss.hitT=0; Game.hitShot({x:boss.x,y:boss.y,vx:400},boss); }
+    check(boss.dead && Game.enemyShots.length===0, 'guardian '+stage+' can be defeated by repeated shots');
+    Game.onFlag(Game.player,8); check(Game.state==='CLEARING', 'guardian '+stage+' defeat opens the finish');
+  }
+  Game.startGame(5); setupPlayer();
+  const boss=Game.enemies.find(e=>e.kind==='guardian');
+  Game.player.x=boss.x-180; boss.active=true; boss.attackT=0;
+  boss.update(1/60,Game);
+  check(boss.phase==='warning' && Game.enemyShots.length===0, 'guardian visibly warns before firing');
+  boss.update(0.4,Game); check(Game.enemyShots.length===0, 'warning gives time to react');
+  boss.update(0.46,Game); check(Game.enemyShots.length===1, 'guardian releases one bolt after warning');
+  const bolt=Game.enemyShots[0]; bolt.update(4.1,Game);
+  check(bolt.remove, 'hostile bolts expire');
+  setupPlayer();
+  const hit=new G.EnemyBolt(Game.player.x+10,Game.player.y+10,1,200);
+  hit.update(0,Game);
+  check(hit.remove && Game.player.form==='small' && Game.player.hurtT>0, 'bolt damage shrinks Maro and grants recovery protection');
+  setupPlayer(); Game.player.invT=5;
+  const immune=new G.EnemyBolt(Game.player.x+10,Game.player.y+10,1,200); immune.update(0,Game);
+  check(immune.remove && Game.player.form==='big', 'Nova Star absorbs hostile bolts');
+  const wallBolt=new G.EnemyBolt(155*48+24,6*48+24,1,200); wallBolt.update(0,Game);
+  check(wallBolt.remove, 'hostile bolts collide with castle walls');
+  Game.player.invT=0; Game.player.hurtT=0;
+  Game.player.x=boss.x-100; Game.player.y=440;
+  for(let i=0;i<20;i++){ boss.phase='warning'; boss.warningT=0; boss.update(0,Game); }
+  check(Game.enemyShots.length===6, 'guardian attack pool is capped');
+  Game.enterBonus(); pump(55);
+  const ages=Game.enemyShots.map(s=>s.t); pump(30);
+  check(Game.inBonus && Game.enemyShots.every((s,i)=>s.t===ages[i]), 'guardian bolts freeze in bonus rooms');
+  Game.exitBonus(); pump(55);
+  check(Game.stage===5 && !Game.inBonus, 'guardian-stage bonus room returns to the correct course');
+  setupPlayer(); Game.player.invT=5;
+  const starBoss=new G.Enemy('guardian',100,416); Game.playerVsEnemy(starBoss,starBoss.box());
+  check(starBoss.dead, 'Nova Star can defeat a guardian as advertised');
+  fresh();
+}
+
+console.log('== custom keyboard and quality settings ==');
+{
+  fresh();
+  const K = G.Keyboard;
+  const event = (key, extra={}) => ({key,preventDefault(){},repeat:false,...extra});
+  K.setMode('default');
+  G.keyboardDown(event('ArrowLeft'));
+  check(Input.left, 'default arrow keys still move');
+  G.keyboardUp(event('ArrowLeft'));
+  check(!Input.left, 'default key release stops movement');
+  K.setMode('custom');
+  K.beginCapture('left');
+  G.keyboardDown(event('j'));
+  check(K.bindings.left === 'j' && !Input.left, 'capturing a key saves it without moving the player');
+  G.keyboardDown(event('j',{target:{tagName:'BUTTON'}}));
+  check(Input.left, 'custom movement works even after clicking a game button');
+  G.keyboardUp(event('j'));
+  check(!Input.left && !K.resolve('a') && !K.resolve('arrowleft'), 'custom mode replaces default aliases');
+  K.beginCapture('jump');
+  G.keyboardDown(event('j'));
+  check(K.capture === 'jump' && K.bindings.jump === ' ', 'duplicate bindings are rejected');
+  G.keyboardDown(event('p'));
+  check(K.capture === 'jump' && Game.state === 'PLAYING', 'reserved pause key cannot be rebound or triggered while capturing');
+  G.keyboardDown(event('Escape'));
+  check(K.capture === null, 'Escape cancels key capture');
+  K.beginCapture('jump'); G.keyboardDown(event('k'));
+  G.keyboardDown(event('k'));
+  check(Input.jumpHeld && Input.jumpQueued, 'custom jump is held and queued');
+  G.keyboardUp(event('k')); Input.clearAll();
+  G.keyboardDown(event('j',{target:{tagName:'SELECT'}}));
+  G.keyboardDown(event('j',{ctrlKey:true}));
+  check(!Input.left, 'native form controls and browser shortcuts do not move player');
+  const saved = JSON.parse(localStorageObj.getItem('gemdash.keyBindings'));
+  K.load(saved);
+  check(K.bindings.left === 'j' && K.bindings.jump === 'k' &&
+    JSON.parse(localStorageObj.getItem('gemdash.keyboardMode')) === 'custom', 'custom bindings and mode persist');
+  K.load({left:'j',right:'j',down:'s',jump:' ',action:'shift'});
+  check(K.bindings.left === 'a' && K.bindings.right === 'd', 'invalid stored bindings fall back safely');
+  K.load(saved); Input.press('left'); K.setMode('default');
+  check(!Input.left && K.resolve('a') === 'left', 'switching presets clears held inputs');
+  K.setMode('custom'); check(K.bindings.left === 'j', 'switching back retains custom bindings');
+  K.reset(); K.setMode('default');
+  check(K.bindings.left === 'a' && K.bindings.jump === ' ', 'reset restores custom defaults');
+  G.Settings.reduced = false;
+  G.setQuality('standard');
+  check(elCache.game.width === 960 && elCache.game.height === 540 && G.Settings.effectsReduced,
+    'Standard uses 1x rendering and fewer effects');
+  const particles = Game.particles;
+  particles.clear(); particles.confetti(0,0);
+  const standardCount = particles.pool.filter(p=>p.on).length;
+  G.setQuality('high'); particles.clear(); particles.confetti(0,0);
+  check(elCache.game.width === 1920 && elCache.game.height === 1080 && !G.Settings.effectsReduced &&
+    particles.pool.filter(p=>p.on).length > standardCount, 'High uses 2x rendering and fuller effects');
+  check(JSON.parse(localStorageObj.getItem('gemdash.quality')) === 'high', 'quality preference persists');
+  G.Settings.reduced = true;
+  check(G.Settings.effectsReduced, 'explicit Reduced effects still overrides High quality');
+  G.Settings.reduced = false;
+}
+
+console.log('== hero artwork and poses ==');
+{
+  for (const [size,height,crouchHeight] of [['small',40,32],['big',64,48]]){
+    const frames = G.ASSETS.pip[size];
+    let bounded = true;
+    for (const [name,canvas] of Object.entries(frames)){
+      const h = name.includes('crouch') ? crouchHeight : height;
+      if (canvas.width !== 48 || canvas.height !== h) bounded = false;
+      for (const op of canvas.getContext().ops){
+        if (op[0] === 'rect' && (op[1]<0 || op[2]<0 || op[3]<=0 || op[4]<=0 ||
+            op[1]+op[3]>48 || op[2]+op[4]>h)) bounded = false;
+      }
+    }
+    check(bounded, size+' sprites stay within standing and crouching canvases');
+    const signature = name => JSON.stringify(frames[name].getContext().ops);
+    check(new Set([0,1,2,3].map(n => signature('walk'+n))).size === 4,
+      size+' has four distinct walking poses');
+    check(new Set([0,1,2,3].map(n => signature('run'+n))).size === 4,
+      size+' has four distinct running poses');
+    check(signature('jump') !== signature('fall') && signature('idle0') !== signature('blink'),
+      size+' has separate ascent, descent and blink poses');
+  }
+  fresh();
+  const p = Game.player;
+  for (const form of ['small','big']){
+    p.setForm(form);
+    const feet = p.y+p.h;
+    p.setCrouch(true);
+    check(p.y+p.h === feet && p.h === (form==='small'?32:48), form+' crouch keeps feet planted');
+    p.setCrouch(false);
+    check(p.y+p.h === feet && p.h === (form==='small'?40:64), form+' standing restores original collision height');
+  }
+}
+
+console.log('== bonus entrance layout ==');
+{
+  fresh();
+  const lv = Game.level;
+  check(lv.get(42,6) === T.EMPTY && lv.get(43,6) === T.EMPTY && lv.get(43,7) === T.EMPTY,
+    'no disconnected stonework above bonus entrance');
+  check(lv.get(42,9) === T.DOOR && lv.get(42,8) === T.Q_GEM,
+    'bonus entrance and reward block preserved');
+  check(!lv.solid(42,9) && lv.solid(42,10), 'bonus door remains passable and grounded');
+}
+
+console.log('== destination castle layout ==');
+{
+  fresh();
+  const lv = Game.level;
+  let supported = true, clearApproach = true;
+  for (let y=0; y<10; y++) for (let x=142; x<=160; x++){
+    if (x<152 && lv.get(x,y) === T.BUILD) clearApproach = false;
+    if (lv.get(x,y) === T.BUILD && !lv.solid(x,y+1) && lv.get(x,y+1) !== T.END_DOOR) supported = false;
+  }
+  check(supported && clearApproach, 'castle walls are supported and no masonry floats over approach');
+  check(lv.flagTop === 2, 'flags start below HUD');
+  check(G.tileImage(T.END_DOOR,155,8) === G.ASSETS.tiles.endDoorTop &&
+    G.tileImage(T.END_DOOR,155,9) === G.ASSETS.tiles.endDoorBottom,
+    'entrance uses distinct halves of one tall door');
+  check(!lv.solid(155,8) && !lv.solid(155,9), 'entrance remains passable');
+}
+
+console.log('== reward animation and independent checkpoints ==');
+{
+  fresh();
+  Game.enemies.length = 0;
+  Game.lastMultiX = 7*48+24;
+  Game.lastMultiY = 7*48-6;
+  const before = Game.gems;
+  Game.spawnContent(T.Q_GEM);
+  const pop = Game.pops[0], y = pop.y;
+  pump(5);
+  check(pop.y !== y && pop.t > 0, 'block reward diamond animates after capture');
+  pump(45);
+  check(Game.pops.length === 0 && Game.gems === before+1, 'block reward diamond expires without another reward');
+  Game.spawnContent(T.Q_MULTI);
+  pump(100);
+  check(Game.pops.length === 0 && Game.gems === before+6, 'all multi-block reward diamonds expire');
+  for (const tx of [94,124]){
+    check(G.tileImage(T.CHECK,tx,6) === G.ASSETS.tiles.checkTop, 'checkpoint '+tx+' has its own pennant');
+    let bottom = 6;
+    while (Game.level.get(tx,bottom+1) === T.CHECK) bottom++;
+    check(G.tileImage(T.CHECK,tx,bottom) === G.ASSETS.tiles.checkBase && Game.level.solid(tx,bottom+1),
+      'checkpoint '+tx+' has a grounded base');
+  }
+  check(Game.level.get(134,6) !== T.CHECK && Game.level.get(144,9) !== T.CHECK, 'no orphan checkpoint tiles');
+}
+
+console.log('== pipe seams and diamond capture regressions ==');
+{
+  // Replay the rectangle-only pipe artwork at a point, including tile slices.
+  function colorAt(canvas, x, y){
+    return canvas.getContext().ops.some(op => {
+      if (op[0] === 'rect') return x >= op[1] && x < op[1]+op[3] && y >= op[2] && y < op[2]+op[4];
+      if (op[0] === 'image' && op.length === 10)
+        return colorAt(op[1], op[2] + x - op[6], op[3] + y - op[7]);
+      return false;
+    });
+  }
+  for (const [left, right] of [[T.PIPE_TL,T.PIPE_TR], [T.PIPE_BL,T.PIPE_BR]]){
+    check(Array.from({length:48}, (_, y) =>
+      colorAt(G.ASSETS.tiles[left],47,y) && colorAt(G.ASSETS.tiles[right],0,y)).every(Boolean),
+      'pipe halves meet with no transparent vertical seam (' + left + ',' + right + ')');
+  }
+  fresh();
+  const plant = Game.enemies.find(e => e.kind === 'plant');
+  check(plant.baseY === 7*48 && plant.x + plant.w/2 === 87*48,
+    'flower is anchored at the center of the pipe rim');
+  check(Game.level.get(86, plant.baseY/48) === T.PIPE_TL &&
+    Game.level.get(87, plant.baseY/48) === T.PIPE_TR, 'flower base matches actual pipe top');
+  check(Array.from({length:48}, (_, y) => colorAt(G.ASSETS.tiles.checkBase,23,y)).every(Boolean),
+    'checkpoint pole continues all the way through its base tile');
+  Game.enemies.length = 0;
+  const tx = 7, ty = 8;
+  Game.level.set(tx, ty, T.BRICK);
+  const gem = new G.Item('gem', tx*48+11, (ty-1)*48+11);
+  const neighbor = new G.Item('gem', (tx+1)*48+11, (ty-1)*48+11);
+  Game.items = [gem, neighbor];
+  const before = Game.gems, score = Game.score;
+  Game.onHeadBump(tx,ty);
+  check(gem.remove && !neighbor.remove, 'head bump captures only the diamond above the block');
+  check(Game.gems === before+1 && Game.score === score+200, 'head-bumped diamond awards one reward');
+  Game.collectItem(gem);
+  Game.onHeadBump(tx,ty);
+  check(Game.gems === before+1, 'captured diamond cannot be awarded twice');
+  Game.compact(Game.items);
+  check(!Game.items.includes(gem), 'captured diamond disappears from the item list');
+  fresh();
+  Game.enemies.length = 0;
+  const p = Game.player;
+  teleport(350, 300);
+  const floating = new G.Item('gem', p.x, p.y-27);
+  Game.items = [floating];
+  let touches = false;
+  for (let i=0; i<180 && !touches; i++){
+    teleport(350,300);
+    pump(1);
+    touches = floating.remove;
+  }
+  check(touches, 'bobbing diamond touching the head is captured');
 }
 
 G.AudioSys.stopMusic();

@@ -1,6 +1,6 @@
 'use strict';
 const fs = require('fs');
-const html = fs.readFileSync('/home/user/game/index.html', 'utf8');
+const html = fs.readFileSync(require('path').join(__dirname, 'index.html'), 'utf8');
 let code = html.match(/<script>([\s\S]*)<\/script>/)[1];
 code += '\n;globalThis.__G = { Game, Input, AudioSys, T, rectSolid };\n';
 function makeCtx(){ const special = { measureText: () => ({ width: 10 }), createLinearGradient: () => ({ addColorStop(){} }) };
@@ -25,16 +25,16 @@ const windowObj = { innerWidth:1280, innerHeight:800, devicePixelRatio:2, addEve
     resume(){ return Promise.resolve(); } suspend(){ return Promise.resolve(); } } };
 new Function('document','window','navigator','localStorage','performance','requestAnimationFrame','cancelAnimationFrame','screen',
   code)(document, windowObj, { vibrate:null }, { getItem(){ return null; }, setItem(){}, removeItem(){} }, { now: () => nowMs }, requestAnimationFrame, () => {}, { orientation:null });
-const { Game, Input, rectSolid } = globalThis.__G;
+const { Game, Input, rectSolid, T } = globalThis.__G;
 function pump(frames){ for (let i=0;i<frames;i++){ nowMs += 1000/60; const cbs = rafCbs.splice(0); for (const cb of cbs) cb(nowMs); } }
 
-Game.startGame(); pump(90);
+Game.startGame(Number(process.env.STAGE) || 1); pump(90);
 let stuckSecs = 0, errors = [];
 const SECS = 60, SEEDS = [1, 7, 42, 1234, 99999];
 function rnd(seed){ let s = seed; return () => { s = (s*1103515245 + 12345) & 0x7fffffff; return s / 0x7fffffff; }; }
-let seedIdx = 0;
+const generators = SEEDS.map(rnd);
 for (let sec = 0; sec < SECS; sec++){
-  const r = rnd(SEEDS[seedIdx % SEEDS.length]);
+  const r = generators[Math.floor(sec/(SECS/SEEDS.length))];
   // random inputs
   Input.left = r() < 0.3;
   Input.right = r() < 0.3;
@@ -44,7 +44,7 @@ for (let sec = 0; sec < SECS; sec++){
   if (r() < 0.15){ Input.actionQueued = true; Input.actionHeld = true; } else Input.actionHeld = r() < 0.3;
   // occasionally teleport to a random safe ground column (keep player alive for long runs)
   if (r() < 0.05 && Game.state === 'PLAYING'){
-    const cols = [5, 20, 45, 58, 73, 100, 110, 128, 133, 150];
+    const cols = Array.from({length:144},(_,i)=>i+4).filter(c=>Game.level.solid(c,10) && Game.level.get(c,9)!==T.HAZARD && !rectSolid(Game.level,c*48+4,480-Game.player.h,Game.player.w,Game.player.h));
     const c = cols[Math.floor(r()*cols.length)];
     Game.player.x = c*48 + 4; Game.player.y = 10*48 - Game.player.h; Game.player.vx = 0; Game.player.vy = 0;
     Game.cam.x = Math.max(0, Math.min(Game.player.x - 400, Game.level.w*48 - 960));
@@ -55,8 +55,8 @@ for (let sec = 0; sec < SECS; sec++){
     errors.push(`sec ${sec}: ${e.message}`);
     break;
   }
-  if (Game.state === 'GAMEOVER'){ Game.startGame(); pump(90); }
-  if (Game.state === 'CLEAR'){ Game.toTitle(); Game.startGame(); pump(90); }
+  if (Game.state === 'GAMEOVER'){ Game.startGame(Number(process.env.STAGE) || 1); pump(90); }
+  if (Game.state === 'CLEAR'){ Game.toTitle(); Game.startGame(Number(process.env.STAGE) || 1); pump(90); }
   // stuck monitor: embedded in solid for >2s straight (small player idle)
   const p = Game.player;
   if (Game.state === 'PLAYING' && !p.dead && rectSolid(Game.level, p.x, p.y, p.w, p.h)){
@@ -65,7 +65,7 @@ for (let sec = 0; sec < SECS; sec++){
   } else stuckSecs = 0;
   // NaN / unbounded checks
   if (!isFinite(p.x) || !isFinite(p.y) || !isFinite(Game.score)) errors.push(`sec ${sec}: non-finite state x=${p.x} y=${p.y} score=${Game.score}`);
-  if (Game.enemies.length > 50 || Game.items.length > 100 || Game.texts.length > 30) errors.push(`sec ${sec}: entity leak e=${Game.enemies.length} i=${Game.items.length} t=${Game.texts.length}`);
+  if (Game.enemies.length > 50 || Game.items.length > 100 || Game.texts.length > 30 || Game.enemyShots.length > 6) errors.push(`sec ${sec}: entity leak e=${Game.enemies.length} i=${Game.items.length} t=${Game.texts.length}`);
 }
 console.log('final state:', Game.state, 'score:', Game.score, 'lives:', Game.lives, 'x:', Game.player.x.toFixed(0));
 console.log(errors.length ? 'FUZZ ERRORS:\n' + errors.join('\n') : 'FUZZ CLEAN (60s, 5 seeds)');

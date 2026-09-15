@@ -92,6 +92,8 @@ const Settings = {
   vibrate: Store.get('vibrate', true),
   opacity: Store.get('opacity', 0.85),
   reduced: Store.get('reduced', false),
+  quality: Store.get('quality', 'high') === 'standard' ? 'standard' : 'high',
+  get effectsReduced(){ return this.reduced || this.quality === 'standard'; },
   apply(){
     const ui = document.getElementById('touch-ui');
     if (ui) ui.style.opacity = String(Settings.opacity);
@@ -305,7 +307,7 @@ function $(id){
   if (!els[id]) els[id] = document.getElementById(id);
   return els[id];
 }
-const OV_IDS = ['ov-title','ov-tut','ov-pause','ov-set','ov-over','ov-clear'];
+const OV_IDS = ['ov-title','ov-tut','ov-pause','ov-set','ov-over','ov-clear','ov-stages'];
 function showOv(id){ const el = $(id); if (el) el.hidden = false; }
 function hideOv(id){ const el = $(id); if (el) el.hidden = true; }
 function hideAllOverlays(){ for (const id of OV_IDS) hideOv(id); }

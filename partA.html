@@ -6,7 +6,9 @@
 <meta name="theme-color" content="#070b16">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="mobile-web-app-capable" content="yes">
-<title>Gem Dash — Sunny Bluff</title>
+<meta name="description" content="Maro — Gem Dash: The Gem Kingdom. A 15-stage platform adventure with new enemies and three guardians.">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🦊</text></svg>">
+<title>Maro — Gem Dash: The Gem Kingdom</title>
 <style>
 :root{
   --panel:#101a30; --line:#33477a; --accent:#ff9d47; --gold:#ffe14d;
@@ -77,8 +79,10 @@ body.in-game #sysbar{ display:flex; }
   padding-bottom:calc(16px + var(--safe-b));
   padding-left:calc(16px + var(--safe-l));
   padding-right:calc(16px + var(--safe-r));
+  touch-action:none;
+  overscroll-behavior:none;
 }
-.overlay[hidden]{ display:none; }
+.overlay[hidden], .btn[hidden]{ display:none; }
 #ov-set{ z-index:31; background:rgba(5,9,20,.78); }
 .panel{
   background:linear-gradient(180deg, rgba(24,36,66,.97), rgba(13,20,40,.97));
@@ -86,16 +90,27 @@ body.in-game #sysbar{ display:flex; }
   padding:24px 28px; width:min(560px, 100%);
   color:#eaf2ff; text-align:center;
   box-shadow:0 18px 60px rgba(0,0,0,.5);
-  max-height:100%; overflow:auto;
+  max-height:calc(100vh - 32px - var(--safe-t) - var(--safe-b));
+  max-height:calc(100dvh - 32px - var(--safe-t) - var(--safe-b));
+  overflow-y:auto; overflow-x:hidden;
+  -webkit-overflow-scrolling:touch;
+  overscroll-behavior:contain;
+  touch-action:pan-y;
+  pointer-events:auto;
 }
+.panel::-webkit-scrollbar{ width:8px; }
+.panel::-webkit-scrollbar-thumb{ background:rgba(255,255,255,.2); border-radius:4px; }
 .panel h2{ font-size:28px; letter-spacing:3px; margin-bottom:16px; color:var(--gold); }
 .logo{
   font-size:clamp(42px, 9vw, 68px); font-weight:900; letter-spacing:6px;
   color:var(--gold);
   text-shadow:0 3px 0 #c47a16, 0 6px 0 rgba(0,0,0,.35);
   margin-bottom:4px;
+  animation:logoPop 0.6s ease-out;
 }
+@keyframes logoPop{ 0%{ transform:scale(0.8); opacity:0; } 100%{ transform:scale(1); opacity:1; } }
 .logo-sub{ font-size:13px; letter-spacing:2px; color:#9fb4dd; margin-bottom:16px; }
+.logo-sub strong{ color:var(--gold); }
 .hi{ font-size:18px; font-weight:700; color:#7ef0ff; margin-bottom:16px; letter-spacing:2px; }
 .btn{
   display:block; width:100%; margin:10px 0; padding:13px 20px;
@@ -120,10 +135,24 @@ body.in-game #sysbar{ display:flex; }
 }
 .panel ul{ text-align:left; font-size:14px; color:#b9c8ea; margin:10px 0 14px; padding-left:20px; }
 .panel li{ margin:5px 0; }
+#ov-stages{ z-index:32; background:rgba(5,9,20,.9); }
+.campaign-panel{ width:min(820px,100%); max-width:820px; }
+.stage-grid{ display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:10px; }
+.stage-grid .stage-card{ display:flex; flex-direction:column; align-items:flex-start; gap:7px; margin:0; padding:14px; text-align:left; min-height:116px; }
+.stage-number{ font-size:23px; color:var(--gold); }
+.stage-card strong{ font-size:12px; letter-spacing:.5px; }
+.stage-card small{ font-size:10px; color:#b7cce3; }
+.stage-card:disabled{ opacity:.4; cursor:not-allowed; filter:grayscale(.6); }
+.stage-card.cleared{ border-color:#76c695; background:#1d4b46; }
+@media(max-width:540px){ .stage-grid{ grid-template-columns:repeat(2,minmax(0,1fr)); } }
 .set-row{
   display:flex; align-items:center; justify-content:space-between; gap:12px;
   padding:10px 0; font-size:17px; border-bottom:1px solid rgba(255,255,255,.08);
 }
+.set-row select{ max-width:50%; min-height:44px; padding:8px 12px; border:1px solid #617398; border-radius:8px; background:#17263e; color:#fff; font:inherit; }
+.setting-help{ text-align:left; color:#bdcce3; font-size:13px; line-height:1.6; margin:10px 0; }
+.key-bind{ min-width:110px; margin:0; padding:8px; font-size:14px; }
+.key-bind.listening{ border-color:var(--gold); color:var(--gold); }
 .tog{ width:92px; margin:0; padding:8px 0; min-height:44px; font-size:15px; }
 .tog.on{ background:#2e7d32; border-color:#4caf50; }
 input[type=range]{ width:200px; accent-color:var(--accent); }

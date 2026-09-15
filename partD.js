@@ -17,7 +17,7 @@ const Particles = {
     p.grav = o.grav || 0; p.kind = o.kind || 0;
   },
   debris(x, y){
-    const n = Settings.reduced ? 3 : 6;
+    const n = Settings.effectsReduced ? 3 : 6;
     const cols = ['#d9803f','#8a4a22','#f2a96b'];
     for (let i = 0; i < n; i++){
       this.spawn({ x:x, y:y, vx:(Math.random()*2-1)*170, vy:-260+Math.random()*120,
@@ -25,7 +25,7 @@ const Particles = {
     }
   },
   puff(x, y, col, n){
-    n = Settings.reduced ? Math.ceil((n||8)/2) : (n||8);
+    n = Settings.effectsReduced ? Math.ceil((n||8)/2) : (n||8);
     for (let i = 0; i < n; i++){
       const a = Math.random()*6.283, sp = 40+Math.random()*90;
       this.spawn({ x:x, y:y, vx:Math.cos(a)*sp, vy:Math.sin(a)*sp-30,
@@ -33,7 +33,7 @@ const Particles = {
     }
   },
   spark(x, y, col, n){
-    n = Settings.reduced ? Math.ceil((n||6)/2) : (n||6);
+    n = Settings.effectsReduced ? Math.ceil((n||6)/2) : (n||6);
     for (let i = 0; i < n; i++){
       const a = Math.random()*6.283, sp = 120+Math.random()*180;
       this.spawn({ x:x, y:y, vx:Math.cos(a)*sp, vy:Math.sin(a)*sp,
@@ -41,7 +41,7 @@ const Particles = {
     }
   },
   dust(x, y){
-    for (let i = 0; i < (Settings.reduced?2:4); i++){
+    for (let i = 0; i < (Settings.effectsReduced?2:4); i++){
       this.spawn({ x:x+(Math.random()*10-5), y:y-2, vx:(Math.random()*2-1)*40, vy:-20-Math.random()*30,
         life:0.4, size:3+Math.random()*3, col:'#d9c9a8', grav:60, kind:1 });
     }
@@ -55,7 +55,7 @@ const Particles = {
   },
   confetti(x, y){
     const cols = ['#ffe14d','#ff6a5e','#7ef0ff','#9fe870','#ff9dd5','#fff'];
-    const n = Settings.reduced ? 18 : 42;
+    const n = Settings.effectsReduced ? 18 : 42;
     for (let i = 0; i < n; i++){
       this.spawn({ x:x, y:y, vx:(Math.random()*2-1)*260, vy:-320+Math.random()*220,
         life:1.4+Math.random()*0.6, size:4+Math.random()*3, col:cols[i%6], grav:520, kind:0 });
@@ -103,114 +103,135 @@ function cv(w, h){
 function g2(c){ return c.getContext('2d'); }
 
 const PAL = {
-  teal:'#38c6da', tealD:'#1d8798', cream:'#ffe9c9',
-  scarf:'#ff8c42', scarfD:'#e06a28', feet:'#7a4a24',
-  flameO:'#ff7a3c', flameY:'#ffd23e', ink:'#12303c', nose:'#5a3a20',
+  teal:'#ff6b35', tealD:'#c94a1a', cream:'#fff8e7',
+  scarf:'#e63946', scarfD:'#b71c2a', feet:'#5a2d0c',
+  flameO:'#ff7a3c', flameY:'#ffd23e', ink:'#1a1a2a', nose:'#2b1a0f',
 };
 
-// Paint Pip (the hero, a flame-tailed fox) into a fresh sprite canvas.
+// Paint Maro (the hero, a flame-tailed fox - now cuter and more beautiful) into a fresh sprite canvas.
 function paintPip(x, o){
   const P = o.pal;
-  const R = (gx, gy, gw, gh, col) => { x.fillStyle = col; x.fillRect(gx*2, gy*2, gw*2, gh*2); };
-  const big = o.big;
-  const totalH = o.crouch ? (big ? 24 : 16) : (big ? 32 : 20);
-  const footY = totalH - 2;
+  const R = (gx, gy, w, h, color) => {
+    x.fillStyle = color; x.fillRect(Math.round(gx)*2, Math.round(gy)*2, w*2, h*2);
+  };
+  const big = o.big, crouch = o.crouch;
+  const H = crouch ? (big ? 24 : 16) : (big ? 32 : 20);
+  const phase = o.phase || 0;
+  const moving = o.pose === 'walk' || o.pose === 'run';
+  const running = o.pose === 'run';
+  const jump = o.pose === 'jump', fall = o.pose === 'fall';
+  const air = jump || fall;
+  const bob = moving ? (phase % 2) : (o.breathe || 0);
+  const headY = crouch ? (big ? 6 : 2) : bob;
+  const headH = big ? 13 : 10;
+  const bodyY = headY + headH - 1;
+  const hipY = crouch ? H-4 : (big ? 25 : 15);
+  const ink = '#65352f', light = '#ffa85c', boot = '#34495c';
+  const swing = moving ? [ -2, 0, 2, 0 ][phase % 4] : 0;
 
-  if (o.crouch){
-    const ty = footY - 12;
-    R(ty-2, 3, 2, 2, P.teal); R(ty-2, 11, 2, 2, P.teal);
-    R(ty, 2, 12, 5, P.teal);
-    R(ty+1, 1, 14, 3, P.teal);
-    R(ty+1, 6, 8, 3, P.cream);
-    R(ty+1, 11, 2, 2, P.ink);
-    R(ty+3, 13, 1, 1, P.nose);
-    R(ty+5, 2, 12, 2, P.scarf);
-    R(ty+7, 3, 10, Math.max(1, footY-(ty+7)), P.teal);
-    R(ty+8, 5, 6, Math.max(1, footY-(ty+8)-1), P.cream);
-    R(ty+7, 1, 2, Math.max(1, footY-(ty+7)), P.feet);
-    R(ty+7, 13, 2, Math.max(1, footY-(ty+7)), P.feet);
-    return;
+  // Curved, cream-tipped tail behind the body; it lifts during a leap.
+  const tailY = Math.min(H-7, hipY-4) + (jump ? -3 : 0) + (o.flame === 1 ? -1 : 0);
+  R(3,tailY,5,7,ink); R(1,tailY-3,4,7,ink);
+  R(2,tailY-3,3,5,P.cream); R(3,tailY+1,4,5,P.teal);
+  R(4,tailY+2,4,3,light); R(2,tailY-2,2,2,'#ffffff');
+
+  // Far arm and leg use deeper shading for readable depth.
+  const armY = bodyY+1;
+  const farHand = crouch ? H-5 : armY+3-swing;
+  R(7,armY,3,Math.max(2,farHand-armY+2),P.tealD);
+  R(7,farHand,3,2,P.cream);
+  const footY = H-3;
+  const legLen = big ? 6 : 3;
+  const liftL = jump ? 3 : (moving ? [0,0,running ? 3 : 2,1][phase % 4] : 0);
+  const liftR = jump ? 1 : (moving ? [running ? 3 : 2,1,0,0][phase % 4] : 0);
+  const lx = crouch ? 7 : 9 + (running ? swing : 0);
+  const rx = crouch ? 15 : 15 - (running ? swing : 0);
+  for (const [px,lift] of [[lx,liftL],[rx,liftR]]){
+    R(px,footY-legLen-lift,3,legLen,ink);
+    R(px,footY-legLen-lift,2,Math.max(1,legLen-1),P.tealD);
+    R(px-1,footY-lift,5,3,ink);
+    R(px,footY-lift,4,2,boot);
+    R(px,footY-lift,3,1,'#7798aa');
   }
 
-  // flame tail (behind, flickers per frame)
-  const tailY = (big ? 12 : 9) + (o.legs === 'jump' ? -2 : 0);
-  R(0, tailY, 2, 3, P.flameO);
-  R(0, tailY+1, 1, 2, P.flameY);
-  if (o.flame === 1) R(0, tailY-1, 1, 1, P.flameO);
-  if (o.flame === 2) R(1, tailY-1, 1, 1, P.flameY);
-
-  // ears
-  R(2, 0, 3, 4, P.teal); R(11, 0, 3, 4, P.teal);
-  R(3, 1, 1, 2, P.cream); R(12, 1, 1, 2, P.cream);
-  // head
-  R(2, 3, 12, 4, P.teal);
-  R(1, 4, 14, 4, P.teal);
-  // face
-  R(6, 4, 8, 4, P.cream);
-  if (o.face === 'dead'){
-    R(10, 4, 4, 3, P.ink);
-    R(11, 4, 1, 3, '#fff');
-    R(13, 5, 1, 1, P.nose);
-  } else {
-    R(11, 4, 2, 2, P.ink);
-    R(11, 4, 1, 1, '#fff');
-    R(13, 6, 1, 1, P.nose);
-    if (o.happy) R(9, 7, 4, 1, P.ink);
-  }
-  // scarf
-  R(2, 8, 12, 2, P.scarf);
-  R(2, 9, 4, 1, P.scarfD);
-  if (o.happy){ R(1, 6, 2, 2, P.scarfD); R(13, 6, 2, 2, P.scarfD); }
-  // body
-  const bodyTop = 10;
-  R(3, bodyTop, 10, footY-bodyTop, P.teal);
-  R(5, bodyTop+1, 6, Math.max(1, footY-bodyTop-2), P.cream);
+  // Compact torso and rounded belly, not a stretched vertical rectangle.
+  R(8,bodyY,10,Math.max(3,hipY-bodyY+1),ink);
+  R(9,bodyY,8,Math.max(2,hipY-bodyY),P.teal);
+  R(10,bodyY+1,6,Math.max(2,hipY-bodyY-1),P.cream);
   if (big){
-    R(8, 11, 5, 7, P.scarf);   // gem backpack
-    R(9, 12, 3, 5, P.cream);
-    R(9, 13, 1, 1, P.flameY);
+    R(9,hipY-2,8,2,boot); R(12,hipY-2,2,2,'#ffd36b');
   }
-  // feet
-  if (o.legs === 'jump'){
-    R(4, footY-2, 3, 2, P.feet);
-    R(9, footY-3, 3, 3, P.feet);
-  } else if (o.legs){
-    const L = o.legs;
-    for (let i = 0; i < 2; i++){
-      const lx = L[i*2], lift = L[i*2+1];
-      R(lx, footY-2-lift, 3, 2, P.tealD);
-      R(lx, footY-lift, 3, 2, P.feet);
+  // Red scarf with a fluttering end and a highlighted knot.
+  R(5,bodyY+(phase%2),5,2,P.scarfD);
+  R(4,bodyY+1+(phase%2),3,2,P.scarf);
+  R(8,bodyY,10,2,P.scarfD); R(9,bodyY,8,1,P.scarf);
+  R(16,bodyY,2,3,P.scarf); R(16,bodyY,1,1,'#ffb79c');
+
+  // Pointed ears, rounded cheeks and cream muzzle.
+  R(7,headY,4,6,ink); R(16,headY,4,6,ink);
+  R(8,headY+1,2,4,P.teal); R(17,headY+1,2,4,P.teal);
+  R(9,headY+2,1,2,'#ffc0a4'); R(17,headY+2,1,2,'#ffc0a4');
+  R(7,headY+4,13,headH-5,ink);
+  R(6,headY+5,15,headH-7,ink);
+  R(8,headY+3,11,headH-4,P.teal);
+  R(7,headY+5,13,headH-6,P.teal);
+  R(9,headY+3,7,1,light); R(8,headY+4,3,1,light);
+  const eyeY = headY + (big ? 6 : 4);
+  const muzzleY = headY+headH-4;
+  R(10,muzzleY,10,3,P.cream); R(12,muzzleY+2,6,1,P.cream);
+  R(19,muzzleY,2,2,ink); R(19,muzzleY,1,1,'#ac7770');
+  if (o.face === 'dead'){
+    for (const ex of [11,16]){
+      R(ex,eyeY,1,1,ink); R(ex+2,eyeY,1,1,ink);
+      R(ex+1,eyeY+1,1,1,ink); R(ex,eyeY+2,1,1,ink); R(ex+2,eyeY+2,1,1,ink);
     }
+  } else if (o.blink || o.happy){
+    R(11,eyeY+1,3,1,ink); R(16,eyeY+1,3,1,ink);
+    if (o.happy){ R(11,eyeY,1,1,ink); R(16,eyeY,1,1,ink); }
   } else {
-    R(4, footY, 3, 2, P.feet);
-    R(9, footY, 3, 2, P.feet);
+    for (const ex of [11,16]){
+      R(ex,eyeY,3,3,'#ffffff'); R(ex+1,eyeY+1,2,2,ink);
+      R(ex+1,eyeY,1,1,'#ffffff');
+    }
   }
+  R(8,muzzleY,2,1,'#ef987f'); R(15,muzzleY+2,2,1,ink);
+
+  // Foreground arm: counter-swings with the stride, reaches up in air,
+  // and rests on bent knees when crouching. Every pose stays inside its canvas.
+  let handY = crouch ? H-6 : armY+3+swing;
+  let handX = 18;
+  if (jump || o.happy){ handY = headY+3; handX = 21; }
+  else if (fall){ handY = armY; handX = 21; }
+  R(17,Math.min(armY,handY),3,Math.abs(handY-armY)+2,ink);
+  R(18,Math.min(armY,handY),2,Math.abs(handY-armY)+1,P.teal);
+  R(handX-1,handY,3,3,ink); R(handX,handY,2,2,P.cream);
 }
 
 function buildPip(){
-  const specs = { small:{ w:32, h:40, ch:32 }, big:{ w:32, h:64, ch:48 } };
-  const basePal = { teal:PAL.teal, tealD:PAL.tealD, cream:PAL.cream, scarf:PAL.scarf, scarfD:PAL.scarfD, feet:PAL.feet, flameO:PAL.flameO, flameY:PAL.flameY, ink:PAL.ink, nose:PAL.nose };
-  const goldPal = { teal:'#ffd23e', tealD:'#e0a52e', cream:'#fff3c4', scarf:'#ff8c42', scarfD:'#e06a28', feet:'#b0713a', flameO:'#fff3c4', flameY:'#ff8c42', ink:'#7a4a00', nose:'#8a5a10' };
+  const specs = { small:{ w:48, h:40, ch:32 }, big:{ w:48, h:64, ch:48 } };
+  const basePal = { ...PAL };
+  const goldPal = { ...PAL, teal:'#ffd35b', tealD:'#c28b36', cream:'#fff5cd', scarf:'#ed7843', scarfD:'#b44736' };
   for (const [fn, spec] of Object.entries(specs)){
     const make = (o) => {
       const c = cv(spec.w, o.crouch ? spec.ch : spec.h);
-      paintPip(g2(c), Object.assign({ big: fn==='big' }, o));
+      paintPip(g2(c), Object.assign({ big:fn==='big' }, o));
       return c;
     };
     const frames = {};
-    for (const [suf, pal] of [['', basePal], ['g', goldPal]]){
-      frames[suf+'idle0']   = make({ pal, legs:[4,0,9,0], flame:0 });
-      frames[suf+'idle1']   = make({ pal, legs:[4,0,9,0], flame:1 });
-      frames[suf+'walk0']   = make({ pal, legs:[4,0,9,2], flame:1 });
-      frames[suf+'walk1']   = make({ pal, legs:[4,0,9,0], flame:2 });
-      frames[suf+'walk2']   = make({ pal, legs:[4,2,9,0], flame:1 });
-      frames[suf+'walk3']   = make({ pal, legs:[4,0,9,0], flame:0 });
-      frames[suf+'run0']    = make({ pal, legs:[2,1,11,2], flame:2 });
-      frames[suf+'run1']    = make({ pal, legs:[4,2,12,1], flame:1 });
-      frames[suf+'jump']    = make({ pal, legs:'jump', flame:2 });
-      frames[suf+'crouch']  = make({ pal, crouch:true, flame:1 });
-      frames[suf+'dead']    = make({ pal, face:'dead', legs:[4,0,9,0] });
-      frames[suf+'victory'] = make({ pal, happy:true, legs:[4,0,9,0], flame:2 });
+    for (const [suf,pal] of [['',basePal],['g',goldPal]]){
+      frames[suf+'idle0'] = make({pal});
+      frames[suf+'idle1'] = make({pal,breathe:1,flame:1});
+      frames[suf+'blink'] = make({pal,blink:true});
+      for (let phase=0; phase<4; phase++){
+        frames[suf+'walk'+phase] = make({pal,pose:'walk',phase,flame:phase%2});
+        frames[suf+'run'+phase] = make({pal,pose:'run',phase,flame:phase%2});
+      }
+      frames[suf+'jump'] = make({pal,pose:'jump'});
+      frames[suf+'fall'] = make({pal,pose:'fall'});
+      frames[suf+'crouch'] = make({pal,crouch:true});
+      frames[suf+'crouch1'] = make({pal,crouch:true,flame:1,blink:true});
+      frames[suf+'dead'] = make({pal,face:'dead',pose:'fall'});
+      frames[suf+'victory'] = make({pal,happy:true});
     }
     ASSETS.pip[fn] = frames;
   }
@@ -220,35 +241,48 @@ function buildTiles(){
   const t = ASSETS.tiles;
   let c, x;
 
-  // ground (grass top)
+  // ground - beautiful with lush grass and rich soil
   c = cv(TILE,TILE); x = g2(c);
-  x.fillStyle = '#b0713a'; x.fillRect(0,0,48,48);
-  x.fillStyle = '#8a5426';
-  const sp = [[6,20],[20,34],[34,16],[40,40],[14,42],[28,24],[42,28],[2,36]];
-  for (const [sx,sy] of sp) x.fillRect(sx,sy,4,3);
-  x.fillStyle = '#c98a4b'; x.fillRect(10,12,4,3); x.fillRect(36,40,4,3);
-  x.fillStyle = '#5ec24f'; x.fillRect(0,0,48,10);
-  x.fillStyle = '#3f9c39'; x.fillRect(0,7,48,3);
-  x.fillStyle = '#7ad86b'; x.fillRect(0,0,48,3);
-  for (let i=0;i<6;i++) x.fillRect(3+i*8, 10, 3, 4);
+  x.fillStyle = '#9a5a2a'; x.fillRect(0,0,48,48); // rich soil
+  x.fillStyle = '#7a4a1a';
+  const sp = [[6,20],[20,34],[34,16],[40,40],[14,42],[28,24],[42,28],[2,36],[10,28],[30,36]];
+  for (const [sx,sy] of sp) x.fillRect(sx,sy,3,2);
+  x.fillStyle = '#b87a3a'; x.fillRect(10,14,3,2); x.fillRect(36,38,4,3); x.fillRect(22,26,3,2);
+  // lush grass top - more beautiful
+  x.fillStyle = '#4ec44a'; x.fillRect(0,0,48,12);
+  x.fillStyle = '#3aa83a'; x.fillRect(0,8,48,4);
+  x.fillStyle = '#6ee86a'; x.fillRect(0,0,48,4); // highlight
+  x.fillStyle = '#2a8a2a'; x.fillRect(0,10,48,2); // shadow line
+  // grass blades
+  x.fillStyle = '#6ee86a';
+  for (let i=0;i<8;i++) x.fillRect(2+i*6, 12, 2, 5);
+  x.fillStyle = '#4ec44a';
+  for (let i=0;i<6;i++) x.fillRect(5+i*8, 12, 2, 3);
+  // small flowers on grass
+  x.fillStyle = '#ffffff'; x.fillRect(12,4,2,2); x.fillRect(36,6,2,2);
+  x.fillStyle = '#ffd23e'; x.fillRect(13,5,1,1); x.fillRect(37,7,1,1);
   t[T.GROUND] = c;
 
-  // plain dirt
+  // plain dirt - more texture
   c = cv(TILE,TILE); x = g2(c);
-  x.fillStyle = '#a0632f'; x.fillRect(0,0,48,48);
-  x.fillStyle = '#7c4a1f';
-  for (const [sx,sy] of sp) x.fillRect(sx,sy,4,3);
-  x.fillStyle = '#c98a4b'; x.fillRect(10,12,4,3); x.fillRect(36,40,4,3);
+  x.fillStyle = '#8a5a2a'; x.fillRect(0,0,48,48);
+  x.fillStyle = '#6a4a1a';
+  for (const [sx,sy] of sp) x.fillRect(sx,sy,3,2);
+  x.fillStyle = '#a87a3a'; x.fillRect(10,14,3,2); x.fillRect(36,38,4,3);
+  x.fillStyle = '#5a3a0a'; x.fillRect(0,0,48,2); // top shadow
   t[T.DIRT] = c;
 
-  // breakable brick
+  // breakable brick - more beautiful with cracks and highlights
   c = cv(TILE,TILE); x = g2(c);
-  x.fillStyle = '#d9803f'; x.fillRect(0,0,48,48);
-  x.fillStyle = '#f2a96b'; x.fillRect(0,0,48,3);
-  x.fillStyle = '#8a4a22';
+  x.fillStyle = '#d08040'; x.fillRect(0,0,48,48);
+  x.fillStyle = '#e8a06a'; x.fillRect(0,0,48,4); // top highlight
+  x.fillStyle = '#f0b080'; x.fillRect(0,0,48,2);
+  x.fillStyle = '#a05a2a';
   x.fillRect(0,14,48,3); x.fillRect(0,31,48,3);
   x.fillRect(14,0,3,14); x.fillRect(32,17,3,14); x.fillRect(14,34,3,14);
-  x.fillStyle = '#6e3a1c'; x.fillRect(0,45,48,3);
+  x.fillStyle = '#6a3a1a'; x.fillRect(0,45,48,3); // bottom shadow
+  // cracks for detail
+  x.fillStyle = '#8a4a1a'; x.fillRect(8,8,2,1); x.fillRect(28,20,3,1); x.fillRect(18,36,2,1);
   t[T.BRICK] = c;
 
   // mystery blocks (two shine frames)
@@ -303,34 +337,27 @@ function buildTiles(){
   }
   t[T.HAZARD] = c;
 
-  // pipes (four half-tiles)
-  c = cv(TILE,TILE); x = g2(c);
-  x.fillStyle = '#2f9440'; x.fillRect(0,0,26,16); x.fillRect(4,16,22,32);
-  x.fillStyle = '#4cc75e'; x.fillRect(2,2,22,12); x.fillRect(6,16,18,32);
-  x.fillStyle = '#8fe09a'; x.fillRect(6,2,4,12); x.fillRect(8,16,4,32);
-  x.fillStyle = '#1d6e2c'; x.fillRect(24,2,2,12); x.fillRect(22,16,2,32);
-  t[T.PIPE_TL] = c;
-
-  c = cv(TILE,TILE); x = g2(c);
-  x.fillStyle = '#2f9440'; x.fillRect(22,0,26,16); x.fillRect(22,16,22,32);
-  x.fillStyle = '#4cc75e'; x.fillRect(24,2,22,12); x.fillRect(24,16,18,32);
-  x.fillStyle = '#8fe09a'; x.fillRect(40,2,4,12); x.fillRect(38,16,4,32);
-  x.fillStyle = '#1d6e2c'; x.fillRect(22,2,2,12); x.fillRect(24,16,2,32);
-  t[T.PIPE_TR] = c;
-
-  c = cv(TILE,TILE); x = g2(c);
-  x.fillStyle = '#2f9440'; x.fillRect(4,0,22,48);
-  x.fillStyle = '#4cc75e'; x.fillRect(6,0,18,48);
-  x.fillStyle = '#8fe09a'; x.fillRect(8,0,4,48);
-  x.fillStyle = '#1d6e2c'; x.fillRect(22,0,2,48);
-  t[T.PIPE_BL] = c;
-
-  c = cv(TILE,TILE); x = g2(c);
-  x.fillStyle = '#2f9440'; x.fillRect(22,0,22,48);
-  x.fillStyle = '#4cc75e'; x.fillRect(24,0,18,48);
-  x.fillStyle = '#8fe09a'; x.fillRect(38,0,4,48);
-  x.fillStyle = '#1d6e2c'; x.fillRect(24,0,2,48);
-  t[T.PIPE_BR] = c;
+  // Paint each pipe as one two-tile-wide surface, then slice it.
+  // Shading belongs at the outside edges, never at the center join.
+  const pipeDark = '#1a5c2a', pipeMid = '#2fb44a', pipeLight = '#5ee87a', pipeHi = '#a8f5b8';
+  for (const top of [true, false]){
+    const pipe = cv(TILE*2, TILE), px = g2(pipe);
+    px.fillStyle = pipeDark; px.fillRect(4,0,TILE*2-8,TILE);
+    px.fillStyle = pipeMid; px.fillRect(8,0,TILE*2-18,TILE);
+    px.fillStyle = pipeLight; px.fillRect(12,0,12,TILE);
+    px.fillStyle = pipeHi; px.fillRect(16,0,4,TILE);
+    if (top){
+      px.fillStyle = pipeDark; px.fillRect(0,0,TILE*2,18);
+      px.fillStyle = pipeMid; px.fillRect(2,2,TILE*2-4,12);
+      px.fillStyle = pipeLight; px.fillRect(4,2,TILE*2-8,6);
+      px.fillStyle = pipeHi; px.fillRect(8,2,24,3);
+    }
+    for (let side = 0; side < 2; side++){
+      c = cv(TILE,TILE); x = g2(c);
+      x.drawImage(pipe, side*TILE, 0, TILE, TILE, 0, 0, TILE, TILE);
+      t[top ? (side ? T.PIPE_TR : T.PIPE_TL) : (side ? T.PIPE_BR : T.PIPE_BL)] = c;
+    }
+  }
 
   // bonus-room door
   c = cv(TILE,TILE); x = g2(c);
@@ -343,57 +370,107 @@ function buildTiles(){
   x.fillStyle = '#ffd23e'; x.fillRect(33,30,4,5);
   t[T.DOOR] = c;
 
-  // finish flag (top / mid / base)
+  // finish flag - beautiful with waving flag and castle top
   const pole = (xx) => {
-    xx.fillStyle = '#cfd6dd'; xx.fillRect(22,0,5,48);
-    xx.fillStyle = '#8f9aa5'; xx.fillRect(26,0,1,48);
+    xx.fillStyle = '#e8ecf0'; xx.fillRect(22,0,5,48);
+    xx.fillStyle = '#a8b0b8'; xx.fillRect(25,0,2,48);
+    xx.fillStyle = '#ffffff'; xx.fillRect(22,0,1,48); // highlight
   };
   c = cv(TILE,TILE); x = g2(c); pole(x);
-  x.fillStyle = '#ff5a5a';
-  x.beginPath(); x.moveTo(22,6); x.lineTo(2,14); x.lineTo(22,22); x.closePath(); x.fill();
-  x.fillStyle = '#ffd23e'; x.beginPath(); x.arc(24,14,4,0,6.2832); x.fill();
+  // beautiful flag with gradient and emblem
+  x.fillStyle = '#ff3b3b'; // vibrant red
+  x.beginPath(); x.moveTo(22,4); x.lineTo(2,12); x.lineTo(2,16); x.lineTo(22,24); x.closePath(); x.fill();
+  x.fillStyle = '#ff6b6b'; x.beginPath(); x.moveTo(22,6); x.lineTo(6,12); x.lineTo(6,14); x.lineTo(22,20); x.closePath(); x.fill();
+  x.fillStyle = '#ffd23e'; x.beginPath(); x.arc(12,14,5,0,6.2832); x.fill(); // sun emblem
+  x.fillStyle = '#ff8c42'; x.beginPath(); x.arc(12,14,2,0,6.2832); x.fill();
+  x.fillStyle = '#ffffff'; x.fillRect(10,11,2,2); // shine
   t.flagTop = c;
   c = cv(TILE,TILE); x = g2(c); pole(x);
+  // mid pole with small flag shadow
+  x.fillStyle = 'rgba(0,0,0,0.1)'; x.fillRect(28,8,8,2);
   t.flagMid = c;
   c = cv(TILE,TILE); x = g2(c); pole(x);
-  x.fillStyle = '#8a5a2b'; x.fillRect(14,34,20,14);
-  x.fillStyle = '#6d4522'; x.fillRect(14,44,20,4);
+  x.fillStyle = '#8a5a3a'; x.fillRect(12,32,24,16); // wooden base
+  x.fillStyle = '#a86a4a'; x.fillRect(14,34,20,4); // highlight
+  x.fillStyle = '#6a4a2a'; x.fillRect(12,44,24,4); // shadow
+  x.fillStyle = '#5a3a1a'; x.fillRect(10,46,28,2);
   t.flagBase = c;
 
-  // checkpoint pennant (top / base)
+  // checkpoint - beautiful with glowing pennant
   c = cv(TILE,TILE); x = g2(c);
-  x.fillStyle = '#cfd6dd'; x.fillRect(22,0,4,48);
-  x.fillStyle = '#ffd23e';
-  x.beginPath(); x.moveTo(26,8); x.lineTo(44,14); x.lineTo(26,20); x.closePath(); x.fill();
+  x.fillStyle = '#e8ecf0'; x.fillRect(22,0,4,48);
+  x.fillStyle = '#a8b0b8'; x.fillRect(24,0,2,48);
+  x.fillStyle = '#ffffff'; x.fillRect(22,0,1,48);
+  // glowing yellow pennant with border
+  x.fillStyle = '#ffaa00'; x.beginPath(); x.moveTo(26,6); x.lineTo(46,13); x.lineTo(46,15); x.lineTo(26,22); x.closePath(); x.fill();
+  x.fillStyle = '#ffd23e'; x.beginPath(); x.moveTo(26,8); x.lineTo(44,14); x.lineTo(26,20); x.closePath(); x.fill();
+  x.fillStyle = '#ffffff'; x.fillRect(28,11,6,2); // shine
   t.checkTop = c;
-  c = cv(TILE,TILE); x = g2(c);
-  x.fillStyle = '#8a5a2b'; x.fillRect(16,38,16,10);
+  c = cv(TILE,TILE); x = g2(c); pole(x);
+  x.fillStyle = '#8a5a3a'; x.fillRect(14,36,20,12);
+  x.fillStyle = '#a86a4a'; x.fillRect(16,38,16,4);
+  x.fillStyle = '#6a4a2a'; x.fillRect(14,44,20,4);
   t.checkBase = c;
 
-  // destination building stones
+  // destination building - beautiful castle with crenellations, windows, and flags
+  // Castle base - stone bricks with shading
   c = cv(TILE,TILE); x = g2(c);
-  x.fillStyle = '#5f7099'; x.fillRect(0,0,48,48);
+  // base stone
+  x.fillStyle = '#6b7a9a'; x.fillRect(0,0,48,48);
   x.fillStyle = '#8fa3c8'; x.fillRect(2,2,44,44);
-  x.fillStyle = '#7a8fb5';
-  x.fillRect(2,24,44,3); x.fillRect(24,2,3,22); x.fillRect(12,27,3,19); x.fillRect(34,27,3,19);
+  // brick pattern - more detailed
+  x.fillStyle = '#5a6a8a';
+  x.fillRect(2,10,44,2); x.fillRect(2,22,44,2); x.fillRect(2,34,44,2);
+  x.fillRect(14,2,2,10); x.fillRect(32,2,2,10); x.fillRect(8,12,2,10); x.fillRect(24,12,2,10); x.fillRect(38,12,2,10);
+  x.fillRect(14,24,2,10); x.fillRect(32,24,2,10); x.fillRect(8,36,2,8); x.fillRect(24,36,2,8); x.fillRect(38,36,2,8);
+  // highlight
+  x.fillStyle = '#a8bdd8'; x.fillRect(2,2,44,2); x.fillRect(2,2,2,44);
+  x.fillStyle = '#4a5a7a'; x.fillRect(2,44,44,2); x.fillRect(44,2,2,44);
   t.build0 = c;
+
   c = cv(TILE,TILE); x = g2(c);
-  x.fillStyle = '#5f7099'; x.fillRect(0,0,48,48);
+  x.fillStyle = '#6b7a9a'; x.fillRect(0,0,48,48);
   x.fillStyle = '#8fa3c8'; x.fillRect(2,2,44,44);
-  x.fillStyle = '#d9ecff'; x.fillRect(14,12,20,16);
-  x.fillStyle = '#5f7099'; x.fillRect(22,12,4,16); x.fillRect(14,18,20,4);
-  x.fillStyle = '#7a8fb5'; x.fillRect(2,24,44,3);
+  x.fillStyle = '#5a6a8a';
+  x.fillRect(2,10,44,2); x.fillRect(2,22,44,2); x.fillRect(2,34,44,2);
+  x.fillRect(14,2,2,10); x.fillRect(32,2,2,10);
+  // beautiful window with glow
+  x.fillStyle = '#1a2a4a'; x.fillRect(12,10,24,20);
+  x.fillStyle = '#3a4a6a'; x.fillRect(14,12,20,16);
+  x.fillStyle = '#87ceeb'; x.fillRect(16,14,16,12); // sky blue window
+  x.fillStyle = '#ffffff'; x.fillRect(18,16,4,4); x.fillRect(26,16,2,6); // window shine
+  x.fillStyle = '#5a6a8a'; x.fillRect(22,12,2,16); x.fillRect(14,18,20,2); // cross
+  x.fillStyle = '#a8bdd8'; x.fillRect(2,2,44,2); x.fillRect(2,2,2,44);
+  x.fillStyle = '#4a5a7a'; x.fillRect(2,44,44,2); x.fillRect(44,2,2,44);
   t.build1 = c;
 
-  // destination door (decorative)
+  // destination door - beautiful castle entrance
   c = cv(TILE,TILE); x = g2(c);
-  x.fillStyle = '#5f7099'; x.fillRect(0,0,48,48);
-  x.fillStyle = '#3a2c46';
-  x.beginPath(); x.moveTo(8,48); x.lineTo(8,20); x.arc(24,20,16,Math.PI,0); x.lineTo(40,48); x.closePath(); x.fill();
-  x.fillStyle = '#241a30';
-  x.beginPath(); x.moveTo(14,48); x.lineTo(14,24); x.arc(24,24,10,Math.PI,0); x.lineTo(34,48); x.closePath(); x.fill();
-  x.fillStyle = '#ffd23e'; x.fillRect(30,32,4,5);
+  x.fillStyle = '#6b7a9a'; x.fillRect(0,0,48,48);
+  x.fillStyle = '#8fa3c8'; x.fillRect(2,2,44,44);
+  // arch
+  x.fillStyle = '#4a3a2a'; // dark wood frame
+  x.beginPath(); x.moveTo(6,48); x.lineTo(6,20); x.arc(24,20,18,Math.PI,0); x.lineTo(42,48); x.closePath(); x.fill();
+  x.fillStyle = '#6b4a2a'; // wood
+  x.beginPath(); x.moveTo(9,48); x.lineTo(9,22); x.arc(24,22,15,Math.PI,0); x.lineTo(39,48); x.closePath(); x.fill();
+  // wood planks
+  x.fillStyle = '#8a5a3a'; x.fillRect(12,28,2,20); x.fillRect(20,24,2,24); x.fillRect(28,24,2,24); x.fillRect(36,28,2,20);
+  // metal studs
+  x.fillStyle = '#2a2a3a'; x.beginPath(); x.arc(14,30,2,0,6.2832); x.fill(); x.beginPath(); x.arc(24,28,2,0,6.2832); x.fill(); x.beginPath(); x.arc(34,30,2,0,6.2832); x.fill();
+  x.beginPath(); x.arc(14,40,2,0,6.2832); x.fill(); x.beginPath(); x.arc(24,42,2,0,6.2832); x.fill(); x.beginPath(); x.arc(34,40,2,0,6.2832); x.fill();
+  // handle
+  x.fillStyle = '#ffd23e'; x.beginPath(); x.arc(32,36,3,0,6.2832); x.fill(); x.fillStyle = '#ff8c42'; x.beginPath(); x.arc(32,36,1.5,0,6.2832); x.fill();
+  // arch highlight
+  x.fillStyle = '#a8bdd8'; x.fillRect(2,2,44,2); x.fillRect(2,2,2,44);
   t[T.END_DOOR] = c;
+  // One tall entrance, sliced into two tiles rather than repeating two doors.
+  const entrance = cv(TILE,TILE*2);
+  g2(entrance).drawImage(c,0,0,TILE,TILE*2);
+  for (let half = 0; half < 2; half++){
+    const tile = cv(TILE,TILE);
+    g2(tile).drawImage(entrance,0,half*TILE,TILE,TILE,0,0,TILE,TILE);
+    t[half ? 'endDoorBottom' : 'endDoorTop'] = tile;
+  }
 }
 
 function buildBackground(){
@@ -404,30 +481,45 @@ function buildBackground(){
   gr.addColorStop(0.55, '#8fd4ff');
   gr.addColorStop(1, '#d9f2ff');
   x.fillStyle = gr; x.fillRect(0,0,VIEW_W,VIEW_H);
+  // sun with soft glow and rays
   x.fillStyle = 'rgba(255,235,140,0.5)';
   x.beginPath(); x.arc(820,84,52,0,6.2832); x.fill();
   x.fillStyle = '#ffe680';
   x.beginPath(); x.arc(820,84,36,0,6.2832); x.fill();
+  x.fillStyle = 'rgba(255,255,255,0.18)';
+  for(let i=0;i<8;i++){
+    const a = i*Math.PI/4;
+    x.beginPath();
+    x.moveTo(820+Math.cos(a)*44, 84+Math.sin(a)*44);
+    x.lineTo(820+Math.cos(a)*68, 84+Math.sin(a)*68);
+    x.lineTo(820+Math.cos(a+0.15)*68, 84+Math.sin(a+0.15)*68);
+    x.closePath(); x.fill();
+  }
   ASSETS.bg.sky = c;
 
-  // distant hill strip
+  // distant hill strip — more hills for depth
   c = cv(1600, 240); x = g2(c);
   x.fillStyle = '#9fd8c8';
   const hill = (cx, r) => { x.beginPath(); x.arc(cx, 240, r, Math.PI, 0); x.fill(); };
-  hill(200,120); hill(600,150); hill(1050,130); hill(1450,140);
+  hill(100,90); hill(300,120); hill(550,150); hill(800,110); hill(1050,130); hill(1300,145); hill(1500,120);
   ASSETS.bg.far = c;
 
-  // nearer hills + bushes strip
+  // nearer hills + bushes strip — richer
   c = cv(1600, 180); x = g2(c);
   x.fillStyle = '#7cc96f';
   const hill2 = (cx, r) => { x.beginPath(); x.arc(cx, 180, r, Math.PI, 0); x.fill(); };
-  hill2(150,90); hill2(520,120); hill2(900,100); hill2(1300,130);
+  hill2(80,70); hill2(250,90); hill2(520,120); hill2(780,95); hill2(900,100); hill2(1150,110); hill2(1300,130); hill2(1500,100);
   x.fillStyle = '#55b04a';
   const bush = (cx, r) => { x.beginPath(); x.arc(cx, 180, r, Math.PI, 0); x.fill(); };
-  bush(300,40); bush(700,34); bush(1100,44); bush(1500,36);
+  bush(180,32); bush(320,40); bush(500,36); bush(700,34); bush(860,38); bush(1100,44); bush(1280,40); bush(1500,36);
+  // little flowers on bushes
+  x.fillStyle = '#ff8fa0';
+  for(const [bx,by] of [[320,140],[700,146],[1100,136]]){ x.beginPath(); x.arc(bx,by,4,0,6.2832); x.fill(); }
+  x.fillStyle = '#ffe14d';
+  for(const [bx,by] of [[500,144],[860,142],[1280,140]]){ x.beginPath(); x.arc(bx,by,4,0,6.2832); x.fill(); }
   ASSETS.bg.near = c;
 
-  // clouds
+  // clouds — more variety
   const mkCloud = (w) => {
     const cc = cv(w, 44), xx = g2(cc);
     xx.fillStyle = '#ffffff';
@@ -443,9 +535,11 @@ function buildBackground(){
   };
   ASSETS.bg.clouds = [
     { img:mkCloud(96),  x:80,  y:64 },
-    { img:mkCloud(120), x:420, y:110 },
-    { img:mkCloud(84),  x:700, y:48 },
-    { img:mkCloud(110), x:920, y:150 },
+    { img:mkCloud(120), x:340, y:90 },
+    { img:mkCloud(84),  x:520, y:48 },
+    { img:mkCloud(110), x:700, y:110 },
+    { img:mkCloud(100), x:920, y:150 },
+    { img:mkCloud(90),  x:1150, y:70 },
   ];
 }
 
@@ -523,6 +617,19 @@ function buildItems(){
 function buildAssets(){
   buildTiles();
   buildBackground();
+  // Separate sunset layers keep the original course artwork unchanged.
+  const sunset = ASSETS.sunset = {};
+  sunset.sky = cv(VIEW_W, VIEW_H);
+  const sx = g2(sunset.sky), gradient = sx.createLinearGradient(0,0,0,VIEW_H);
+  gradient.addColorStop(0,'#514779'); gradient.addColorStop(0.6,'#df8a91'); gradient.addColorStop(1,'#ffd2a0');
+  sx.fillStyle = gradient; sx.fillRect(0,0,VIEW_W,VIEW_H);
+  sx.fillStyle = '#ffe8aa'; sx.beginPath(); sx.arc(800,210,54,0,Math.PI*2); sx.fill();
+  for (const [name,color] of [['far','#87759e'],['near','#594e79']]){
+    const source = ASSETS.bg[name], layer = cv(source.width,source.height), lx = g2(layer);
+    lx.drawImage(source,0,0); lx.globalCompositeOperation = 'source-atop';
+    lx.fillStyle = color; lx.fillRect(0,0,layer.width,layer.height);
+    sunset[name] = layer;
+  }
   buildPip();
   buildItems();
 }
@@ -536,20 +643,44 @@ const D10 = '..........';
 const G10 = '##########';
 function R(...c){ return c.join(''); }
 
+// Level design — Sunny Bluff (170 cols, 12 rows)
+// Pits are intentionally forgiving so both human and simple AI can clear them.
+// Pit1: 28-31 (4 tiles)  Pit2: 66-69 (4 tiles)  Pit3: 107-109 (3 tiles)
+// One-way platforms at (64-65, row8) and (67-68, row6) help but are not required.
+// Two checkpoints: at 94 (first half) and 124 (second half) for better progression.
+// Pipes now all have proper tops () with seamless bottoms [] — no vertical cut!
+// Castle now beautiful with twin towers, flags, and detailed stonework!
 const MAIN_ROWS = [
-  R(D10,D10,D10,D10,D10,D10,D10,D10,D10,D10,D10,D10,D10,D10,D10, '..F.......', D10),                       // r0  flag
-  R(D10,D10,D10,D10,D10,D10,D10,D10,D10,D10,D10,D10,D10,D10,D10, '..F.......', D10),                       // r1  flag
-  R(D10,D10,D10,D10,D10,D10,D10,D10,D10,D10,D10, '.........o','o.........', D10, '........##','##F.......', D10), // r2
-  R(D10,D10,D10,D10,D10,D10,D10,D10,D10,D10,D10, '........##','##........', D10, '.......###','##F.......', D10), // r3
-  R(D10,D10,D10,D10,D10,D10,D10,D10,D10,D10,D10, '.......###','###.......', D10, '......####','##F.......','...##.....'), // r4
-  R(D10,D10,D10,D10,D10,D10, '.......oo.', D10,D10,D10, D10, '......####','####......', D10, '.....#####','##F..*****','*..##.....'), // r5
-  R(D10,D10,D10,D10, '..**......', D10, '.......==.', D10,D10, '....K...BB','IBBS..oo..', D10,D10, '.o....o...','....######','##F..*****','*..##.....'), // r6
-  R('.......?..','........oo','.B?G?B....', D10, '...*...BBB','BBMBBBBB..','....oo....','.......().','..()..[]..','....K.....','......===.','....######','######....','===.....B.','...#######','##F..*****','*..##.....'), // r7
-  R(D10,'........()', D10,D10, '..?.......', D10, '....==....','.......().','..[]..[]..','....K.....', D10, '...#######','#######...', D10, '..########','##F..E****','*..##.....'), // r8
-  R('.....ooo..','........[]', D10,D10, '..D.......', D10,D10, '.......[]B','..[]..[]..','....K....o','ooo.......','..########','########..','^^^.....oo','.#########','##F..E****','*..##.....'), // r9
-  R(G10,G10,'########..','..########', G10,G10, '##........', G10,G10,G10, '#####.....', G10,G10,G10,G10,G10,G10),       // r10 ground
-  R(G10,G10,'########..','..########', G10,G10, '##........', G10,G10,G10, '#####.....', G10,G10,G10,G10,G10,G10),       // r11 ground
+  R(D10,D10,D10,D10,D10,D10,D10,D10,D10,D10,D10,D10,D10,D10,D10, '..F...F...', D10),                       // r0  flag + castle flag at 156
+  R(D10,D10,D10,D10,D10,D10,D10,D10,D10,D10,D10,D10,D10,D10,D10, '..F...F...', D10),                       // r1  flag + castle flag
+  R(D10,D10,D10,D10,D10,D10,D10,D10,D10,D10,D10, '.........o','o.........', D10, '......****','**F..***..', D10), // r2 - castle towers emerging - beautiful
+  R(D10,D10,D10,D10,D10,D10,D10,D10,D10,D10,D10, '........##','##........', D10, '....******','**F..*****', D10), // r3 - castle top with crenellations - beautiful
+  R(D10,D10,D10,D10,D10,D10,D10,D10,D10,D10,D10, '.......###','###.......', D10, '..********','**F..*****','*..##.....'), // r4 - castle upper walls - beautiful
+  R(D10,D10,D10,D10,D10,D10, '.......oo.', D10,D10,D10, D10, '......####','####......', D10, D10,'..F...***.','*..##.....'), // r5 - castle approach cleared, beautiful towers
+  R(D10,D10,D10,D10, D10, D10, '.......==.', D10,D10, '....K...BB','IBBS..oo..', D10,'....K.....', '.o....o...',D10,'..F..*****','*..##.....'), // r6 — second checkpoint at 124, open path to flag
+  R('.......?..','........oo','.B?G?B....', D10, '.......BBB','BBMBBBBB..','....oo....','.......().','..()..()..','....K.....','......===.','....######','####K#....','===.....B.',D10,'..F..*****','*..##.....'), // r7 — pipes fixed and open path
+  R(D10,'........()', D10,D10, '..?.......', D10, '....==....','.......[].','..[]..[]..','....K.....', D10, '...#######','####K##...', D10, '..########','..F..E****','*..##.....'), // r8 — pipes fixed and castle door open for AI
+  R('.....ooo..','........[]', D10,D10, '..D.......', D10,D10, '.......[]B','..[]..[]..','....K....o','ooo.......','..########','########..','^^^.....oo','.#########','..F..E****','*..##.....'), // r9 - open path to castle door
+  R(G10,G10,'########..','..########', G10,G10, '######....', G10,G10,G10, '#######...', G10,G10,G10,G10,G10,G10),       // r10 ground - pits narrowed for accessibility
+  R(G10,G10,'########..','..########', G10,G10, '######....', G10,G10,G10, '#######...', G10,G10,G10,G10,G10,G10),       // r11 ground
 ];
+
+// Rebuild the destination silhouette without suspended approach masonry.
+// Keep the finish lane and two-tile entrance non-solid for the clear walk.
+for (let row = 0; row < 10; row++){
+  const cells = MAIN_ROWS[row].split('');
+  for (let col = 142; col <= 160; col++){
+    if (cells[col] === '*' || cells[col] === 'F' || cells[col] === 'E') cells[col] = '.';
+  }
+  if (row >= 2) cells[152] = 'F';
+  if (row === 2 || row === 3) cells[156] = 'F';
+  if (row >= 4){
+    const right = row === 4 ? 158 : 160;
+    for (let col = 155; col <= right; col++) cells[col] = '*';
+  }
+  if (row === 8 || row === 9) cells[155] = 'E';
+  MAIN_ROWS[row] = cells.join('');
+}
 
 const BONUS_ROWS = [
   '******************',
@@ -565,19 +696,181 @@ const BONUS_ROWS = [
 ];
 
 // [type, tileX, pipeTopRow?]
+// Balanced for accessibility and beauty: fewer enemies, beautiful spacing, no vertical pipe cut
 const ENEMY_SPAWNS = [
-  ['walker', 23],          // first room (19-27): the stomp lesson
-  ['walker', 40],          // after pit 1, patrols 32-61
-  ['shell', 54],           // same zone, second half
-  ['walker', 72],          // zone 70-104
-  ['plant', 81, 9], ['plant', 86, 6],  // pipe-plant timing puzzle
-  ['walker', 100],
-  ['shell', 111],          // foot of the big staircase
+  ['walker', 20],          // first room (19-27): the stomp lesson - beautiful start
+  ['walker', 72],          // zone 70-104 - open area
+  ['plant', 86, 7],        // single pipe-plant timing puzzle - beautiful timing challenge
+  ['walker', 105],         // near star/shot blocks - moved from 98 for better spacing and AI consistency
+  ['shell', 111],          // foot of the big staircase - guarding castle approach
   ['shell', 136],          // after the staircase, near the spikes
-  ['walker', 139],         // final approach
+  ['walker', 139],         // final approach - guarding the beautiful castle
 ];
 
 // ---------------- level (tile grid + helpers) ----------------
+// Stage 2: a new course with three short ravines, pipe gardens and gem routes.
+const STAGE2_ROWS = (() => {
+  const rows = Array.from({length:12}, (_, y) => Array(170).fill(y >= 10 ? '#' : '.'));
+  const put = (x,y,text) => { for (let i=0;i<text.length;i++) rows[y][x+i] = text[i]; };
+  for (const start of [32,69,123]) for (let y=10;y<12;y++) put(start,y,'...');
+  for (const [x,y] of [[24,8],[58,8],[88,7],[118,8]]){
+    put(x,y,'()'); for (let r=y+1;r<10;r++) put(x,r,'[]');
+  }
+  for (const [x,text] of [[9,'BGB'],[36,'B?B'],[51,'BSB'],[79,'BMB'],[103,'BIB'],[130,'B?B']]) put(x,7,text);
+  put(42,9,'D');
+  // Optional raised paths reward exploration without blocking the ground route.
+  put(30,8,'==='); put(67,8,'=='); put(70,7,'===');
+  put(95,8,'==='); put(121,8,'=====');
+  for (const x of [60,114]) for (let y=7;y<10;y++) put(x,y,'K');
+  for (const [x,y,text] of [[6,9,'ooo'],[15,9,'oo'],[24,7,'oo'],[30,7,'ooo'],
+    [36,6,'ooo'],[46,9,'ooo'],[58,7,'oo'],[67,6,'oooooo'],[79,6,'ooo'],
+    [88,5,'oo'],[95,7,'ooo'],[103,6,'ooo'],[118,7,'oo'],[122,7,'ooo'],[130,6,'ooo'],[146,9,'ooo']]) put(x,y,text);
+  for (let y=2;y<10;y++) put(152,y,'F');
+  put(156,2,'F'); put(156,3,'F');
+  for (let y=4;y<10;y++) put(155,y,y===4?'****':'******');
+  put(155,8,'E'); put(155,9,'E');
+  return rows.map(row => row.join(''));
+})();
+const STAGE2_ENEMIES = [
+  ['walker',14], ['walker',40], ['shell',64], ['walker',73],
+  ['plant',88,7], ['walker',106], ['shell',112], ['walker',135], ['shell',142],
+];
+const COURSES = [
+  { name:'SUNNY BLUFF', rows:MAIN_ROWS, enemies:ENEMY_SPAWNS, time:300 },
+  { name:'SUNSET RIDGE', rows:STAGE2_ROWS, enemies:STAGE2_ENEMIES, time:320 },
+];
+
+// Hand-arranged module sequences: every course is deterministic and replayable.
+// All gaps are at most four tiles; early courses provide generous bridge assists.
+const CAMPAIGN_BLUEPRINTS = [
+  ['MOSSWOOD TRAIL',   'grove',   [0,1,2,0,1], 'Hoppers leap after a short pause. Stomp from above.'],
+  ['CRYSTAL CAVERNS',  'crystal', [2,0,4,1,2], 'Bats patrol the upper routes. Watch their flight path.'],
+  ['COPPER OUTPOST',   'copper',  [1,4,0,2,1], 'First guardian: dodge its glowing bolts, then stomp or shoot.'],
+  ['CORAL CAUSEWAY',   'coral',   [2,1,0,4,2], 'Armored beetles take two hits. Their shell lights show health.'],
+  ['MOONLIT GROVE',    'moon',    [4,0,3,1,2], 'Use the high route above the thorns.'],
+  ['FROSTFALL PASS',   'frost',   [1,2,4,0,2], 'Wider ravines ahead. Run before jumping; physics stay familiar.'],
+  ['THUNDER HEIGHTS',  'storm',   [2,3,1,4,2], 'Faster patrols and airborne enemies share the route.'],
+  ['OBSIDIAN KEEP',    'obsidian',[4,2,3,1,4], 'The second guardian fires faster. Wait for its warning flash.'],
+  ['MIRAGE DUNES',     'dunes',   [0,3,4,2,1], 'Take the gem routes for supplies before the final push.'],
+  ['CLOCKWORK ASCENT', 'clock',   [1,4,2,3,1], 'Mix short hops and full jumps through the clockwork terraces.'],
+  ['EMBER CHASM',      'ember',   [3,2,4,1,3], 'Thorns and ravines demand careful landings.'],
+  ['ECLIPSE RIDGE',    'eclipse', [4,3,2,4,1], 'The fastest patrols guard the road to the crown.'],
+  ['CROWN CITADEL',    'crown',   [3,4,2,3,4], 'Final guardian: five hits. Defeat it to free the Gem Kingdom!'],
+];
+const COURSE_THEMES = {
+  grove:   ['#256976','#c4e1a5','#6ba68f','#376957','#ffeab2'],
+  crystal: ['#252d61','#927fbd','#645e99','#3c426c','#d9faff'],
+  copper:  ['#873d54','#f9c488','#aa7f7b','#684e62','#ffda8a'],
+  coral:   ['#367e9b','#bdecdc','#77b7b0','#507c97','#ffdea5'],
+  moon:    ['#1d244d','#6c719d','#565d85','#323d61','#e9f5ff'],
+  frost:   ['#567caa','#e7f7ff','#a2c5d5','#638da9','#fff8e4'],
+  storm:   ['#26384d','#9aafc4','#6a849c','#3c526c','#e0eef3'],
+  obsidian:['#231e39','#996c87','#665579','#342f4e','#f7ad9a'],
+  dunes:   ['#ae655f','#ffe3a5','#c69776','#8e6b65','#fff1bc'],
+  clock:   ['#37516d','#c8b99b','#868f97','#555d75','#ffe4aa'],
+  ember:   ['#512c4b','#f7a371','#9e6267','#573e5d','#ffdc88'],
+  eclipse: ['#181f3c','#886992','#585477','#30324f','#f3bfd6'],
+  crown:   ['#3c295f','#db92a5','#8c6b9c','#4c4269','#ffe49c'],
+};
+function buildCampaignCourse(stage, blueprint){
+  const [name,theme,modules,tip] = blueprint;
+  const rows = Array.from({length:12}, (_,y) => Array(170).fill(y>=10?'#':'.'));
+  const enemies = [], gaps = [], checkpoints = [60,112];
+  const put = (x,y,text) => { for (let n=0;n<text.length;n++) rows[y][x+n] = text[n]; };
+  const gems = (x,y,n) => { for (let i=0;i<n;i++) if (rows[y][x+i] === '.') rows[y][x+i]='o'; };
+  const gapWidth = stage < 8 ? 3 : 4;
+  const gap = (x) => {
+    gaps.push({x,width:gapWidth});
+    for (let y=10;y<12;y++) put(x,y,'.'.repeat(gapWidth));
+    if (stage < 8) put(x-1,8,'==');
+    // Later assists remain optional: the four-tile ground jump is also possible.
+    else if (stage % 2 === 0) put(x,8,'==');
+    gems(x-1,6,gapWidth+2);
+  };
+  const pipe = (x,top) => {
+    put(x,top,'()'); for (let y=top+1;y<10;y++) put(x,y,'[]');
+    gems(x,top-1,2);
+  };
+  modules.forEach((type,i) => {
+    const x = 8+i*26;
+    put(x+3,7,i===0?'BGB':i===2?'BSB':i===4?'BIB':i===1?'BMB':'B?B');
+    gems(x+3,6,3); gems(x,9,3);
+    if (type === 0){ pipe(x+12,8); gap(x+20); }
+    else if (type === 1){
+      put(x+11,9,'######'); put(x+13,8,'##'); gems(x+11,7,6); gap(x+20);
+    } else if (type === 2){
+      gap(x+14); put(x+11,8,'=='); put(x+17,7,'==='); gems(x+17,6,3);
+    } else if (type === 3){
+      put(x+14,9,stage>=12?'^^':'^'); put(x+12,7,'====='); gems(x+12,6,5);
+    } else {
+      pipe(x+11,8); pipe(x+18,8);
+      if (stage >= 7 && i % 2 === 0) enemies.push(['plant',x+18,8]);
+    }
+    // Protected patrol pockets: never on a pit, spike, checkpoint, or pipe.
+    const kind = stage >= 6 && i % 2 === 1 ? 'beetle' : (i % 2 === 0 ? 'hopper' : 'walker');
+    enemies.push([kind,x+8,10,x+6,x+10]);
+    enemies.push([i%2===0?'shell':'walker',x+25,10,x+24,x+25]);
+    if (stage >= 4 && i < Math.min(5,Math.floor((stage-2)/2))){
+      enemies.push(['bat',x+15,5,x+11,x+20]);
+    }
+  });
+  // The bonus doorway and its return position stay clear on every course.
+  put(42,9,'D');
+  for (const x of checkpoints) for (let y=7;y<10;y++) put(x,y,'K');
+  // A safe final checkpoint and a flat arena for milestone guardians.
+  if (stage % 5 === 0){
+    checkpoints.push(136);
+    for (let y=7;y<10;y++) put(136,y,'K');
+    enemies.push(['guardian',145,10,141,150]);
+    put(139,7,'S'); gems(138,6,5);
+  } else { put(140,7,'+'); gems(139,6,4); }
+  for (let i=enemies.length-1;i>=0;i--){
+    if (enemies[i][0] !== 'guardian' && checkpoints.some(x=>Math.abs(x-enemies[i][1])<4)) enemies.splice(i,1);
+  }
+  for (let y=2;y<10;y++) put(152,y,'F');
+  for (let y=2;y<4;y++) put(156,y,'F');
+  for (let y=4;y<10;y++) put(155,y,y===4?'****':'******');
+  put(155,8,'E'); put(155,9,'E'); gems(147,9,3);
+  return {name,theme,tip,rows:rows.map(row=>row.join('')),enemies,gaps,checkpoints,
+    time:Math.max(250,325-stage*5), speedScale:1+(stage-2)*0.035,
+    difficulty:stage<=5?'ADVENTURE':stage<=10?'CHALLENGING':'EXPERT'};
+}
+for (let i=0;i<CAMPAIGN_BLUEPRINTS.length;i++) COURSES.push(buildCampaignCourse(i+3,CAMPAIGN_BLUEPRINTS[i]));
+COURSES[0].tip = 'Learn the jumps, collect gems and reach the castle.';
+COURSES[1].tip = 'Explore higher routes and look for the checkpoint pennants.';
+const TOTAL_STAGES = COURSES.length;
+
+function loadCampaignProgress(raw, oldStage2){
+  const valid = raw && typeof raw === 'object' && !Array.isArray(raw) ? raw : {};
+  const unlocked = Number.isInteger(valid.unlocked) ? clamp(valid.unlocked,1,TOTAL_STAGES) : (oldStage2 ? 2 : 1);
+  const cleared = Array.isArray(valid.cleared) ? [...new Set(valid.cleared.filter(n=>Number.isInteger(n)&&n>=1&&n<=TOTAL_STAGES&&n<=unlocked))] : [];
+  return {unlocked,cleared};
+}
+
+// Cache only the current later-stage backdrop, rather than 13 full canvas sets.
+function courseBackdrop(stage){
+  if (stage === 1) return ASSETS.bg;
+  if (stage === 2) return ASSETS.sunset;
+  if (ASSETS.courseBackdrop && ASSETS.courseBackdrop.stage === stage) return ASSETS.courseBackdrop;
+  const [top,bottom,far,near,sun] = COURSE_THEMES[COURSES[stage-1].theme];
+  const bg = {stage,sky:cv(VIEW_W,VIEW_H)};
+  const x = g2(bg.sky), grad = x.createLinearGradient(0,0,0,VIEW_H);
+  grad.addColorStop(0,top); grad.addColorStop(1,bottom);
+  x.fillStyle = grad; x.fillRect(0,0,VIEW_W,VIEW_H);
+  x.fillStyle = sun; x.beginPath(); x.arc(790,170,46,0,Math.PI*2); x.fill();
+  if ([4,7,10,14,15].includes(stage)){
+    x.fillStyle = '#e6e4ff';
+    for (let i=0;i<36;i++) x.fillRect((i*137+stage*19)%940,28+(i*73)%250,i%3===0?3:2,2);
+  }
+  for (const [name,color] of [['far',far],['near',near]]){
+    const source=ASSETS.bg[name], layer=cv(source.width,source.height), px=g2(layer);
+    px.drawImage(source,0,0); px.globalCompositeOperation='source-atop';
+    px.fillStyle=color; px.fillRect(0,0,layer.width,layer.height); bg[name]=layer;
+  }
+  ASSETS.courseBackdrop=bg;
+  return bg;
+}
+
 class Level {
   constructor(rows, isBonus){
     this.isBonus = !!isBonus;

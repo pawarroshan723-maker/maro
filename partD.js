@@ -103,12 +103,12 @@ function cv(w, h){
 function g2(c){ return c.getContext('2d'); }
 
 const PAL = {
-  teal:'#38c6da', tealD:'#1d8798', cream:'#ffe9c9',
-  scarf:'#ff8c42', scarfD:'#e06a28', feet:'#7a4a24',
-  flameO:'#ff7a3c', flameY:'#ffd23e', ink:'#12303c', nose:'#5a3a20',
+  teal:'#ff6b35', tealD:'#c94a1a', cream:'#fff8e7',
+  scarf:'#e63946', scarfD:'#b71c2a', feet:'#5a2d0c',
+  flameO:'#ff7a3c', flameY:'#ffd23e', ink:'#1a1a2a', nose:'#2b1a0f',
 };
 
-// Paint Pip (the hero, a flame-tailed fox) into a fresh sprite canvas.
+// Paint Maro (the hero, a flame-tailed fox - now cuter and more beautiful) into a fresh sprite canvas.
 function paintPip(x, o){
   const P = o.pal;
   const R = (gx, gy, gw, gh, col) => { x.fillStyle = col; x.fillRect(gx*2, gy*2, gw*2, gh*2); };
@@ -118,6 +118,7 @@ function paintPip(x, o){
 
   if (o.crouch){
     const ty = footY - 12;
+    // crouch - cuter with rounder shape
     R(ty-2, 3, 2, 2, P.teal); R(ty-2, 11, 2, 2, P.teal);
     R(ty, 2, 12, 5, P.teal);
     R(ty+1, 1, 14, 3, P.teal);
@@ -132,58 +133,83 @@ function paintPip(x, o){
     return;
   }
 
-  // flame tail (behind, flickers per frame)
+  // flame tail - more beautiful with gradient and flicker
   const tailY = (big ? 12 : 9) + (o.legs === 'jump' ? -2 : 0);
-  R(0, tailY, 2, 3, P.flameO);
-  R(0, tailY+1, 1, 2, P.flameY);
-  if (o.flame === 1) R(0, tailY-1, 1, 1, P.flameO);
-  if (o.flame === 2) R(1, tailY-1, 1, 1, P.flameY);
+  R(0, tailY, 2, 4, P.flameO);
+  R(0, tailY+1, 1, 3, P.flameY);
+  R(1, tailY+2, 1, 2, '#ffffff');
+  if (o.flame === 1) { R(0, tailY-1, 1, 1, P.flameO); R(1, tailY, 1, 1, P.flameY); }
+  if (o.flame === 2) { R(1, tailY-1, 2, 2, P.flameY); R(0, tailY, 1, 1, '#ffffff'); }
 
-  // ears
+  // ears - cuter, more pointed with inner fluff
   R(2, 0, 3, 4, P.teal); R(11, 0, 3, 4, P.teal);
+  R(2, 0, 3, 1, P.tealD); R(11, 0, 3, 1, P.tealD); // ear tips darker
   R(3, 1, 1, 2, P.cream); R(12, 1, 1, 2, P.cream);
-  // head
-  R(2, 3, 12, 4, P.teal);
-  R(1, 4, 14, 4, P.teal);
-  // face
-  R(6, 4, 8, 4, P.cream);
+  R(3, 2, 1, 1, '#ff9aa2'); R(12, 2, 1, 1, '#ff9aa2'); // inner ear pink
+  // head - rounder, more beautiful
+  R(2, 3, 12, 5, P.teal);
+  R(1, 4, 14, 5, P.teal);
+  R(2, 3, 12, 1, '#ff8c5a'); // highlight top of head
+  // face - larger, cream with blush
+  R(5, 4, 10, 5, P.cream);
+  R(6, 4, 8, 1, '#ffffff'); // forehead highlight
   if (o.face === 'dead'){
-    R(10, 4, 4, 3, P.ink);
-    R(11, 4, 1, 3, '#fff');
-    R(13, 5, 1, 1, P.nose);
-  } else {
-    R(11, 4, 2, 2, P.ink);
-    R(11, 4, 1, 1, '#fff');
+    R(9, 4, 6, 3, P.ink);
+    R(10, 4, 1, 3, '#fff'); R(13, 4, 1, 3, '#fff');
     R(13, 6, 1, 1, P.nose);
-    if (o.happy) R(9, 7, 4, 1, P.ink);
+    R(6, 8, 1, 1, '#ff9aa2'); R(13, 8, 1, 1, '#ff9aa2'); // blush when dead
+  } else {
+    // big beautiful eyes
+    R(7, 4, 3, 3, '#ffffff'); R(11, 4, 3, 3, '#ffffff'); // eye whites
+    R(8, 5, 2, 2, P.ink); R(12, 5, 2, 2, P.ink); // pupils
+    R(8, 5, 1, 1, '#7ef0ff'); R(12, 5, 1, 1, '#7ef0ff'); // eye shine
+    R(9, 6, 1, 1, '#ffffff'); R(13, 6, 1, 1, '#ffffff'); // extra shine
+    R(10, 7, 2, 1, P.nose); // cute nose
+    R(6, 8, 1, 1, '#ff9aa2'); R(13, 8, 1, 1, '#ff9aa2'); // blush
+    if (o.happy) {
+      R(8, 8, 4, 1, P.ink); // smile
+      R(7, 4, 1, 1, '#ff6b9d'); R(14, 4, 1, 1, '#ff6b9d'); // happy blush
+    }
   }
-  // scarf
-  R(2, 8, 12, 2, P.scarf);
-  R(2, 9, 4, 1, P.scarfD);
-  if (o.happy){ R(1, 6, 2, 2, P.scarfD); R(13, 6, 2, 2, P.scarfD); }
-  // body
-  const bodyTop = 10;
+  // scarf - more beautiful with pattern
+  R(2, 9, 12, 2, P.scarf);
+  R(2, 10, 12, 1, P.scarfD);
+  R(3, 9, 2, 1, '#ffffff'); R(9, 9, 2, 1, '#ffffff'); // scarf shine
+  if (o.happy){ R(1, 7, 2, 3, P.scarf); R(13, 7, 2, 3, P.scarf); }
+  // body - more shading
+  const bodyTop = 11;
   R(3, bodyTop, 10, footY-bodyTop, P.teal);
+  R(3, bodyTop, 10, 1, '#ff8c5a'); // body highlight
+  R(3, bodyTop, 1, footY-bodyTop, P.tealD); // body shadow left
+  R(12, bodyTop, 1, footY-bodyTop, P.tealD); // body shadow right
   R(5, bodyTop+1, 6, Math.max(1, footY-bodyTop-2), P.cream);
+  R(5, bodyTop+1, 6, 1, '#ffffff'); // belly highlight
   if (big){
-    R(8, 11, 5, 7, P.scarf);   // gem backpack
-    R(9, 12, 3, 5, P.cream);
-    R(9, 13, 1, 1, P.flameY);
+    R(8, 12, 5, 7, P.scarf);   // gem backpack - more detailed
+    R(8, 12, 5, 1, '#ff8c5a');
+    R(9, 13, 3, 5, P.cream);
+    R(9, 13, 1, 1, '#7ef0ff'); R(11, 13, 1, 1, '#ffd23e'); // gems in backpack
+    R(10, 15, 1, 1, P.flameY);
   }
-  // feet
+  // feet - cuter with highlight
   if (o.legs === 'jump'){
     R(4, footY-2, 3, 2, P.feet);
     R(9, footY-3, 3, 3, P.feet);
+    R(4, footY-2, 3, 1, '#8a5a3a'); // foot highlight
+    R(9, footY-3, 3, 1, '#8a5a3a');
   } else if (o.legs){
     const L = o.legs;
     for (let i = 0; i < 2; i++){
       const lx = L[i*2], lift = L[i*2+1];
       R(lx, footY-2-lift, 3, 2, P.tealD);
       R(lx, footY-lift, 3, 2, P.feet);
+      R(lx, footY-lift, 3, 1, '#8a5a3a');
     }
   } else {
     R(4, footY, 3, 2, P.feet);
     R(9, footY, 3, 2, P.feet);
+    R(4, footY, 3, 1, '#8a5a3a');
+    R(9, footY, 3, 1, '#8a5a3a');
   }
 }
 
@@ -220,35 +246,48 @@ function buildTiles(){
   const t = ASSETS.tiles;
   let c, x;
 
-  // ground (grass top)
+  // ground - beautiful with lush grass and rich soil
   c = cv(TILE,TILE); x = g2(c);
-  x.fillStyle = '#b0713a'; x.fillRect(0,0,48,48);
-  x.fillStyle = '#8a5426';
-  const sp = [[6,20],[20,34],[34,16],[40,40],[14,42],[28,24],[42,28],[2,36]];
-  for (const [sx,sy] of sp) x.fillRect(sx,sy,4,3);
-  x.fillStyle = '#c98a4b'; x.fillRect(10,12,4,3); x.fillRect(36,40,4,3);
-  x.fillStyle = '#5ec24f'; x.fillRect(0,0,48,10);
-  x.fillStyle = '#3f9c39'; x.fillRect(0,7,48,3);
-  x.fillStyle = '#7ad86b'; x.fillRect(0,0,48,3);
-  for (let i=0;i<6;i++) x.fillRect(3+i*8, 10, 3, 4);
+  x.fillStyle = '#9a5a2a'; x.fillRect(0,0,48,48); // rich soil
+  x.fillStyle = '#7a4a1a';
+  const sp = [[6,20],[20,34],[34,16],[40,40],[14,42],[28,24],[42,28],[2,36],[10,28],[30,36]];
+  for (const [sx,sy] of sp) x.fillRect(sx,sy,3,2);
+  x.fillStyle = '#b87a3a'; x.fillRect(10,14,3,2); x.fillRect(36,38,4,3); x.fillRect(22,26,3,2);
+  // lush grass top - more beautiful
+  x.fillStyle = '#4ec44a'; x.fillRect(0,0,48,12);
+  x.fillStyle = '#3aa83a'; x.fillRect(0,8,48,4);
+  x.fillStyle = '#6ee86a'; x.fillRect(0,0,48,4); // highlight
+  x.fillStyle = '#2a8a2a'; x.fillRect(0,10,48,2); // shadow line
+  // grass blades
+  x.fillStyle = '#6ee86a';
+  for (let i=0;i<8;i++) x.fillRect(2+i*6, 12, 2, 5);
+  x.fillStyle = '#4ec44a';
+  for (let i=0;i<6;i++) x.fillRect(5+i*8, 12, 2, 3);
+  // small flowers on grass
+  x.fillStyle = '#ffffff'; x.fillRect(12,4,2,2); x.fillRect(36,6,2,2);
+  x.fillStyle = '#ffd23e'; x.fillRect(13,5,1,1); x.fillRect(37,7,1,1);
   t[T.GROUND] = c;
 
-  // plain dirt
+  // plain dirt - more texture
   c = cv(TILE,TILE); x = g2(c);
-  x.fillStyle = '#a0632f'; x.fillRect(0,0,48,48);
-  x.fillStyle = '#7c4a1f';
-  for (const [sx,sy] of sp) x.fillRect(sx,sy,4,3);
-  x.fillStyle = '#c98a4b'; x.fillRect(10,12,4,3); x.fillRect(36,40,4,3);
+  x.fillStyle = '#8a5a2a'; x.fillRect(0,0,48,48);
+  x.fillStyle = '#6a4a1a';
+  for (const [sx,sy] of sp) x.fillRect(sx,sy,3,2);
+  x.fillStyle = '#a87a3a'; x.fillRect(10,14,3,2); x.fillRect(36,38,4,3);
+  x.fillStyle = '#5a3a0a'; x.fillRect(0,0,48,2); // top shadow
   t[T.DIRT] = c;
 
-  // breakable brick
+  // breakable brick - more beautiful with cracks and highlights
   c = cv(TILE,TILE); x = g2(c);
-  x.fillStyle = '#d9803f'; x.fillRect(0,0,48,48);
-  x.fillStyle = '#f2a96b'; x.fillRect(0,0,48,3);
-  x.fillStyle = '#8a4a22';
+  x.fillStyle = '#d08040'; x.fillRect(0,0,48,48);
+  x.fillStyle = '#e8a06a'; x.fillRect(0,0,48,4); // top highlight
+  x.fillStyle = '#f0b080'; x.fillRect(0,0,48,2);
+  x.fillStyle = '#a05a2a';
   x.fillRect(0,14,48,3); x.fillRect(0,31,48,3);
   x.fillRect(14,0,3,14); x.fillRect(32,17,3,14); x.fillRect(14,34,3,14);
-  x.fillStyle = '#6e3a1c'; x.fillRect(0,45,48,3);
+  x.fillStyle = '#6a3a1a'; x.fillRect(0,45,48,3); // bottom shadow
+  // cracks for detail
+  x.fillStyle = '#8a4a1a'; x.fillRect(8,8,2,1); x.fillRect(28,20,3,1); x.fillRect(18,36,2,1);
   t[T.BRICK] = c;
 
   // mystery blocks (two shine frames)
@@ -303,33 +342,56 @@ function buildTiles(){
   }
   t[T.HAZARD] = c;
 
-  // pipes (four half-tiles)
+  // pipes - beautiful seamless design, no vertical cut
+  // New palette: vibrant emerald with proper shading and highlights
+  const pipeDark = '#1a5c2a', pipeMid = '#2fb44a', pipeLight = '#5ee87a', pipeHi = '#a8f5b8';
+  // PIPE_TL - top left with rounded rim and seamless stem
   c = cv(TILE,TILE); x = g2(c);
-  x.fillStyle = '#2f9440'; x.fillRect(0,0,26,16); x.fillRect(4,16,22,32);
-  x.fillStyle = '#4cc75e'; x.fillRect(2,2,22,12); x.fillRect(6,16,18,32);
-  x.fillStyle = '#8fe09a'; x.fillRect(6,2,4,12); x.fillRect(8,16,4,32);
-  x.fillStyle = '#1d6e2c'; x.fillRect(24,2,2,12); x.fillRect(22,16,2,32);
+  // top rim - more beautiful with rounded corners and highlight
+  x.fillStyle = pipeDark; x.fillRect(0,0,28,18);
+  x.fillStyle = pipeMid; x.fillRect(0,0,26,16);
+  x.fillStyle = pipeLight; x.fillRect(2,2,22,10); // top highlight
+  x.fillStyle = pipeHi; x.fillRect(4,2,12,3); // extra shine
+  x.fillStyle = pipeDark; x.fillRect(0,14,26,2); // bottom shadow of rim
+  // stem - seamless, with left highlight and right shadow that continues to BL
+  x.fillStyle = pipeDark; x.fillRect(2,16,26,32);
+  x.fillStyle = pipeMid; x.fillRect(4,16,22,32);
+  x.fillStyle = pipeLight; x.fillRect(6,16,6,32); // left highlight continues down
+  x.fillStyle = pipeHi; x.fillRect(8,16,2,32); // thin shine
+  x.fillStyle = pipeDark; x.fillRect(22,16,4,32); // right shadow
   t[T.PIPE_TL] = c;
 
   c = cv(TILE,TILE); x = g2(c);
-  x.fillStyle = '#2f9440'; x.fillRect(22,0,26,16); x.fillRect(22,16,22,32);
-  x.fillStyle = '#4cc75e'; x.fillRect(24,2,22,12); x.fillRect(24,16,18,32);
-  x.fillStyle = '#8fe09a'; x.fillRect(40,2,4,12); x.fillRect(38,16,4,32);
-  x.fillStyle = '#1d6e2c'; x.fillRect(22,2,2,12); x.fillRect(24,16,2,32);
+  x.fillStyle = pipeDark; x.fillRect(20,0,28,18);
+  x.fillStyle = pipeMid; x.fillRect(22,0,26,16);
+  x.fillStyle = pipeLight; x.fillRect(24,2,22,10);
+  x.fillStyle = pipeHi; x.fillRect(26,2,10,3);
+  x.fillStyle = pipeDark; x.fillRect(22,14,26,2);
+  x.fillStyle = pipeDark; x.fillRect(20,16,26,32);
+  x.fillStyle = pipeMid; x.fillRect(22,16,22,32);
+  x.fillStyle = pipeLight; x.fillRect(36,16,6,32);
+  x.fillStyle = pipeHi; x.fillRect(38,16,2,32);
+  x.fillStyle = pipeDark; x.fillRect(20,16,4,32);
   t[T.PIPE_TR] = c;
 
+  // PIPE_BL - bottom left, seamless continuation from TL
   c = cv(TILE,TILE); x = g2(c);
-  x.fillStyle = '#2f9440'; x.fillRect(4,0,22,48);
-  x.fillStyle = '#4cc75e'; x.fillRect(6,0,18,48);
-  x.fillStyle = '#8fe09a'; x.fillRect(8,0,4,48);
-  x.fillStyle = '#1d6e2c'; x.fillRect(22,0,2,48);
+  x.fillStyle = pipeDark; x.fillRect(2,0,26,48);
+  x.fillStyle = pipeMid; x.fillRect(4,0,22,48);
+  x.fillStyle = pipeLight; x.fillRect(6,0,6,48); // left highlight continues
+  x.fillStyle = pipeHi; x.fillRect(8,0,2,48);
+  x.fillStyle = pipeDark; x.fillRect(22,0,4,48); // right shadow continues
+  // subtle horizontal bands for texture, but seamless
+  x.fillStyle = 'rgba(0,0,0,0.08)'; x.fillRect(4,12,22,2); x.fillRect(4,28,22,2); x.fillRect(4,44,22,2);
   t[T.PIPE_BL] = c;
 
   c = cv(TILE,TILE); x = g2(c);
-  x.fillStyle = '#2f9440'; x.fillRect(22,0,22,48);
-  x.fillStyle = '#4cc75e'; x.fillRect(24,0,18,48);
-  x.fillStyle = '#8fe09a'; x.fillRect(38,0,4,48);
-  x.fillStyle = '#1d6e2c'; x.fillRect(24,0,2,48);
+  x.fillStyle = pipeDark; x.fillRect(20,0,26,48);
+  x.fillStyle = pipeMid; x.fillRect(22,0,22,48);
+  x.fillStyle = pipeLight; x.fillRect(36,0,6,48);
+  x.fillStyle = pipeHi; x.fillRect(38,0,2,48);
+  x.fillStyle = pipeDark; x.fillRect(20,0,4,48);
+  x.fillStyle = 'rgba(0,0,0,0.08)'; x.fillRect(22,12,22,2); x.fillRect(22,28,22,2); x.fillRect(22,44,22,2);
   t[T.PIPE_BR] = c;
 
   // bonus-room door
@@ -343,56 +405,98 @@ function buildTiles(){
   x.fillStyle = '#ffd23e'; x.fillRect(33,30,4,5);
   t[T.DOOR] = c;
 
-  // finish flag (top / mid / base)
+  // finish flag - beautiful with waving flag and castle top
   const pole = (xx) => {
-    xx.fillStyle = '#cfd6dd'; xx.fillRect(22,0,5,48);
-    xx.fillStyle = '#8f9aa5'; xx.fillRect(26,0,1,48);
+    xx.fillStyle = '#e8ecf0'; xx.fillRect(22,0,5,48);
+    xx.fillStyle = '#a8b0b8'; xx.fillRect(25,0,2,48);
+    xx.fillStyle = '#ffffff'; xx.fillRect(22,0,1,48); // highlight
   };
   c = cv(TILE,TILE); x = g2(c); pole(x);
-  x.fillStyle = '#ff5a5a';
-  x.beginPath(); x.moveTo(22,6); x.lineTo(2,14); x.lineTo(22,22); x.closePath(); x.fill();
-  x.fillStyle = '#ffd23e'; x.beginPath(); x.arc(24,14,4,0,6.2832); x.fill();
+  // beautiful flag with gradient and emblem
+  x.fillStyle = '#ff3b3b'; // vibrant red
+  x.beginPath(); x.moveTo(22,4); x.lineTo(2,12); x.lineTo(2,16); x.lineTo(22,24); x.closePath(); x.fill();
+  x.fillStyle = '#ff6b6b'; x.beginPath(); x.moveTo(22,6); x.lineTo(6,12); x.lineTo(6,14); x.lineTo(22,20); x.closePath(); x.fill();
+  x.fillStyle = '#ffd23e'; x.beginPath(); x.arc(12,14,5,0,6.2832); x.fill(); // sun emblem
+  x.fillStyle = '#ff8c42'; x.beginPath(); x.arc(12,14,2,0,6.2832); x.fill();
+  x.fillStyle = '#ffffff'; x.fillRect(10,11,2,2); // shine
   t.flagTop = c;
   c = cv(TILE,TILE); x = g2(c); pole(x);
+  // mid pole with small flag shadow
+  x.fillStyle = 'rgba(0,0,0,0.1)'; x.fillRect(28,8,8,2);
   t.flagMid = c;
   c = cv(TILE,TILE); x = g2(c); pole(x);
-  x.fillStyle = '#8a5a2b'; x.fillRect(14,34,20,14);
-  x.fillStyle = '#6d4522'; x.fillRect(14,44,20,4);
+  x.fillStyle = '#8a5a3a'; x.fillRect(12,32,24,16); // wooden base
+  x.fillStyle = '#a86a4a'; x.fillRect(14,34,20,4); // highlight
+  x.fillStyle = '#6a4a2a'; x.fillRect(12,44,24,4); // shadow
+  x.fillStyle = '#5a3a1a'; x.fillRect(10,46,28,2);
   t.flagBase = c;
 
-  // checkpoint pennant (top / base)
+  // checkpoint - beautiful with glowing pennant
   c = cv(TILE,TILE); x = g2(c);
-  x.fillStyle = '#cfd6dd'; x.fillRect(22,0,4,48);
-  x.fillStyle = '#ffd23e';
-  x.beginPath(); x.moveTo(26,8); x.lineTo(44,14); x.lineTo(26,20); x.closePath(); x.fill();
+  x.fillStyle = '#e8ecf0'; x.fillRect(22,0,4,48);
+  x.fillStyle = '#a8b0b8'; x.fillRect(24,0,2,48);
+  x.fillStyle = '#ffffff'; x.fillRect(22,0,1,48);
+  // glowing yellow pennant with border
+  x.fillStyle = '#ffaa00'; x.beginPath(); x.moveTo(26,6); x.lineTo(46,13); x.lineTo(46,15); x.lineTo(26,22); x.closePath(); x.fill();
+  x.fillStyle = '#ffd23e'; x.beginPath(); x.moveTo(26,8); x.lineTo(44,14); x.lineTo(26,20); x.closePath(); x.fill();
+  x.fillStyle = '#ffffff'; x.fillRect(28,11,6,2); // shine
   t.checkTop = c;
   c = cv(TILE,TILE); x = g2(c);
-  x.fillStyle = '#8a5a2b'; x.fillRect(16,38,16,10);
+  x.fillStyle = '#8a5a3a'; x.fillRect(14,36,20,12);
+  x.fillStyle = '#a86a4a'; x.fillRect(16,38,16,4);
+  x.fillStyle = '#6a4a2a'; x.fillRect(14,44,20,4);
   t.checkBase = c;
 
-  // destination building stones
+  // destination building - beautiful castle with crenellations, windows, and flags
+  // Castle base - stone bricks with shading
   c = cv(TILE,TILE); x = g2(c);
-  x.fillStyle = '#5f7099'; x.fillRect(0,0,48,48);
+  // base stone
+  x.fillStyle = '#6b7a9a'; x.fillRect(0,0,48,48);
   x.fillStyle = '#8fa3c8'; x.fillRect(2,2,44,44);
-  x.fillStyle = '#7a8fb5';
-  x.fillRect(2,24,44,3); x.fillRect(24,2,3,22); x.fillRect(12,27,3,19); x.fillRect(34,27,3,19);
+  // brick pattern - more detailed
+  x.fillStyle = '#5a6a8a';
+  x.fillRect(2,10,44,2); x.fillRect(2,22,44,2); x.fillRect(2,34,44,2);
+  x.fillRect(14,2,2,10); x.fillRect(32,2,2,10); x.fillRect(8,12,2,10); x.fillRect(24,12,2,10); x.fillRect(38,12,2,10);
+  x.fillRect(14,24,2,10); x.fillRect(32,24,2,10); x.fillRect(8,36,2,8); x.fillRect(24,36,2,8); x.fillRect(38,36,2,8);
+  // highlight
+  x.fillStyle = '#a8bdd8'; x.fillRect(2,2,44,2); x.fillRect(2,2,2,44);
+  x.fillStyle = '#4a5a7a'; x.fillRect(2,44,44,2); x.fillRect(44,2,2,44);
   t.build0 = c;
+
   c = cv(TILE,TILE); x = g2(c);
-  x.fillStyle = '#5f7099'; x.fillRect(0,0,48,48);
+  x.fillStyle = '#6b7a9a'; x.fillRect(0,0,48,48);
   x.fillStyle = '#8fa3c8'; x.fillRect(2,2,44,44);
-  x.fillStyle = '#d9ecff'; x.fillRect(14,12,20,16);
-  x.fillStyle = '#5f7099'; x.fillRect(22,12,4,16); x.fillRect(14,18,20,4);
-  x.fillStyle = '#7a8fb5'; x.fillRect(2,24,44,3);
+  x.fillStyle = '#5a6a8a';
+  x.fillRect(2,10,44,2); x.fillRect(2,22,44,2); x.fillRect(2,34,44,2);
+  x.fillRect(14,2,2,10); x.fillRect(32,2,2,10);
+  // beautiful window with glow
+  x.fillStyle = '#1a2a4a'; x.fillRect(12,10,24,20);
+  x.fillStyle = '#3a4a6a'; x.fillRect(14,12,20,16);
+  x.fillStyle = '#87ceeb'; x.fillRect(16,14,16,12); // sky blue window
+  x.fillStyle = '#ffffff'; x.fillRect(18,16,4,4); x.fillRect(26,16,2,6); // window shine
+  x.fillStyle = '#5a6a8a'; x.fillRect(22,12,2,16); x.fillRect(14,18,20,2); // cross
+  x.fillStyle = '#a8bdd8'; x.fillRect(2,2,44,2); x.fillRect(2,2,2,44);
+  x.fillStyle = '#4a5a7a'; x.fillRect(2,44,44,2); x.fillRect(44,2,2,44);
   t.build1 = c;
 
-  // destination door (decorative)
+  // destination door - beautiful castle entrance
   c = cv(TILE,TILE); x = g2(c);
-  x.fillStyle = '#5f7099'; x.fillRect(0,0,48,48);
-  x.fillStyle = '#3a2c46';
-  x.beginPath(); x.moveTo(8,48); x.lineTo(8,20); x.arc(24,20,16,Math.PI,0); x.lineTo(40,48); x.closePath(); x.fill();
-  x.fillStyle = '#241a30';
-  x.beginPath(); x.moveTo(14,48); x.lineTo(14,24); x.arc(24,24,10,Math.PI,0); x.lineTo(34,48); x.closePath(); x.fill();
-  x.fillStyle = '#ffd23e'; x.fillRect(30,32,4,5);
+  x.fillStyle = '#6b7a9a'; x.fillRect(0,0,48,48);
+  x.fillStyle = '#8fa3c8'; x.fillRect(2,2,44,44);
+  // arch
+  x.fillStyle = '#4a3a2a'; // dark wood frame
+  x.beginPath(); x.moveTo(6,48); x.lineTo(6,20); x.arc(24,20,18,Math.PI,0); x.lineTo(42,48); x.closePath(); x.fill();
+  x.fillStyle = '#6b4a2a'; // wood
+  x.beginPath(); x.moveTo(9,48); x.lineTo(9,22); x.arc(24,22,15,Math.PI,0); x.lineTo(39,48); x.closePath(); x.fill();
+  // wood planks
+  x.fillStyle = '#8a5a3a'; x.fillRect(12,28,2,20); x.fillRect(20,24,2,24); x.fillRect(28,24,2,24); x.fillRect(36,28,2,20);
+  // metal studs
+  x.fillStyle = '#2a2a3a'; x.beginPath(); x.arc(14,30,2,0,6.2832); x.fill(); x.beginPath(); x.arc(24,28,2,0,6.2832); x.fill(); x.beginPath(); x.arc(34,30,2,0,6.2832); x.fill();
+  x.beginPath(); x.arc(14,40,2,0,6.2832); x.fill(); x.beginPath(); x.arc(24,42,2,0,6.2832); x.fill(); x.beginPath(); x.arc(34,40,2,0,6.2832); x.fill();
+  // handle
+  x.fillStyle = '#ffd23e'; x.beginPath(); x.arc(32,36,3,0,6.2832); x.fill(); x.fillStyle = '#ff8c42'; x.beginPath(); x.arc(32,36,1.5,0,6.2832); x.fill();
+  // arch highlight
+  x.fillStyle = '#a8bdd8'; x.fillRect(2,2,44,2); x.fillRect(2,2,2,44);
   t[T.END_DOOR] = c;
 }
 
@@ -587,16 +691,15 @@ const BONUS_ROWS = [
 ];
 
 // [type, tileX, pipeTopRow?]
-// Balanced for accessibility: fewer enemies, walkers moved away from Q blocks.
+// Balanced for accessibility and beauty: fewer enemies, beautiful spacing, no vertical pipe cut
 const ENEMY_SPAWNS = [
-  ['walker', 20],          // first room (19-27): the stomp lesson
-  ['shell', 54],           // zone 32-61, now only shell (walker 40 removed)
-  ['walker', 72],          // zone 70-104
-  ['plant', 86, 6],        // single pipe-plant timing puzzle (81 removed for accessibility)
-  ['walker', 98],          // near star/shot blocks — moved from 100
-  ['shell', 111],          // foot of the big staircase
+  ['walker', 20],          // first room (19-27): the stomp lesson - beautiful start
+  ['walker', 72],          // zone 70-104 - open area
+  ['plant', 86, 6],        // single pipe-plant timing puzzle - beautiful timing challenge
+  ['walker', 105],         // near star/shot blocks - moved from 98 for better spacing and AI consistency
+  ['shell', 111],          // foot of the big staircase - guarding castle approach
   ['shell', 136],          // after the staircase, near the spikes
-  ['walker', 139],         // final approach
+  ['walker', 139],         // final approach - guarding the beautiful castle
 ];
 
 // ---------------- level (tile grid + helpers) ----------------

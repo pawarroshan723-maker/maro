@@ -501,7 +501,7 @@ console.log('== new enemies and guardian combat ==');
   for(const stage of [5,10,15]){
     Game.startGame(stage); Game.state='PLAYING';
     const boss=Game.enemies.find(e=>e.kind==='guardian');
-    check(boss.hp===3+stage/5, 'guardian '+stage+' has scaled hit points');
+    check(boss.hp==={5:4,10:6,15:8}[stage], 'guardian '+stage+' has scaled hit points');
     Game.onFlag(Game.player,8);
     check(Game.state==='PLAYING', 'guardian '+stage+' prevents bypassing the finish');
     const hp=boss.hp;
@@ -538,7 +538,7 @@ console.log('== new enemies and guardian combat ==');
   check(Game.stage===5 && !Game.inBonus, 'guardian-stage bonus room returns to the correct course');
   setupPlayer(); Game.player.invT=5;
   const starBoss=new G.Enemy('guardian',100,416); Game.playerVsEnemy(starBoss,starBoss.box());
-  check(starBoss.dead, 'Nova Star can defeat a guardian as advertised');
+  check(!starBoss.dead, 'Nova Star cannot skip a boss — guardians must be fought');
   fresh();
 }
 

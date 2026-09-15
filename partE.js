@@ -266,6 +266,7 @@ class Enemy {
     this.patrolMin = x-72; this.patrolMax = x+120;
     this.boundedPatrol = false;
     this.lurk = false; this.revealed = false;
+    this.boss = 0; this.volley = 0; this.volleyT = 0;
     // Tuned for accessibility: slower walkers, shells less aggressive
     if (kind === 'walker'){ this.w = 34; this.h = 34; this.speed = 42; }
     else if (kind === 'shell'){ this.w = 36; this.h = 30; this.speed = 38; }
@@ -311,18 +312,29 @@ class Enemy {
     if (this.x+this.w > this.patrolMax){ this.x=this.patrolMax-this.w; this.dir=-1; }
     this.y = this.baseY + Math.sin(this.walkT*2.4)*24;
   }
+  fireBolt(G){
+    if (G.enemyShots.filter(s=>!s.remove).length >= 6) return;
+    const dir = G.player.x < this.x ? -1 : 1;
+    const spd = 185 + G.stage*6 + (this.boss >= 3 ? 40 : 0);
+    G.enemyShots.push(new EnemyBolt(this.x+this.w/2+dir*36, this.y+this.h-18, dir, spd));
+    AudioSys.sfx.shoot();
+  }
   updateGuardian(dt, G){
+    const v = this.boss || 1;
     const near = Math.abs((G.player.x+G.player.w/2)-(this.x+this.w/2)) < 440;
     this.attackT -= dt;
+    // Finish a bolt volley on a jump rhythm (Warden 2, King 3).
+    if (this.volley > 0){
+      this.volleyT -= dt;
+      if (this.volleyT <= 0){ this.volley--; this.volleyT = 0.42; this.fireBolt(G); }
+    }
     if (this.phase === 'warning'){
       this.warningT -= dt;
       if (this.warningT <= 0){
-        if (near && G.enemyShots.filter(s=>!s.remove).length < 6){
-          const dir = G.player.x < this.x ? -1 : 1;
-          G.enemyShots.push(new EnemyBolt(this.x+this.w/2+dir*36,this.y+this.h-18,dir,185+G.stage*6));
-          AudioSys.sfx.shoot();
-        }
-        this.phase='patrol'; this.attackT=Math.max(0.95,2.35-G.stage*0.07);
+        this.fireBolt(G);
+        this.volley = v - 1; this.volleyT = 0;
+        this.phase='patrol';
+        this.attackT = Math.max(0.95, 2.35 - G.stage*0.07) - (v >= 3 ? 0.35 : 0);
       }
     } else if (this.attackT<=0 && near){
       // Guardians telegraph less generously on later courses, but never below 0.6s.

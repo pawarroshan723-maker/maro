@@ -59,7 +59,9 @@ Every course has a distinct deterministic tile layout, a bonus room, gems and po
 - **Gate Guardian:** patrols the arena and flashes for under a second (shorter on later courses) before firing a horizontal bolt. Jump bolts and stomp/shoot the guardian. Health bars show remaining hits. Only six hostile bolts can exist at once; bolts expire, hit walls, and are cleared on guardian defeat or stage reset.
 - **Lurker ambush:** from Stage 3 on, at least one enemy lies hidden in each course and bursts out when Maro steps close — a genuine jump-scare. More lurkers appear on higher tiers.
 
-Nova Star defeats any enemy, including guardians, and absorbs hostile bolts. Walker, shell and pipe-plant enemies remain throughout the adventure.
+Nova Star defeats regular enemies and absorbs hostile bolts, but bosses are immune to it — a guardian must be beaten with stomps and fireballs. Walker, shell and pipe-plant enemies remain throughout the adventure.
+
+**Three distinct bosses:** the Copper Sentry (stage 5, single bolt, 4 hits), the horned Obsidian Warden (stage 10, two-bolt volleys, 6 hits) and the crowned King (stage 15, fast three-bolt volleys, 8 hits). Dying always returns Maro to small form at the checkpoint, so power is earned, not carried through death.
 
 ## Controls and graphics settings
 

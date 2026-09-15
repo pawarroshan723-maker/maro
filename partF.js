@@ -62,7 +62,11 @@ const Game = {
       else {
         const enemy=new Enemy(s[0],s[1]*TILE,(s[2]||GROUND_ROW)*TILE);
         enemy.x += (TILE-enemy.w)/2; enemy.y -= enemy.h; enemy.baseY=enemy.y;
-        if(enemy.kind==='guardian') enemy.hp=enemy.maxHp=3+this.stage/5;
+        if(enemy.kind==='guardian'){
+          // Three distinct bosses: Copper Sentry, Obsidian Warden, Crown King.
+          enemy.boss = Math.round(this.stage/5);
+          enemy.hp = enemy.maxHp = [0,4,6,8][enemy.boss] || 4;
+        }
         this.enemies.push(enemy);
       }
       const enemy=this.enemies[this.enemies.length-1];
@@ -130,7 +134,8 @@ const Game = {
     this.bonusLockT = 0;
     this.timeLeft = this.course.time;
     this.multiQ = 0;
-    this.player.reset(this.checkX, this.player.form, GROUND_ROW);
+    // Dying always costs your power: you resume small at the checkpoint.
+    this.player.reset(this.checkX, 'small', GROUND_ROW);
     if (this.stage>=3) this.player.hurtT=1.5; // Safe checkpoint recovery, not a free attack boost.
     this.spawnEntities();
     this.cam.x = clamp(this.player.x - 320, 0, this.level.w*TILE - VIEW_W);
@@ -320,7 +325,8 @@ const Game = {
   },
   playerVsEnemy(e, b){
     const p = this.player;
-    if (p.invT > 0){ this.defeatEnemy(e, e.kind === 'walker' ? 100 : 200, 'crush'); return; }
+    // Star mows down normal foes, but bosses must be fought for real.
+    if (p.invT > 0){ if (e.kind !== 'guardian') this.defeatEnemy(e, e.kind === 'walker' ? 100 : 200, 'crush'); return; }
     if (p.hurtT > 0) return;
     const stomp = p.vy > 40 && p.prevBottom <= b.y + 14;
     if (stomp){
@@ -1125,18 +1131,26 @@ function drawCampaignEnemy(e,x,y){
     R(e.dir>0?24:4,16,10,8,'#dceac4'); R(e.dir>0?29:5,17,3,4,'#23364a');
     for(let i=0;i<e.hp;i++) R(10+i*12,10,5,4,'#ffe089');
   } else {
+    const v = e.boss || 1;
+    const armor = ['#62436a','#3a3350','#4c3a70'][v-1];
+    const chest = ['#b96f68','#6a5a8a','#c9a24a'][v-1];
+    const helm  = ['#765377','#2e2a44','#5a4480'][v-1];
+    const trim  = ['#e2aa63','#9a8ac0','#ffd166'][v-1];
     R(5,53,17,11,'#302d49'); R(34,53,17,11,'#302d49');
-    R(5,18,46,38,'#62436a'); R(10,20,36,30,'#b96f68');
+    R(5,18,46,38,armor); R(10,20,36,30,chest);
     R(18,28,20,20,'#f6bc75'); R(23,31,10,12,e.phase==='warning'?'#fff4b4':'#8b5470');
-    R(9,4,38,22,'#765377'); R(12,7,32,14,'#f4d7a7');
-    R(4,0,9,10,'#e2aa63'); R(43,0,9,10,'#e2aa63');
+    R(9,4,38,22,helm); R(12,7,32,14,'#f4d7a7');
+    R(4,0,9,10,trim); R(43,0,9,10,trim);
     R(15,10,8,5,'#302d49'); R(33,10,8,5,'#302d49');
-    R(0,27,9,23,'#765377'); R(47,27,9,23,'#765377');
+    R(0,27,9,23,helm); R(47,27,9,23,helm);
+    if (v === 2){ R(2,-8,6,10,trim); R(48,-8,6,10,trim); }            // Warden horns
+    if (v === 3){ R(14,-10,28,8,trim); R(14,-16,5,8,trim);            // King crown
+                  R(25,-18,6,10,trim); R(37,-16,5,8,trim); }
     if(e.phase==='warning'){
       ctx.fillStyle='#ffe089'; ctx.font='bold 22px monospace'; ctx.textAlign='center';
-      ctx.fillText('!',x+28,y-22); ctx.textAlign='left';
+      ctx.fillText('!',x+28,y-30); ctx.textAlign='left';
     }
-    R(0,-12,56,6,'#302d49'); R(1,-11,54*e.hp/e.maxHp,4,'#f4b86d');
+    R(0,-26,56,6,'#302d49'); R(1,-25,54*e.hp/e.maxHp,4,'#f4b86d');
   }
   ctx.globalAlpha=1;
 }

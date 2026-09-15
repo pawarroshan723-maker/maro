@@ -617,6 +617,9 @@ const Game = {
       }
     }
 
+    // Block rewards are already credited; animate and expire their visual pops.
+    for (const pop of this.pops) if (!pop.remove) pop.update(dt);
+
     // cleanup
     this.compact(this.enemies);
     this.compact(this.items);
@@ -775,13 +778,13 @@ function tileImage(c, tx, ty){
   }
   if (QCODES.has(c)) return ASSETS.tiles.qframes[((gameT*3)|0) % 2];
   if (c === T.FLAG){
-    if (ty === lv.flagTop) return ASSETS.tiles.flagTop;
-    if (ty === lv.flagBottom) return ASSETS.tiles.flagBase;
+    if (lv.get(tx, ty-1) !== T.FLAG) return ASSETS.tiles.flagTop;
+    if (lv.get(tx, ty+1) !== T.FLAG) return ASSETS.tiles.flagBase;
     return ASSETS.tiles.flagMid;
   }
   if (c === T.CHECK){
-    if (ty === lv.checkTop) return ASSETS.tiles.checkTop;
-    if (ty === lv.checkBottom) return ASSETS.tiles.checkBase;
+    if (lv.get(tx, ty-1) !== T.CHECK) return ASSETS.tiles.checkTop;
+    if (lv.get(tx, ty+1) !== T.CHECK) return ASSETS.tiles.checkBase;
     return ASSETS.tiles.flagMid;
   }
   if (c === T.BUILD) return ((tx*7 + ty*13) % 3 === 0) ? ASSETS.tiles.build1 : ASSETS.tiles.build0;

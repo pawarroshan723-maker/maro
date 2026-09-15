@@ -1246,10 +1246,10 @@ const MAIN_ROWS = [
   R(D10,D10,D10,D10,D10,D10,D10,D10,D10,D10,D10, '........##','##........', D10, '....******','**F..*****', D10), // r3 - castle top with crenellations - beautiful
   R(D10,D10,D10,D10,D10,D10,D10,D10,D10,D10,D10, '.......###','###.......', D10, '..********','**F..*****','*..##.....'), // r4 - castle upper walls - beautiful
   R(D10,D10,D10,D10,D10,D10, '.......oo.', D10,D10,D10, D10, '......####','####......', D10, D10,'..F...***.','*..##.....'), // r5 - castle approach cleared, beautiful towers
-  R(D10,D10,D10,D10, '..**......', D10, '.......==.', D10,D10, '....K...BB','IBBS..oo..', D10,D10, '.o..K.o...',D10,'..F..*****','*..##.....'), // r6 — second checkpoint at 124, open path to flag
+  R(D10,D10,D10,D10, '..**......', D10, '.......==.', D10,D10, '....K...BB','IBBS..oo..', D10,'....K.....', '.o....o...',D10,'..F..*****','*..##.....'), // r6 — second checkpoint at 124, open path to flag
   R('.......?..','........oo','.B?G?B....', D10, '...*...BBB','BBMBBBBB..','....oo....','.......().','..()..()..','....K.....','......===.','....######','####K#....','===.....B.',D10,'..F..*****','*..##.....'), // r7 — pipes fixed and open path
   R(D10,'........()', D10,D10, '..?.......', D10, '....==....','.......[].','..[]..[]..','....K.....', D10, '...#######','####K##...', D10, '..########','..F..E****','*..##.....'), // r8 — pipes fixed and castle door open for AI
-  R('.....ooo..','........[]', D10,D10, '..D.......', D10,D10, '.......[]B','..[]..[]..','....K....o','ooo.......','..########','########..','^^^.....oo','.###K#####','..F..E****','*..##.....'), // r9 - open path to castle door
+  R('.....ooo..','........[]', D10,D10, '..D.......', D10,D10, '.......[]B','..[]..[]..','....K....o','ooo.......','..########','########..','^^^.....oo','.#########','..F..E****','*..##.....'), // r9 - open path to castle door
   R(G10,G10,'########..','..########', G10,G10, '######....', G10,G10,G10, '#######...', G10,G10,G10,G10,G10,G10),       // r10 ground - pits narrowed for accessibility
   R(G10,G10,'########..','..########', G10,G10, '######....', G10,G10,G10, '#######...', G10,G10,G10,G10,G10,G10),       // r11 ground
 ];
@@ -2395,6 +2395,9 @@ const Game = {
       }
     }
 
+    // Block rewards are already credited; animate and expire their visual pops.
+    for (const pop of this.pops) if (!pop.remove) pop.update(dt);
+
     // cleanup
     this.compact(this.enemies);
     this.compact(this.items);
@@ -2553,13 +2556,13 @@ function tileImage(c, tx, ty){
   }
   if (QCODES.has(c)) return ASSETS.tiles.qframes[((gameT*3)|0) % 2];
   if (c === T.FLAG){
-    if (ty === lv.flagTop) return ASSETS.tiles.flagTop;
-    if (ty === lv.flagBottom) return ASSETS.tiles.flagBase;
+    if (lv.get(tx, ty-1) !== T.FLAG) return ASSETS.tiles.flagTop;
+    if (lv.get(tx, ty+1) !== T.FLAG) return ASSETS.tiles.flagBase;
     return ASSETS.tiles.flagMid;
   }
   if (c === T.CHECK){
-    if (ty === lv.checkTop) return ASSETS.tiles.checkTop;
-    if (ty === lv.checkBottom) return ASSETS.tiles.checkBase;
+    if (lv.get(tx, ty-1) !== T.CHECK) return ASSETS.tiles.checkTop;
+    if (lv.get(tx, ty+1) !== T.CHECK) return ASSETS.tiles.checkBase;
     return ASSETS.tiles.flagMid;
   }
   if (c === T.BUILD) return ((tx*7 + ty*13) % 3 === 0) ? ASSETS.tiles.build1 : ASSETS.tiles.build0;

@@ -7,7 +7,7 @@ const m = html.match(/<script>([\s\S]*)<\/script>/);
 if (!m){ console.error('no script block'); process.exit(1); }
 let code = m[1];
 code += '\n;globalThis.__G = { Game, Input, AudioSys, Settings, Level, MAIN_ROWS, BONUS_ROWS, T, ' +
-  'toggleMute, doPause, doResume, rectSolid, moveAndCollide, Player, Enemy, Item, Projectile, ASSETS };\n';
+  'toggleMute, doPause, doResume, rectSolid, moveAndCollide, Player, Enemy, Item, Projectile, ASSETS, tileImage };\n';
 
 function makeCtx(){
   const ops = [];
@@ -350,6 +350,32 @@ console.log('== game over flow ==');
   G.toggleMute();
   G.toggleMute();
   Game.toTitle();
+}
+
+console.log('== reward animation and independent checkpoints ==');
+{
+  fresh();
+  Game.enemies.length = 0;
+  Game.lastMultiX = 7*48+24;
+  Game.lastMultiY = 7*48-6;
+  const before = Game.gems;
+  Game.spawnContent(T.Q_GEM);
+  const pop = Game.pops[0], y = pop.y;
+  pump(5);
+  check(pop.y !== y && pop.t > 0, 'block reward diamond animates after capture');
+  pump(45);
+  check(Game.pops.length === 0 && Game.gems === before+1, 'block reward diamond expires without another reward');
+  Game.spawnContent(T.Q_MULTI);
+  pump(100);
+  check(Game.pops.length === 0 && Game.gems === before+6, 'all multi-block reward diamonds expire');
+  for (const tx of [94,124]){
+    check(G.tileImage(T.CHECK,tx,6) === G.ASSETS.tiles.checkTop, 'checkpoint '+tx+' has its own pennant');
+    let bottom = 6;
+    while (Game.level.get(tx,bottom+1) === T.CHECK) bottom++;
+    check(G.tileImage(T.CHECK,tx,bottom) === G.ASSETS.tiles.checkBase && Game.level.solid(tx,bottom+1),
+      'checkpoint '+tx+' has a grounded base');
+  }
+  check(Game.level.get(134,6) !== T.CHECK && Game.level.get(144,9) !== T.CHECK, 'no orphan checkpoint tiles');
 }
 
 console.log('== pipe seams and diamond capture regressions ==');

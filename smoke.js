@@ -7,7 +7,7 @@ const m = html.match(/<script>([\s\S]*)<\/script>/);
 if (!m){ console.error('no script block'); process.exit(1); }
 let code = m[1];
 code += '\n;globalThis.__G = { Game, Input, AudioSys, Settings, Level, MAIN_ROWS, BONUS_ROWS, T, ' +
-  'toggleMute, doPause, doResume, rectSolid, moveAndCollide, Player, Enemy, Item, Projectile, ASSETS, tileImage, Keyboard, keyboardDown, keyboardUp, setQuality, COURSES };\n';
+  'toggleMute, doPause, doResume, rectSolid, moveAndCollide, Player, Enemy, Item, Projectile, ASSETS, tileImage, Keyboard, keyboardDown, keyboardUp, setQuality, COURSES, TOTAL_STAGES, loadCampaignProgress, startSelectedStage, EnemyBolt, courseBackdrop };\n';
 
 function makeCtx(){
   const ops = [];
@@ -393,16 +393,153 @@ console.log('== stage 2 progression and level ==');
   Game.exitBonus(); pump(60);
   check(!Game.inBonus && Game.stage === 2 && Game.level === Game.mainLevel, 'bonus exit returns to Stage 2');
   Game.onFlag(Game.player,6); pump(600);
-  check(Game.state === 'CLEAR' && elCache['btn-next-stage'].hidden, 'Stage 2 finish reaches final victory without Stage 3');
+  check(Game.state === 'CLEAR' && !elCache['btn-next-stage'].hidden, 'Stage 2 finish offers Stage 3');
   const finalScore = Game.score; Game.finishClear();
   check(Game.score === finalScore, 'final completion cannot award time bonus twice');
   Game.toTitle();
-  check(Game.stage === 1 && !elCache['btn-stage2'].hidden, 'title restores Stage 1 preview and offers unlocked Stage 2');
+  check(Game.stage === 1 && !elCache['btn-continue'].hidden, 'title restores Stage 1 preview and offers unlocked Stage 2');
   Game.startGame(2);
   check(Game.stage === 2 && Game.score === 0 && Game.lives === 3 && Game.player.form === 'small',
     'direct Stage 2 replay starts a fresh run');
   Game.startGame();
   check(Game.stage === 1 && Game.level.get(28,10) === T.EMPTY, 'new adventure still starts at Stage 1');
+}
+
+console.log('== fifteen-stage campaign and progression ==');
+{
+  check(G.TOTAL_STAGES === 15 && G.COURSES.length === 15, 'exactly 15 campaign stages');
+  check(new Set(G.COURSES.map(c=>c.rows.join('\n'))).size === 15, 'all 15 terrain layouts are distinct');
+  for(let n=3;n<=15;n++){
+    const course=G.COURSES[n-1];
+    Game.startGame(n);
+    const lv=Game.level;
+    check(course.rows.every(r=>r.length===170) && lv.h===12 && lv.gemSpawns.length>=30,
+      'stage '+n+' is complete with a generous gem route');
+    check(course.gaps.every(g=>g.width<=4 && !lv.solid(g.x,10) && lv.solid(g.x-1,10) && lv.solid(g.x+g.width,10)),
+      'stage '+n+' ravines stay within jump bounds with supported edges');
+    check(course.checkpoints.every(x=>lv.get(x,7)===T.CHECK && lv.get(x,9)===T.CHECK && lv.solid(x,10) &&
+      !G.rectSolid(lv,x*48+10,416,28,64)), 'stage '+n+' checkpoints have safe grounded spawns');
+    check(lv.get(42,9)===T.DOOR && !G.rectSolid(lv,43*48+10,416,28,64), 'stage '+n+' bonus exit stays clear');
+    check(Game.enemies.every(e=>e.kind==='plant' || !G.rectSolid(lv,e.x,e.y,e.w,e.h)), 'stage '+n+' enemies never spawn inside solid tiles');
+    check(Game.enemies.filter(e=>e.kind==='guardian').length === (n%5===0?1:0), 'stage '+n+' guardian placement matches milestones');
+    check(G.courseBackdrop(n).sky.width===960, 'stage '+n+' themed backdrop builds');
+    if(n>3) check(course.speedScale>G.COURSES[n-2].speedScale && course.time<G.COURSES[n-2].time,
+      'stage '+n+' increases patrol speed and timer pressure');
+  }
+  const legacy=G.loadCampaignProgress(null,true);
+  check(legacy.unlocked===2 && legacy.cleared.length===0, 'old Stage 2 saves migrate without losing the unlock');
+  const corrupted=G.loadCampaignProgress({unlocked:999,cleared:[0,1,1,15,16,'3']},false);
+  check(corrupted.unlocked===15 && corrupted.cleared.join(',')==='1,15', 'stored progress is bounded and validated');
+  Game.progress=G.loadCampaignProgress(null,false); Game.toTitle();
+  check(elCache['stage-15'].disabled && !G.startSelectedStage(15) && Game.stage===1, 'locked stage buttons cannot start a course');
+  check(G.startSelectedStage(1) && elCache['ov-stages'].hidden, 'unlocked selection starts and dismisses all overlays');
+  Game.score=100; Game.gems=8; Game.lives=3; Game.player.setForm('big');
+  for(let n=1;n<=15;n++){
+    Game.state='PLAYING'; Game.timeLeft=10;
+    Game.finishClear();
+    check(Game.progress.cleared.includes(n) && Game.progress.unlocked===Math.min(15,n+1), 'stage '+n+' clear saves and unlocks the correct next stage');
+    const score=Game.score, lives=Game.lives;
+    Game.finishClear();
+    check(Game.score===score && Game.lives===lives, 'stage '+n+' rewards are idempotent');
+    if(n<15){
+      Game.nextStage();
+      check(Game.stage===n+1 && Game.score===score && Game.lives===lives && Game.gems===8 && Game.player.form==='big',
+        'stage '+n+' progression carries the adventure state');
+    }
+  }
+  check(Game.lives===8 && Game.progress.cleared.length===15, 'five milestone life rewards and 15 completion badges');
+  check(elCache['btn-next-stage'].hidden && elCache['clear-heading'].textContent==='CAMPAIGN COMPLETE!', 'stage 15 ends the campaign with no Stage 16');
+  Game.nextStage(); check(Game.stage===15 && Game.state==='CLEAR', 'Next Stage is a no-op after final victory');
+  const reload=G.loadCampaignProgress(JSON.parse(localStorageObj.getItem('gemdash.campaign')),false);
+  check(reload.unlocked===15 && reload.cleared.length===15, 'all unlocks and completion badges survive reload');
+  Game.toTitle();
+  check(!elCache['stage-15'].disabled && elCache['stage-15'].classList.contains('cleared'), 'stage selector reflects saved completion');
+  G.startSelectedStage(15); Game.checkX=136; Game.restartLevel();
+  check(Game.stage===15 && Game.checkX===136 && Game.player.hurtT>0 && Game.enemyShots.length===0,
+    'late-stage retry restores checkpoint with brief protection and no stale bolts');
+}
+
+Game.startGame(3); Game.lives=9; Game.state='PLAYING'; Game.finishClear();
+check(Game.lives===9, 'milestone life rewards respect the nine-life cap');
+
+console.log('== new enemies and guardian combat ==');
+{
+  Game.startGame(5); pump(90); Game.enemies.length=0;
+  const lv=Game.level;
+  function setupPlayer(){
+    Game.state='PLAYING'; Game.player.reset(2,'big',10); Game.player.hurtT=0;
+    Game.player.invT=0; Game.enemyShots.length=0;
+  }
+  setupPlayer();
+  const hopper=new G.Enemy('hopper',8*48,480-32);
+  hopper.active=true; hopper.onGround=true; hopper.hopT=0;
+  hopper.update(1/60,Game);
+  check(hopper.vy<0 && hopper.y<448, 'hopper jumps after its visible pause');
+  const bat=new G.Enemy('bat',12*48,220); bat.active=true;
+  const startY=bat.y;
+  for(let i=0;i<240;i++) bat.update(1/60,Game);
+  check(bat.y!==startY && bat.x>=bat.patrolMin && bat.x+bat.w<=bat.patrolMax, 'bat flies a bounded bobbing patrol');
+  function stomp(e){
+    Game.player.vy=200; Game.player.prevBottom=e.y-1;
+    Game.player.hurtT=0; Game.player.invT=0;
+    Game.playerVsEnemy(e,e.box());
+  }
+  for(const kind of ['hopper','bat']){
+    const e=new G.Enemy(kind,200,300); stomp(e);
+    check(e.dead, kind+' can be stomped');
+    const shotEnemy=new G.Enemy(kind,200,300), shot={x:200,y:300,vx:200};
+    Game.hitShot(shot,shotEnemy);
+    check(shotEnemy.dead && shot.remove, kind+' can be shot');
+  }
+  const beetle=new G.Enemy('beetle',200,450);
+  stomp(beetle); check(!beetle.dead && beetle.hp===1, 'first beetle stomp cracks armor');
+  stomp(beetle); check(!beetle.dead && beetle.hp===1, 'hit cooldown prevents duplicate frame damage');
+  beetle.hitT=0; stomp(beetle); check(beetle.dead, 'second separated stomp defeats beetle');
+  const shellVictim=new G.Enemy('beetle',200,450);
+  Game.defeatEnemy(shellVictim,200,'shell'); shellVictim.hitT=0; Game.defeatEnemy(shellVictim,200,'shell');
+  check(shellVictim.dead, 'moving-shell damage respects beetle armor');
+  for(const stage of [5,10,15]){
+    Game.startGame(stage); Game.state='PLAYING';
+    const boss=Game.enemies.find(e=>e.kind==='guardian');
+    check(boss.hp===2+stage/5, 'guardian '+stage+' has scaled hit points');
+    Game.onFlag(Game.player,8);
+    check(Game.state==='PLAYING', 'guardian '+stage+' prevents bypassing the finish');
+    const hp=boss.hp;
+    for(let n=0;n<hp;n++){ boss.hitT=0; Game.hitShot({x:boss.x,y:boss.y,vx:400},boss); }
+    check(boss.dead && Game.enemyShots.length===0, 'guardian '+stage+' can be defeated by repeated shots');
+    Game.onFlag(Game.player,8); check(Game.state==='CLEARING', 'guardian '+stage+' defeat opens the finish');
+  }
+  Game.startGame(5); setupPlayer();
+  const boss=Game.enemies.find(e=>e.kind==='guardian');
+  Game.player.x=boss.x-180; boss.active=true; boss.attackT=0;
+  boss.update(1/60,Game);
+  check(boss.phase==='warning' && Game.enemyShots.length===0, 'guardian visibly warns before firing');
+  boss.update(0.4,Game); check(Game.enemyShots.length===0, 'warning gives time to react');
+  boss.update(0.46,Game); check(Game.enemyShots.length===1, 'guardian releases one bolt after warning');
+  const bolt=Game.enemyShots[0]; bolt.update(4.1,Game);
+  check(bolt.remove, 'hostile bolts expire');
+  setupPlayer();
+  const hit=new G.EnemyBolt(Game.player.x+10,Game.player.y+10,1,200);
+  hit.update(0,Game);
+  check(hit.remove && Game.player.form==='small' && Game.player.hurtT>0, 'bolt damage shrinks Maro and grants recovery protection');
+  setupPlayer(); Game.player.invT=5;
+  const immune=new G.EnemyBolt(Game.player.x+10,Game.player.y+10,1,200); immune.update(0,Game);
+  check(immune.remove && Game.player.form==='big', 'Nova Star absorbs hostile bolts');
+  const wallBolt=new G.EnemyBolt(155*48+24,6*48+24,1,200); wallBolt.update(0,Game);
+  check(wallBolt.remove, 'hostile bolts collide with castle walls');
+  Game.player.invT=0; Game.player.hurtT=0;
+  Game.player.x=boss.x-100; Game.player.y=440;
+  for(let i=0;i<20;i++){ boss.phase='warning'; boss.warningT=0; boss.update(0,Game); }
+  check(Game.enemyShots.length===6, 'guardian attack pool is capped');
+  Game.enterBonus(); pump(55);
+  const ages=Game.enemyShots.map(s=>s.t); pump(30);
+  check(Game.inBonus && Game.enemyShots.every((s,i)=>s.t===ages[i]), 'guardian bolts freeze in bonus rooms');
+  Game.exitBonus(); pump(55);
+  check(Game.stage===5 && !Game.inBonus, 'guardian-stage bonus room returns to the correct course');
+  setupPlayer(); Game.player.invT=5;
+  const starBoss=new G.Enemy('guardian',100,416); Game.playerVsEnemy(starBoss,starBoss.box());
+  check(starBoss.dead, 'Nova Star can defeat a guardian as advertised');
+  fresh();
 }
 
 console.log('== custom keyboard and quality settings ==');

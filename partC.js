@@ -307,7 +307,7 @@ function $(id){
   if (!els[id]) els[id] = document.getElementById(id);
   return els[id];
 }
-const OV_IDS = ['ov-title','ov-tut','ov-pause','ov-set','ov-over','ov-clear'];
+const OV_IDS = ['ov-title','ov-tut','ov-pause','ov-set','ov-over','ov-clear','ov-stages'];
 function showOv(id){ const el = $(id); if (el) el.hidden = false; }
 function hideOv(id){ const el = $(id); if (el) el.hidden = true; }
 function hideAllOverlays(){ for (const id of OV_IDS) hideOv(id); }

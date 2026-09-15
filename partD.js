@@ -740,6 +740,137 @@ const COURSES = [
   { name:'SUNSET RIDGE', rows:STAGE2_ROWS, enemies:STAGE2_ENEMIES, time:320 },
 ];
 
+// Hand-arranged module sequences: every course is deterministic and replayable.
+// All gaps are at most four tiles; early courses provide generous bridge assists.
+const CAMPAIGN_BLUEPRINTS = [
+  ['MOSSWOOD TRAIL',   'grove',   [0,1,2,0,1], 'Hoppers leap after a short pause. Stomp from above.'],
+  ['CRYSTAL CAVERNS',  'crystal', [2,0,4,1,2], 'Bats patrol the upper routes. Watch their flight path.'],
+  ['COPPER OUTPOST',   'copper',  [1,4,0,2,1], 'First guardian: dodge its glowing bolts, then stomp or shoot.'],
+  ['CORAL CAUSEWAY',   'coral',   [2,1,0,4,2], 'Armored beetles take two hits. Their shell lights show health.'],
+  ['MOONLIT GROVE',    'moon',    [4,0,3,1,2], 'Use the high route above the thorns.'],
+  ['FROSTFALL PASS',   'frost',   [1,2,4,0,2], 'Wider ravines ahead. Run before jumping; physics stay familiar.'],
+  ['THUNDER HEIGHTS',  'storm',   [2,3,1,4,2], 'Faster patrols and airborne enemies share the route.'],
+  ['OBSIDIAN KEEP',    'obsidian',[4,2,3,1,4], 'The second guardian fires faster. Wait for its warning flash.'],
+  ['MIRAGE DUNES',     'dunes',   [0,3,4,2,1], 'Take the gem routes for supplies before the final push.'],
+  ['CLOCKWORK ASCENT', 'clock',   [1,4,2,3,1], 'Mix short hops and full jumps through the clockwork terraces.'],
+  ['EMBER CHASM',      'ember',   [3,2,4,1,3], 'Thorns and ravines demand careful landings.'],
+  ['ECLIPSE RIDGE',    'eclipse', [4,3,2,4,1], 'The fastest patrols guard the road to the crown.'],
+  ['CROWN CITADEL',    'crown',   [3,4,2,3,4], 'Final guardian: five hits. Defeat it to free the Gem Kingdom!'],
+];
+const COURSE_THEMES = {
+  grove:   ['#256976','#c4e1a5','#6ba68f','#376957','#ffeab2'],
+  crystal: ['#252d61','#927fbd','#645e99','#3c426c','#d9faff'],
+  copper:  ['#873d54','#f9c488','#aa7f7b','#684e62','#ffda8a'],
+  coral:   ['#367e9b','#bdecdc','#77b7b0','#507c97','#ffdea5'],
+  moon:    ['#1d244d','#6c719d','#565d85','#323d61','#e9f5ff'],
+  frost:   ['#567caa','#e7f7ff','#a2c5d5','#638da9','#fff8e4'],
+  storm:   ['#26384d','#9aafc4','#6a849c','#3c526c','#e0eef3'],
+  obsidian:['#231e39','#996c87','#665579','#342f4e','#f7ad9a'],
+  dunes:   ['#ae655f','#ffe3a5','#c69776','#8e6b65','#fff1bc'],
+  clock:   ['#37516d','#c8b99b','#868f97','#555d75','#ffe4aa'],
+  ember:   ['#512c4b','#f7a371','#9e6267','#573e5d','#ffdc88'],
+  eclipse: ['#181f3c','#886992','#585477','#30324f','#f3bfd6'],
+  crown:   ['#3c295f','#db92a5','#8c6b9c','#4c4269','#ffe49c'],
+};
+function buildCampaignCourse(stage, blueprint){
+  const [name,theme,modules,tip] = blueprint;
+  const rows = Array.from({length:12}, (_,y) => Array(170).fill(y>=10?'#':'.'));
+  const enemies = [], gaps = [], checkpoints = [60,112];
+  const put = (x,y,text) => { for (let n=0;n<text.length;n++) rows[y][x+n] = text[n]; };
+  const gems = (x,y,n) => { for (let i=0;i<n;i++) if (rows[y][x+i] === '.') rows[y][x+i]='o'; };
+  const gapWidth = stage < 8 ? 3 : 4;
+  const gap = (x) => {
+    gaps.push({x,width:gapWidth});
+    for (let y=10;y<12;y++) put(x,y,'.'.repeat(gapWidth));
+    if (stage < 8) put(x-1,8,'==');
+    // Later assists remain optional: the four-tile ground jump is also possible.
+    else if (stage % 2 === 0) put(x,8,'==');
+    gems(x-1,6,gapWidth+2);
+  };
+  const pipe = (x,top) => {
+    put(x,top,'()'); for (let y=top+1;y<10;y++) put(x,y,'[]');
+    gems(x,top-1,2);
+  };
+  modules.forEach((type,i) => {
+    const x = 8+i*26;
+    put(x+3,7,i===0?'BGB':i===2?'BSB':i===4?'BIB':i===1?'BMB':'B?B');
+    gems(x+3,6,3); gems(x,9,3);
+    if (type === 0){ pipe(x+12,8); gap(x+20); }
+    else if (type === 1){
+      put(x+11,9,'######'); put(x+13,8,'##'); gems(x+11,7,6); gap(x+20);
+    } else if (type === 2){
+      gap(x+14); put(x+11,8,'=='); put(x+17,7,'==='); gems(x+17,6,3);
+    } else if (type === 3){
+      put(x+14,9,stage>=12?'^^':'^'); put(x+12,7,'====='); gems(x+12,6,5);
+    } else {
+      pipe(x+11,8); pipe(x+18,8);
+      if (stage >= 7 && i % 2 === 0) enemies.push(['plant',x+18,8]);
+    }
+    // Protected patrol pockets: never on a pit, spike, checkpoint, or pipe.
+    const kind = stage >= 6 && i % 2 === 1 ? 'beetle' : (i % 2 === 0 ? 'hopper' : 'walker');
+    enemies.push([kind,x+8,10,x+6,x+10]);
+    enemies.push([i%2===0?'shell':'walker',x+25,10,x+24,x+25]);
+    if (stage >= 4 && i < Math.min(5,Math.floor((stage-2)/2))){
+      enemies.push(['bat',x+15,5,x+11,x+20]);
+    }
+  });
+  // The bonus doorway and its return position stay clear on every course.
+  put(42,9,'D');
+  for (const x of checkpoints) for (let y=7;y<10;y++) put(x,y,'K');
+  // A safe final checkpoint and a flat arena for milestone guardians.
+  if (stage % 5 === 0){
+    checkpoints.push(136);
+    for (let y=7;y<10;y++) put(136,y,'K');
+    enemies.push(['guardian',145,10,141,150]);
+    put(139,7,'S'); gems(138,6,5);
+  } else { put(140,7,'+'); gems(139,6,4); }
+  for (let i=enemies.length-1;i>=0;i--){
+    if (enemies[i][0] !== 'guardian' && checkpoints.some(x=>Math.abs(x-enemies[i][1])<4)) enemies.splice(i,1);
+  }
+  for (let y=2;y<10;y++) put(152,y,'F');
+  for (let y=2;y<4;y++) put(156,y,'F');
+  for (let y=4;y<10;y++) put(155,y,y===4?'****':'******');
+  put(155,8,'E'); put(155,9,'E'); gems(147,9,3);
+  return {name,theme,tip,rows:rows.map(row=>row.join('')),enemies,gaps,checkpoints,
+    time:Math.max(250,325-stage*5), speedScale:1+(stage-2)*0.035,
+    difficulty:stage<=5?'ADVENTURE':stage<=10?'CHALLENGING':'EXPERT'};
+}
+for (let i=0;i<CAMPAIGN_BLUEPRINTS.length;i++) COURSES.push(buildCampaignCourse(i+3,CAMPAIGN_BLUEPRINTS[i]));
+COURSES[0].tip = 'Learn the jumps, collect gems and reach the castle.';
+COURSES[1].tip = 'Explore higher routes and look for the checkpoint pennants.';
+const TOTAL_STAGES = COURSES.length;
+
+function loadCampaignProgress(raw, oldStage2){
+  const valid = raw && typeof raw === 'object' && !Array.isArray(raw) ? raw : {};
+  const unlocked = Number.isInteger(valid.unlocked) ? clamp(valid.unlocked,1,TOTAL_STAGES) : (oldStage2 ? 2 : 1);
+  const cleared = Array.isArray(valid.cleared) ? [...new Set(valid.cleared.filter(n=>Number.isInteger(n)&&n>=1&&n<=TOTAL_STAGES&&n<=unlocked))] : [];
+  return {unlocked,cleared};
+}
+
+// Cache only the current later-stage backdrop, rather than 13 full canvas sets.
+function courseBackdrop(stage){
+  if (stage === 1) return ASSETS.bg;
+  if (stage === 2) return ASSETS.sunset;
+  if (ASSETS.courseBackdrop && ASSETS.courseBackdrop.stage === stage) return ASSETS.courseBackdrop;
+  const [top,bottom,far,near,sun] = COURSE_THEMES[COURSES[stage-1].theme];
+  const bg = {stage,sky:cv(VIEW_W,VIEW_H)};
+  const x = g2(bg.sky), grad = x.createLinearGradient(0,0,0,VIEW_H);
+  grad.addColorStop(0,top); grad.addColorStop(1,bottom);
+  x.fillStyle = grad; x.fillRect(0,0,VIEW_W,VIEW_H);
+  x.fillStyle = sun; x.beginPath(); x.arc(790,170,46,0,Math.PI*2); x.fill();
+  if ([4,7,10,14,15].includes(stage)){
+    x.fillStyle = '#e6e4ff';
+    for (let i=0;i<36;i++) x.fillRect((i*137+stage*19)%940,28+(i*73)%250,i%3===0?3:2,2);
+  }
+  for (const [name,color] of [['far',far],['near',near]]){
+    const source=ASSETS.bg[name], layer=cv(source.width,source.height), px=g2(layer);
+    px.drawImage(source,0,0); px.globalCompositeOperation='source-atop';
+    px.fillStyle=color; px.fillRect(0,0,layer.width,layer.height); bg[name]=layer;
+  }
+  ASSETS.courseBackdrop=bg;
+  return bg;
+}
+
 class Level {
   constructor(rows, isBonus){
     this.isBonus = !!isBonus;

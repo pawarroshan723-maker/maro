@@ -261,9 +261,17 @@ class Enemy {
     this.state = kind === 'shell' ? 'walk' : 'walk';
     this.rise = 0; this.baseY = y; this.walkT = Math.random()*10;
     this.phase = 'hidden'; this.phaseT = 1 + Math.random();
+    this.hp = 1; this.maxHp = 1; this.hitT = 0; this.hopT = 1.1;
+    this.attackT = 1.6; this.warningT = 0;
+    this.patrolMin = x-72; this.patrolMax = x+120;
+    this.boundedPatrol = false;
     // Tuned for accessibility: slower walkers, shells less aggressive
     if (kind === 'walker'){ this.w = 34; this.h = 34; this.speed = 42; }
     else if (kind === 'shell'){ this.w = 36; this.h = 30; this.speed = 38; }
+    else if (kind === 'hopper'){ this.w=30; this.h=32; this.speed=48; }
+    else if (kind === 'bat'){ this.w=36; this.h=24; this.speed=64; }
+    else if (kind === 'beetle'){ this.w=38; this.h=30; this.speed=35; this.hp=this.maxHp=2; }
+    else if (kind === 'guardian'){ this.w=56; this.h=64; this.speed=38; this.hp=this.maxHp=3; this.phase='patrol'; }
     else { // plant
       this.w = 30; this.h = 26;
       this.baseY = y;               // pipe top (world y)
@@ -294,8 +302,33 @@ class Enemy {
       if (this.rise <= 0){ this.phase = 'hidden'; this.phaseT = 1.4 + Math.random()*1.2; }
     }
   }
+  updateBat(dt, G){
+    this.walkT += dt;
+    this.x += this.dir*this.speed*dt;
+    if (this.x < this.patrolMin){ this.x=this.patrolMin; this.dir=1; }
+    if (this.x+this.w > this.patrolMax){ this.x=this.patrolMax-this.w; this.dir=-1; }
+    this.y = this.baseY + Math.sin(this.walkT*2.4)*24;
+  }
+  updateGuardian(dt, G){
+    const near = Math.abs((G.player.x+G.player.w/2)-(this.x+this.w/2)) < 440;
+    this.attackT -= dt;
+    if (this.phase === 'warning'){
+      this.warningT -= dt;
+      if (this.warningT <= 0){
+        if (near && G.enemyShots.filter(s=>!s.remove).length < 6){
+          const dir = G.player.x < this.x ? -1 : 1;
+          G.enemyShots.push(new EnemyBolt(this.x+this.w/2+dir*36,this.y+this.h-18,dir,160+G.stage*4));
+          AudioSys.sfx.shoot();
+        }
+        this.phase='patrol'; this.attackT=Math.max(1.25,2.8-G.stage*0.06);
+      }
+    } else if (this.attackT<=0 && near){
+      this.phase='warning'; this.warningT=0.85; this.vx=0;
+    }
+  }
   update(dt, G){
     const lv = G.level, cam = G.cam.x;
+    this.hitT = Math.max(0,this.hitT-dt);
     if (!this.active){
       if (this.x > cam - 140 && this.x < cam + 1100) this.active = true;
       else return;
@@ -312,13 +345,24 @@ class Enemy {
       this.updatePlant(dt, G);
       return;
     }
+    if (this.kind === 'bat'){ this.updateBat(dt,G); return; }
+    if (this.kind === 'guardian') this.updateGuardian(dt,G);
+    if (this.kind === 'hopper' && this.onGround){
+      this.hopT -= dt;
+      if (this.hopT <= 0){ this.vy=-480; this.hopT=1.5; }
+    }
     let sp = this.speed;
+    if (this.kind === 'guardian' && this.phase === 'warning') sp=0;
     if (this.kind === 'shell' && this.state === 'live') sp = 300; // was 430, now more controllable
     if (this.kind === 'shell' && this.state === 'idle') sp = 0;
     this.vx = this.dir * sp;
     this.vy = Math.min(this.vy + PHYS.GRAV*dt, PHYS.MAX_FALL);
     this.prevBottom = this.y + this.h;
     moveAndCollide(lv, this, dt);
+    if (this.boundedPatrol && !(this.kind==='shell' && this.state==='live')){
+      if (this.x<this.patrolMin){ this.x=this.patrolMin; this.dir=1; }
+      if (this.x+this.w>this.patrolMax){ this.x=this.patrolMax-this.w; this.dir=-1; }
+    }
     if (this.onWall){
       this.dir *= -1;
       if (this.kind === 'shell' && this.state === 'live'){
@@ -335,6 +379,22 @@ class Enemy {
     this.walkT += dt;
     if (this.y > lv.h*TILE + 100) this.remove = true;
     if (this.kind === 'shell' && this.state === 'live' && (this.x < cam - 260 || this.x > cam + 1220)) this.remove = true;
+  }
+}
+
+// Guardian bolts are separate from player shots and freeze in bonus rooms.
+class EnemyBolt {
+  constructor(x,y,dir,speed){ this.x=x; this.y=y; this.vx=dir*speed; this.r=7; this.t=0; this.remove=false; }
+  update(dt,G){
+    this.t+=dt; this.x+=this.vx*dt;
+    if (this.t>4 || this.x<G.cam.x-160 || this.x>G.cam.x+VIEW_W+160 || tileSolidAt(G.level,this.x,this.y)){
+      this.remove=true; return;
+    }
+    if (circleRect(this,G.player)){
+      this.remove=true;
+      if (G.player.invT<=0) G.hurtPlayer({x:this.x,w:14});
+      else G.particles.spark(this.x,this.y,'#ffe14d',4);
+    }
   }
 }
 

@@ -4,11 +4,13 @@ const Game = {
   score: 0, gems: 0, lives: 3, timeLeft: LEVEL_TIME,
   high: Store.get('high', 0),
   stage: 1,
-  stage2Unlocked: Store.get('stage2Unlocked', false) === true,
+  progress: loadCampaignProgress(Store.get('campaign',null),Store.get('stage2Unlocked',false) === true),
+  get stage2Unlocked(){ return this.progress.unlocked >= 2; },
+  gateHintT: 0,
   get course(){ return COURSES[this.stage-1]; },
   level: null, mainLevel: null, bonusLevel: null, inBonus: false,
   player: null,
-  enemies: [], items: [], shots: [], pops: [],
+  enemies: [], items: [], shots: [], pops: [], enemyShots: [],
   texts: [],
   cam: { x: 0, y: 0 },
   shakeT: 0, shakeMag: 0, shakeDur: 1,
@@ -33,7 +35,7 @@ const Game = {
     this.spawnEntities();
     this.state = 'TITLE';
     this.cam.x = 30; this.cam.y = 0;
-    $('btn-stage2').hidden = !this.stage2Unlocked;
+    updateStageUI();
     $('title-hi').textContent = 'BEST ' + pad6(this.high);
     setupCanvas();
     TouchUI.init();
@@ -52,13 +54,25 @@ const Game = {
     this.items.length = 0;
     this.shots.length = 0;
     this.pops.length = 0;
+    this.enemyShots.length = 0;
     for (const s of this.course.enemies){
       if (s[0] === 'walker') this.enemies.push(new Enemy('walker', s[1]*TILE + 7, GROUND_ROW*TILE - 34));
       else if (s[0] === 'shell') this.enemies.push(new Enemy('shell', s[1]*TILE + 6, GROUND_ROW*TILE - 30));
       else if (s[0] === 'plant') this.enemies.push(new Enemy('plant', (s[1]+1)*TILE - 15, s[2]*TILE));
+      else {
+        const enemy=new Enemy(s[0],s[1]*TILE,(s[2]||GROUND_ROW)*TILE);
+        enemy.x += (TILE-enemy.w)/2; enemy.y -= enemy.h; enemy.baseY=enemy.y;
+        if(enemy.kind==='guardian') enemy.hp=enemy.maxHp=2+this.stage/5;
+        this.enemies.push(enemy);
+      }
+      const enemy=this.enemies[this.enemies.length-1];
+      if (s[3] !== undefined){
+        enemy.patrolMin=s[3]*TILE; enemy.patrolMax=(s[4]+1)*TILE; enemy.boundedPatrol=true;
+      }
+      if (this.course.speedScale && enemy.speed) enemy.speed *= this.course.speedScale;
     }
     // Predictable opening patrols make Stage 2 encounters learnable on retries.
-    if (this.stage === 2) for (const enemy of this.enemies) enemy.dir = -1;
+    if (this.stage >= 2) for (const enemy of this.enemies) enemy.dir = -1;
     for (const g of this.level.gemSpawns){
       this.items.push(new Item('gem', g.tx*TILE + 11, g.ty*TILE + 11));
     }
@@ -77,12 +91,13 @@ const Game = {
   // ---- flow ----
   startGame(stage = 1, carry = false){
     const form = carry && this.player ? this.player.form : 'small';
-    this.stage = stage === 2 ? 2 : 1;
+    this.stage = Number.isInteger(stage) ? clamp(stage,1,TOTAL_STAGES) : 1;
     AudioSys.unlock();
     hideAllOverlays();
     document.body.classList.add('in-game');
     if (!carry){ this.score = 0; this.gems = 0; this.lives = 3; }
     this.checkX = START_TX;
+    this.gateHintT = 0;
     this.mainLevel = new Level(this.course.rows, false);
     this.level = this.mainLevel;
     this.inBonus = false;
@@ -110,9 +125,12 @@ const Game = {
     this.mainLevel = new Level(this.course.rows, false);
     this.level = this.mainLevel;
     this.inBonus = false;
+    this.mainItems = [];
+    this.bonusLockT = 0;
     this.timeLeft = this.course.time;
     this.multiQ = 0;
     this.player.reset(this.checkX, this.player.form, GROUND_ROW);
+    if (this.stage>=3) this.player.hurtT=1.5; // Safe checkpoint recovery, not a free attack boost.
     this.spawnEntities();
     this.cam.x = clamp(this.player.x - 320, 0, this.level.w*TILE - VIEW_W);
     this.cam.y = 0;
@@ -141,7 +159,7 @@ const Game = {
     this.fade = null;
     this.state = 'TITLE';
     AudioSys.stopMusic();
-    $('btn-stage2').hidden = !this.stage2Unlocked;
+    updateStageUI();
     $('title-hi').textContent = 'BEST ' + pad6(this.high);
     showOv('ov-title');
     needRender = true;
@@ -260,7 +278,15 @@ const Game = {
     vib(12);
   },
   defeatEnemy(e, pts, style){
-    if (e.dead) return;
+    if (e.dead || e.remove || (e.hitT>0 && style!=='crush')) return;
+    if (e.hp>1 && style!=='crush'){
+      e.hp--; e.hitT=0.45;
+      this.particles.spark(e.x+e.w/2,e.y+10,'#ffe089',6);
+      this.addText(e.x+e.w/2,e.y-8,'HIT!', '#ffe089',14);
+      AudioSys.sfx.stomp(); return;
+    }
+    e.hp=0;
+    if(e.kind==='guardian'){ pts=1000+this.stage*100; this.enemyShots.length=0; }
     e.dead = true; e.deadT = 0;
     e.vy = -420;
     e.vx = (Math.random() < 0.5 ? -1 : 1) * 70;
@@ -277,6 +303,7 @@ const Game = {
     this.particles.spark(s.x, s.y, '#ffd23e', 6);
     if (e.kind === 'walker') this.defeatEnemy(e, 200, 'shot');
     else if (e.kind === 'plant') this.defeatEnemy(e, 200, 'shot');
+    else if (e.kind !== 'shell') this.defeatEnemy(e,200,'shot');
     else if (e.kind === 'shell'){
       if (e.state === 'live'){
         AudioSys.sfx.bounce();
@@ -301,7 +328,7 @@ const Game = {
         return;
       }
       p.vy = Input.jumpHeld ? -640 : -430;
-      if (e.kind === 'walker'){
+      if (e.kind !== 'shell'){
         this.stompChain++;
         this.chainT = 1.2;
         const pts = 100 * (1 << Math.min(this.stompChain - 1, 4));
@@ -385,6 +412,10 @@ const Game = {
   },
   onFlag(p, ty){
     if (this.state !== 'PLAYING') return;
+    if(this.enemies.some(e=>e.kind==='guardian'&&!e.dead&&!e.remove)){
+      if(this.gateHintT<=0){ this.addText(p.x,p.y-28,'DEFEAT THE GUARDIAN!', '#ffe089',16); this.gateHintT=1.5; }
+      return;
+    }
     this.state = 'CLEARING';
     this.clearPhase = 0;
     this.clearT = 0;
@@ -442,7 +473,7 @@ const Game = {
     }
   },
   nextStage(){
-    if (this.state === 'CLEAR' && this.stage === 1) this.startGame(2, true);
+    if (this.state === 'CLEAR' && this.stage < TOTAL_STAGES) this.startGame(this.stage+1, true);
   },
   finishClear(){
     if (this.state === 'CLEAR') return;
@@ -456,12 +487,18 @@ const Game = {
       '<br>TIME BONUS&nbsp;&nbsp;' + pad6(this.timeBonus) +
       '<br>GEMS&nbsp;&nbsp;×' + this.gems +
       '<br><span class="total">TOTAL ' + pad6(this.score) + '</span>';
-    if (this.stage === 1){
-      this.stage2Unlocked = true; Store.set('stage2Unlocked', true);
-    }
-    $('btn-next-stage').hidden = this.stage !== 1;
-    $('clear-heading').textContent = this.stage === 1 ? 'STAGE 1 CLEAR!' : 'STAGE 2 CLEAR!';
-    $('clear-message').textContent = this.stage === 1 ? 'Sunset Ridge unlocked. Your adventure continues!' : 'VICTORY — both bluffs are safe!';
+    const last = this.stage === TOTAL_STAGES;
+    this.progress.unlocked=Math.max(this.progress.unlocked,Math.min(TOTAL_STAGES,this.stage+1));
+    if(!this.progress.cleared.includes(this.stage)) this.progress.cleared.push(this.stage);
+    Store.set('campaign',this.progress);
+    if(this.stage===1) Store.set('stage2Unlocked',true); // migrate old two-stage saves
+    let reward='';
+    if(this.stage%3===0 && this.lives<MAX_LIVES){ this.lives++; reward=' +1 LIFE!'; }
+    $('btn-next-stage').hidden=last;
+    if(!last) $('btn-next-stage').textContent='NEXT → '+COURSES[this.stage].name;
+    $('clear-heading').textContent=last?'CAMPAIGN COMPLETE!':'STAGE '+this.stage+' / '+TOTAL_STAGES+' CLEAR!';
+    $('clear-message').textContent=(last?'The Gem Kingdom is safe. All 15 stages conquered!':COURSES[this.stage].name+' unlocked!')+reward;
+    updateStageUI();
     $('clear-hi').textContent = 'BEST ' + pad6(this.high);
     showOv('ov-clear');
   },
@@ -548,6 +585,7 @@ const Game = {
   },
   tickPlaying(dt){
     const p = this.player;
+    this.gateHintT=Math.max(0,this.gateHintT-dt);
     this.timeLeft -= dt;
     if (this.timeLeft <= 0){
       this.timeLeft = 0;
@@ -606,7 +644,7 @@ const Game = {
         if (e.kind !== 'shell' || e.state !== 'live' || e.dead || e.remove) continue;
         for (const o of this.enemies){
           if (o === e || o.dead || o.remove) continue;
-          if (o.kind === 'walker' || o.kind === 'plant'){
+          if (o.kind !== 'shell'){
             const b = o.box();
             if (b.active && aabb(e, b)) this.defeatEnemy(o, 200, 'shell');
           }
@@ -632,6 +670,7 @@ const Game = {
           if (circleRect(s, b)){ this.hitShot(s, e); break; }
         }
       }
+      for(const shot of this.enemyShots) if(!shot.remove) shot.update(dt,this);
       // player vs enemies
       for (const e of this.enemies){
         if (e.dead || e.remove) continue;
@@ -648,6 +687,7 @@ const Game = {
     this.compact(this.enemies);
     this.compact(this.items);
     this.compact(this.shots);
+    this.compact(this.enemyShots);
     this.compact(this.pops);
 
     this.particles.update(dt);
@@ -834,8 +874,16 @@ function drawStrip(img, y, par, camX){
 
 function drawScene(camX, camY){
   const G = Game;
-  const backdrop = G.stage === 2 ? ASSETS.sunset : ASSETS.bg;
+  const backdrop = courseBackdrop(G.stage);
   ctx.drawImage(backdrop.sky, 0, 0);
+  if([8,13,15].includes(G.stage)){
+    ctx.fillStyle=G.stage===8?'#e5f8ff':'#ffc489';
+    for(let i=0;i<(Settings.effectsReduced?10:28);i++){
+      const sx=mod(i*83+gameT*(G.stage===8?9:-12)-camX*0.1,VIEW_W);
+      const sy=mod(i*59+gameT*(G.stage===8?22:-16),VIEW_H);
+      ctx.fillRect(sx,sy,2,2);
+    }
+  }
   for (const cl of ASSETS.bg.clouds){
     const sx = mod(cl.x - camX*0.25, VIEW_W + 260) - 130;
     ctx.drawImage(cl.img, Math.round(sx), cl.y);
@@ -885,18 +933,23 @@ function drawScene(camX, camY){
     ctx.globalAlpha = 1;
   }
 
-  // enemies
-  for (const e of G.enemies){
+  // Main-course enemies must not leak into the safe bonus room.
+  for (const e of (G.inBonus?[]:G.enemies)){
     if (e.remove) continue;
     if (e.x < camX - 80 || e.x > camX + VIEW_W + 80) continue;
     if (e.dead && e.kind === 'plant') continue;   // plants pop, no corpse
     drawEnemy(e, camX, camY);
   }
 
+  if(!G.inBonus) for(const shot of G.enemyShots){
+    if(shot.remove) continue;
+    ctx.fillStyle='#8f497c'; ctx.beginPath(); ctx.arc(shot.x-camX,shot.y-camY,9,0,Math.PI*2); ctx.fill();
+    ctx.fillStyle='#ffdc96'; ctx.beginPath(); ctx.arc(shot.x-camX,shot.y-camY,5,0,Math.PI*2); ctx.fill();
+  }
   drawPlayer(camX, camY);
 
   // projectiles
-  for (const s of G.shots){
+  for (const s of (G.inBonus?[]:G.shots)){
     if (s.remove) continue;
     const sx = Math.round(s.x - camX), sy = Math.round(s.y - camY);
     ctx.fillStyle = '#ff9d47';
@@ -1009,12 +1062,56 @@ function drawPlant(e, camX, camY){
   ctx.fillRect(cx + 3, hy - 1, 2, 3);
 }
 
+function drawCampaignEnemy(e,x,y){
+  const R=(a,b,w,h,c)=>{ ctx.fillStyle=c; ctx.fillRect(x+a,y+b,w,h); };
+  if (e.hitT>0 && ((gameT*20)|0)%2===0) ctx.globalAlpha=0.5;
+  if (e.kind === 'bat'){
+    const flap=Math.sin(e.walkT*12)>0 ? -5 : 6;
+    R(0,5+flap,12,7,'#533c78'); R(24,5-flap,12,7,'#533c78');
+    R(2,6+flap,9,3,'#b394e3'); R(26,6-flap,8,3,'#b394e3');
+    R(10,5,16,16,'#7552a1'); R(11,0,4,8,'#7552a1'); R(21,0,4,8,'#7552a1');
+    R(12,9,5,5,'#fff4d5'); R(20,9,5,5,'#fff4d5');
+    R(15,10,2,3,'#2e254a'); R(22,10,2,3,'#2e254a'); R(17,17,3,4,'#fff4d5');
+  } else if (e.kind === 'hopper'){
+    const lift=e.onGround?0:3;
+    R(2,0,5,13,'#3c8f69'); R(23,0,5,13,'#3c8f69');
+    R(3,1,3,6,'#ffcd80'); R(24,1,3,6,'#ffcd80');
+    R(3,9,24,19,'#3c8f69'); R(7,18,16,9,'#c6e6ac');
+    R(6,12,6,6,'#fff'); R(19,12,6,6,'#fff');
+    R(9,14,3,3,'#183c43'); R(21,14,3,3,'#183c43');
+    R(0,27-lift,10,5,'#24575a'); R(20,27-lift,10,5,'#24575a');
+    if (e.onGround && e.hopT<0.35) R(11,3,8,3,'#ffe58c');
+  } else if (e.kind === 'beetle'){
+    const step=Math.sin(e.walkT*10)>0?2:0;
+    R(3,24,10,6,'#343d62'); R(26,24-step,9,6,'#343d62');
+    R(2,8,34,18,'#345b7a'); R(6,2,26,22,'#5a91a4');
+    R(8,4,20,4,'#a2d9cd'); R(17,6,3,16,'#345b7a');
+    R(e.dir>0?24:4,16,10,8,'#dceac4'); R(e.dir>0?29:5,17,3,4,'#23364a');
+    for(let i=0;i<e.hp;i++) R(10+i*12,10,5,4,'#ffe089');
+  } else {
+    R(5,53,17,11,'#302d49'); R(34,53,17,11,'#302d49');
+    R(5,18,46,38,'#62436a'); R(10,20,36,30,'#b96f68');
+    R(18,28,20,20,'#f6bc75'); R(23,31,10,12,e.phase==='warning'?'#fff4b4':'#8b5470');
+    R(9,4,38,22,'#765377'); R(12,7,32,14,'#f4d7a7');
+    R(4,0,9,10,'#e2aa63'); R(43,0,9,10,'#e2aa63');
+    R(15,10,8,5,'#302d49'); R(33,10,8,5,'#302d49');
+    R(0,27,9,23,'#765377'); R(47,27,9,23,'#765377');
+    if(e.phase==='warning'){
+      ctx.fillStyle='#ffe089'; ctx.font='bold 22px monospace'; ctx.textAlign='center';
+      ctx.fillText('!',x+28,y-22); ctx.textAlign='left';
+    }
+    R(0,-12,56,6,'#302d49'); R(1,-11,54*e.hp/e.maxHp,4,'#f4b86d');
+  }
+  ctx.globalAlpha=1;
+}
+
 function drawEnemy(e, camX, camY){
   const x = Math.round(e.x - camX), y = Math.round(e.y - camY);
   const kind = (xx, yy) => {
     if (e.kind === 'walker') drawWalker(e, xx, yy);
     else if (e.kind === 'shell') drawShell(e, xx, yy);
-    else drawPlant(e, camX, camY);
+    else if(e.kind==='plant') drawPlant(e, camX, camY);
+    else drawCampaignEnemy(e,xx,yy);
   };
   if (e.dead){
     const cxp = x + e.w/2, cyp = y + e.h/2;
@@ -1105,7 +1202,7 @@ function drawHUD(){
   ctx.textAlign = 'left';
   ctx.textBaseline = 'top';
   ctx.fillStyle = 'rgba(10,20,40,.75)';
-  const name = (G.inBonus ? 'SECRET ROOM' : G.stage + ' · ' + G.course.name);
+  const name = (G.inBonus ? 'SECRET ROOM' : G.stage + '/'+TOTAL_STAGES+' · ' + G.course.name);
   ctx.fillText(name, 21, 57);
   ctx.fillStyle = '#bcd0f5';
   ctx.fillText(name, 20, 56);
@@ -1115,16 +1212,16 @@ function drawHUD(){
   const labels = { small:'S', big:'G', shoot:'P', star:'*' };
   const cols = { small:'#9fb4dd', big:'#9fe870', shoot:'#ff9dd5', star:'#ffe14d' };
   ctx.fillStyle = 'rgba(10,20,40,.6)';
-  ctx.fillRect(148, 52, 34, 26);
+  ctx.fillRect(240, 52, 34, 26);
   ctx.strokeStyle = 'rgba(255,255,255,.35)';
-  ctx.strokeRect(148.5, 52.5, 33, 25);
+  ctx.strokeRect(240.5, 52.5, 33, 25);
   ctx.font = '800 18px "Courier New", monospace';
   ctx.fillStyle = cols[state];
-  ctx.fillText(labels[state], 156, 55);
+  ctx.fillText(labels[state], 248, 55);
   if (p.invT > 0){
     ctx.fillStyle = cols.star;
     ctx.font = '800 16px "Courier New", monospace';
-    ctx.fillText(Math.ceil(p.invT) + 's', 188, 56);
+    ctx.fillText(Math.ceil(p.invT) + 's', 280, 56);
   }
 }
 
@@ -1139,7 +1236,9 @@ function drawReady(){
   ctx.font = '800 26px "Courier New", monospace';
   ctx.globalAlpha = 0.6 + 0.4*Math.sin(gameT*6);
   ctx.fillStyle = '#fff';
-  ctx.fillText('STAGE '+Game.stage+' — GET READY!', 480, 262);
+  ctx.fillText('STAGE '+Game.stage+' / '+TOTAL_STAGES+' — GET READY!', 480, 262);
+  ctx.globalAlpha=1; ctx.font='700 14px monospace';
+  ctx.fillText(Game.course.tip || '',480,310);
   ctx.globalAlpha = 1;
   ctx.textAlign = 'left';
 }
@@ -1202,6 +1301,23 @@ function on(id, fn){
     AudioSys.unlock();
     fn();
   });
+}
+
+function startSelectedStage(stage){
+  if(!Number.isInteger(stage)||stage<1||stage>Game.progress.unlocked) return false;
+  Game.startGame(stage); return true;
+}
+function updateStageUI(){
+  $('btn-continue').hidden=Game.progress.unlocked<=1;
+  $('btn-continue').textContent='CONTINUE · '+Game.progress.unlocked+' / '+TOTAL_STAGES;
+  $('stage-progress').textContent=Game.progress.cleared.length+' / '+TOTAL_STAGES+' stages cleared · Unlocked stages start a fresh run.';
+  for(let stage=1;stage<=TOTAL_STAGES;stage++){
+    const b=$('stage-'+stage), unlocked=stage<=Game.progress.unlocked, done=Game.progress.cleared.includes(stage);
+    b.disabled=!unlocked;
+    b.classList.toggle('cleared',done);
+    b.setAttribute('aria-label','Stage '+stage+': '+COURSES[stage-1].name+(done?', cleared':unlocked?', unlocked':', locked'));
+    $('stage-status-'+stage).textContent=done?'✓ CLEARED':unlocked?(COURSES[stage-1].difficulty||'EXPLORER'):'LOCKED';
+  }
 }
 
 function updateToggles(){
@@ -1321,7 +1437,10 @@ function wireUI(){
     Store.set('opacity', Settings.opacity);
     Settings.apply();
   });
-  on('btn-stage2', () => { if (Game.stage2Unlocked) Game.startGame(2); });
+  on('btn-continue', () => Game.startGame(Game.progress.unlocked));
+  on('btn-stages', () => { updateStageUI(); showOv('ov-stages'); });
+  on('btn-stages-back', () => { hideOv('ov-stages'); showOv('ov-title'); });
+  for(let stage=1;stage<=TOTAL_STAGES;stage++) on('stage-'+stage,()=>startSelectedStage(stage));
   on('btn-next-stage', () => Game.nextStage());
   on('btn-retry', () => Game.startGame(Game.stage));
   on('btn-over-title', () => Game.toTitle());
@@ -1399,6 +1518,7 @@ function updateKeyboardUI(){
 }
 function keyboardDown(e){
   const k = e.key.toLowerCase();
+  if(k==='escape' && !$('ov-stages').hidden){ hideOv('ov-stages'); showOv('ov-title'); e.preventDefault(); return; }
   if (Keyboard.capture){
     e.preventDefault();
     if (e.repeat) return;

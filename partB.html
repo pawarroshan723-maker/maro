@@ -26,16 +26,43 @@
   <div class="overlay" id="ov-title" hidden>
     <div class="panel">
       <div class="logo">MARO</div>
-      <div class="logo-sub"><strong>GEM DASH</strong> · SUNNY BLUFF · A POCKET PLATFORM ADVENTURE</div>
+      <div class="logo-sub"><strong>GEM DASH</strong> · THE GEM KINGDOM · 15-STAGE ADVENTURE</div>
       <div class="hi" id="title-hi">BEST 000000</div>
       <button type="button" class="btn btn-big" id="btn-start">TAP TO START</button>
-      <button type="button" class="btn" id="btn-stage2" hidden>PLAY STAGE 2 · SUNSET RIDGE</button>
+      <button type="button" class="btn" id="btn-continue" hidden>CONTINUE ADVENTURE</button>
+      <button type="button" class="btn" id="btn-stages">STAGE SELECT · 15 COURSES</button>
       <div class="row">
         <button type="button" class="btn" id="btn-how">HOW TO PLAY</button>
         <button type="button" class="btn btn-ico" id="btn-fs-t" aria-label="Toggle fullscreen">⛶</button>
         <button type="button" class="btn btn-ico" id="btn-snd-t" aria-label="Toggle sound">♪</button>
       </div>
-      <div class="tip">◀ ▶ move &nbsp;·&nbsp; A jump (hold = higher) &nbsp;·&nbsp; B run / shoot &nbsp;·&nbsp; ▼ crouch &amp; enter doors<br>Featuring Maro the flame-tailed fox 🦊 · Two stages · Gems &amp; power-ups · Secret bonus rooms!</div>
+      <div class="tip">◀ ▶ move &nbsp;·&nbsp; A jump (hold = higher) &nbsp;·&nbsp; B run / shoot &nbsp;·&nbsp; ▼ crouch &amp; enter doors<br>Featuring Maro the flame-tailed fox 🦊 · 15 stages · 4 new enemy types · 3 guardians · Secret bonus rooms!</div>
+    </div>
+  </div>
+
+  <div class="overlay" id="ov-stages" hidden>
+    <div class="panel campaign-panel">
+      <h2>THE GEM KINGDOM</h2>
+      <p class="setting-help" id="stage-progress" role="status"></p>
+      <div class="stage-grid">
+        <button type="button" class="btn stage-card" id="stage-1"><span class="stage-number">01</span><strong>SUNNY BLUFF</strong><small id="stage-status-1">LOCKED</small></button>
+        <button type="button" class="btn stage-card" id="stage-2"><span class="stage-number">02</span><strong>SUNSET RIDGE</strong><small id="stage-status-2">LOCKED</small></button>
+        <button type="button" class="btn stage-card" id="stage-3"><span class="stage-number">03</span><strong>MOSSWOOD TRAIL</strong><small id="stage-status-3">LOCKED</small></button>
+        <button type="button" class="btn stage-card" id="stage-4"><span class="stage-number">04</span><strong>CRYSTAL CAVERNS</strong><small id="stage-status-4">LOCKED</small></button>
+        <button type="button" class="btn stage-card" id="stage-5"><span class="stage-number">05</span><strong>COPPER OUTPOST</strong><small id="stage-status-5">LOCKED</small></button>
+        <button type="button" class="btn stage-card" id="stage-6"><span class="stage-number">06</span><strong>CORAL CAUSEWAY</strong><small id="stage-status-6">LOCKED</small></button>
+        <button type="button" class="btn stage-card" id="stage-7"><span class="stage-number">07</span><strong>MOONLIT GROVE</strong><small id="stage-status-7">LOCKED</small></button>
+        <button type="button" class="btn stage-card" id="stage-8"><span class="stage-number">08</span><strong>FROSTFALL PASS</strong><small id="stage-status-8">LOCKED</small></button>
+        <button type="button" class="btn stage-card" id="stage-9"><span class="stage-number">09</span><strong>THUNDER HEIGHTS</strong><small id="stage-status-9">LOCKED</small></button>
+        <button type="button" class="btn stage-card" id="stage-10"><span class="stage-number">10</span><strong>OBSIDIAN KEEP</strong><small id="stage-status-10">LOCKED</small></button>
+        <button type="button" class="btn stage-card" id="stage-11"><span class="stage-number">11</span><strong>MIRAGE DUNES</strong><small id="stage-status-11">LOCKED</small></button>
+        <button type="button" class="btn stage-card" id="stage-12"><span class="stage-number">12</span><strong>CLOCKWORK ASCENT</strong><small id="stage-status-12">LOCKED</small></button>
+        <button type="button" class="btn stage-card" id="stage-13"><span class="stage-number">13</span><strong>EMBER CHASM</strong><small id="stage-status-13">LOCKED</small></button>
+        <button type="button" class="btn stage-card" id="stage-14"><span class="stage-number">14</span><strong>ECLIPSE RIDGE</strong><small id="stage-status-14">LOCKED</small></button>
+        <button type="button" class="btn stage-card" id="stage-15"><span class="stage-number">15</span><strong>CROWN CITADEL</strong><small id="stage-status-15">LOCKED</small></button>
+      </div>
+      <p class="setting-help">Stages 1–5: Adventure · 6–10: Challenge · 11–15: Expert<br>Guardians on 5, 10 and 15. Use Next Stage after a clear to carry your lives, gems, score and form.</p>
+      <button type="button" class="btn" id="btn-stages-back">BACK</button>
     </div>
   </div>
 
@@ -56,6 +83,10 @@
         <li>Big Pip breaks bricks. The Nova Star makes you invincible.</li>
         <li>Secret: crouch (▼) at the little wooden door for a bonus room.</li>
         <li>Avoid pits, spikes, and running out of time!</li>
+        <li>Hoppers jump; bats fly. Both can be stomped or shot.</li>
+        <li>Armored beetles need two hits. Guardians on stages 5, 10 and 15 guard the finish.</li>
+        <li>Guardians flash before firing. Jump their bolts, then stomp or shoot. Nova Star defeats any enemy.</li>
+        <li>Clear each stage to unlock the next. Every third clear awards a life, up to nine.</li>
       </ul>
       <button type="button" class="btn btn-big" id="btn-tut-go">TAP TO PLAY</button>
     </div>

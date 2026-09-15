@@ -1,108 +1,96 @@
-# Maro — Gem Dash: Sunny Bluff
+# Maro — Gem Dash: The Gem Kingdom
 
-A self-contained, touch-first platformer where **Maro** (a flame-tailed fox called Pip) dashes across Sunny Bluff to save the Gem Bluff.
+A self-contained, touch-first pixel-art platformer with **15 stages**. Maro travels from Sunny Bluff to Crown Citadel, collecting gems and defeating the three Gate Guardians.
 
-This is a polished, fully-playable web game with no external dependencies. All graphics are procedural canvas art, all audio is synthesized via Web Audio API.
+Open `index.html` in a browser: no installation, external assets, or runtime dependencies. Graphics use Canvas 2D and audio uses the Web Audio API.
 
-## 🎮 How to Play
+## How to play
 
-- **◀ ▶** — Move left / right (or A/D, Arrow Keys)
-- **A** — Jump (hold for higher jump) (Space, W, Z)
-- **B** — Run / Shoot (with Spark Bloom) / Kick shells (Shift, X)
-- **▼** — Crouch / Enter hidden doors (S, Down Arrow)
-- **P / Esc** — Pause
+| Action | Default keyboard | Touch |
+| --- | --- | --- |
+| Move | A / D or ← / → | ◀ / ▶ |
+| Jump (hold for height) | Space, W, Z or ↑ | A |
+| Run / shoot / kick a shell | Shift or X | B |
+| Crouch / enter bonus door | S or ↓ | ▼ |
+| Pause | P or Esc | Pause button |
+| Sound / fullscreen | M / F | System buttons |
 
-**Goals:**
-- Collect floating gems (o) and Q-block gems (?)
-- Stomp walkers from above. Kick idle shells to chain enemies.
-- Hit ? blocks for power-ups:
-  - **G** — Ember Cap: Grow big (break bricks)
-  - **S** — Spark Bloom: Shoot fireballs (B)
-  - **I** — Nova Star: Invincibility (9s)
-  - **+** — Extra life
-  - **M** — Multi-gem fountain
-- Find the secret wooden door (D) — crouch (▼) to enter bonus room
-- Reach the flag pole (F) at col 152, then the destination door (E)
+Collect floating gems and hit `?` blocks from below. Growth makes Maro big, Spark Bloom enables fireballs, Nova Star grants nine seconds of invincibility, and life blocks replenish a life. Multi-gem blocks release five rewards. Stand at a wooden bonus door and crouch to enter; the bonus room has gems and an extra life.
 
-## 🌄 Stage 2 — Sunset Ridge
+Stomp enemies from above or use fireballs. Kick stationary shells to hit other enemies. Reach the finish flag, then the castle entrance. On guardian stages, defeat the guardian before the finish flag will activate.
 
-Clear Sunny Bluff and select **Next Stage → Sunset Ridge**. Your score, gems, remaining lives and power-up form carry over; the stage starts with a fresh 320-second timer and checkpoint. Once unlocked, **Play Stage 2** also appears on the title screen for fresh standalone runs. Unlocking is saved locally when browser storage is available.
+## The 15-stage adventure
 
-Sunset Ridge features a separate 170×12-tile layout, purple sunset hills, three short ravines, four pipes, nine enemies, 40+ gems, raised routes, growth/shooting/star/multi-gem blocks, a bonus room and grounded checkpoints at columns 60 and 114. Death and restart keep you in the current stage. Finishing Stage 2 completes the adventure.
+| Stage | Course | Focus |
+| --- | --- | --- |
+| 1 | Sunny Bluff | Learn movement, blocks, pipes and gems |
+| 2 | Sunset Ridge | Raised routes and short ravines |
+| 3 | Mosswood Trail | Jumping Hoppers and terraces |
+| 4 | Crystal Caverns | Flying Bats above the gem routes |
+| 5 | Copper Outpost | First Gate Guardian: 3 hits |
+| 6 | Coral Causeway | Armored Beetles: 2 hits |
+| 7 | Moonlit Grove | Thorn bypasses and pipe plants |
+| 8 | Frostfall Pass | Four-tile ravines and snowfall |
+| 9 | Thunder Heights | Faster mixed patrols |
+| 10 | Obsidian Keep | Second Gate Guardian: 4 hits |
+| 11 | Mirage Dunes | Tighter timing through mixed obstacles |
+| 12 | Clockwork Ascent | Terraces, thorns and airborne enemies |
+| 13 | Ember Chasm | Expert landings and ember scenery |
+| 14 | Eclipse Ridge | Fast patrols and fewer gap assists |
+| 15 | Crown Citadel | Final Gate Guardian: 5 hits |
 
-Stage-specific validation:
+Every course has a distinct deterministic tile layout, a bonus room, gems and power-ups. Stages 3–15 use separately arranged obstacle modules with stage-specific scenery. Later courses progressively increase patrol speed, reduce the timer, widen ravines (never beyond four tiles), and mix more enemy behaviors. Snow and ember effects are cosmetic; physics remain consistent.
+
+**Progression:** Clear a stage and choose **Next Stage** to carry score, gems, lives and form onward. Each new stage starts with a fresh timer and checkpoint. Every third clear awards a life, capped at nine. Stage 15 ends the campaign.
+
+**Replay:** **Stage Select** shows all 15 courses, locked/unlocked status and completion badges. Choose an unlocked stage to start a fresh run. **Continue** starts a fresh run at the highest unlocked stage. Unlocks and badges save to this browser when local storage is available; older Stage 2 unlocks are migrated.
+
+**Checkpoints:** Later stages have safe checkpoints at columns 60 and 112, plus an arena checkpoint at 136 on guardian stages. Restart/death retains the current stage and checkpoint. Late-stage respawns receive brief damage protection. Bonus rooms freeze and hide main-course enemies and hostile bolts.
+
+## New enemies
+
+- **Hopper:** pauses, flashes its forehead and leaps; stomp or shoot it.
+- **Bat:** flies a bounded, bobbing route; stomp or shoot it.
+- **Armored Beetle:** requires two separated hits. Its glowing shell marks show remaining health. Stomps, fireballs and moving shells damage it.
+- **Gate Guardian:** patrols the arena and flashes for 0.85 seconds before firing a horizontal bolt. Jump bolts and stomp/shoot the guardian. Health bars show remaining hits. Only six hostile bolts can exist at once; bolts expire, hit walls, and are cleared on guardian defeat or stage reset.
+
+Nova Star defeats any enemy, including guardians, and absorbs hostile bolts. Walker, shell and pipe-plant enemies remain throughout the adventure.
+
+## Controls and graphics settings
+
+Pause, then open **Settings**:
+
+- **Keyboard → Default / Custom:** assign letters, numbers, arrows, Space or Shift to movement, crouching, jump and action. Duplicate assignments are rejected. Esc cancels capture; P, M and F stay reserved. Reset Custom Keys restores original primary bindings. Switching to Default does not erase custom assignments. Touch controls are unchanged.
+- **Quality → Standard:** 960×540 backing canvas with fewer effects.
+- **Quality → High:** 1920×1080 backing canvas with full effects, retaining the pixel-art style. A sustained low-FPS fallback can drop rendering to 1×; changing quality resets it.
+- **Reduced effects:** an independent override, also available in High mode.
+
+Settings save locally when browser storage is available.
+
+## Development and validation
+
+The single HTML build is assembled from `partA.html`, `partB.html`, `partC.js`, `partD.js`, `partE.js` and `partF.js`.
+
 ```bash
-STAGE=2 node aiplay.js
-STAGE=2 GEOM_ONLY=1 node aiplay.js
-STAGE=2 node fuzz.js
+node build.js            # rebuild index.html after source edits
+node smoke.js            # gameplay, progression, enemy combat and regression tests
+node campaign-check.js   # all 15 terrain traversals + all-stage input fuzz + smoke
 ```
 
-## ⚙️ Controls and graphics settings
+Individual stages can be simulated with:
 
-Pause with **P / Esc**, then open **Settings**.
-
-- **Keyboard controls → Default:** original arrow/WASD controls and jump/action aliases.
-- **Keyboard controls → Custom:** click an action's key button, then press a new key. Supports letters, numbers, arrows, Space and Shift. Duplicate assignments are rejected. **Esc** cancels capture; **P**, **M** and **F** remain reserved for pause, sound and fullscreen. Reset Custom Keys restores the original primary bindings. Touch controls are unchanged.
-- **Graphics quality → Standard:** 960×540 backing canvas and fewer particles, trails and camera-shake effects for lighter rendering.
-- **Graphics quality → High:** 1920×1080 backing canvas and full effects, retaining the crisp pixel-art style. The existing low-FPS fallback can reduce rendering to 1× if necessary. Changing quality resets that fallback.
-- **Reduced effects** remains available independently and also works in High mode.
-
-Control presets, custom bindings and quality are saved in local storage on the current browser/device (when storage is available).
-
-## 🏗️ Level Design
-
-- **Size:** 170 columns × 12 rows (8160×576 px world)
-- **Pits:** Intentionally forgiving for both human and AI
-  - Pit1: cols 28-31 (4 tiles)
-  - Pit2: cols 66-69 (4 tiles) — with helper platforms at (64-65, row8) and (67-68, row6)
-  - Pit3: cols 107-109 (3 tiles) — with platforms at 106-108, row7
-- **Checkpoints:** At col 94 (K)
-- **Enemies:** 8 total (balanced for accessibility)
-  - Walker at 20 (stomp tutorial)
-  - Shell at 54
-  - Walker at 72
-  - Plant at 86 (timing puzzle)
-  - Walker at 98
-  - Shell at 111
-  - Shell at 136
-  - Walker at 139
-- **Floating gems:** 21+ scattered for exploration
-
-## 🔧 Tech
-
-- **Self-contained:** Single `index.html` (3022 lines) built from `partA.html + partB.html + partC.js + partD.js + partE.js + partF.js`
-- **No dependencies:** Vanilla JS, Canvas 2D, Web Audio API
-- **Mobile-first:** Touch controls, pointer events, safe-area insets, landscape lock attempt
-- **Performance:** Standard 1× / High 2× rendering, auto-degrade to 1× on sustained low FPS, particle pooling (240 max), fixed timestep (60Hz)
-
-## ✅ Quality Gates
-
-- **Smoke tests:** `node smoke.js` — ALL CHECKS PASSED
-  - Covers: boot, movement, jump, mystery blocks, stomp, damage/death/respawn, pit, spikes, power-ups, one-way platforms, bonus room, checkpoint, pause/resume, level complete, game over
-- **Fuzz:** `node fuzz.js` — FUZZ CLEAN (60s, 5 seeds)
-- **AI:** `node aiplay.js` — AI CLEARED THE LEVEL (25.6s, 0 deaths, 20539 score)
-  - With enemies disabled (GEOM_ONLY): clears in 25.1s
-  - Full game with 8 enemies: clears consistently after balancing
-
-## 🐛 Bug Fixes Applied
-
-- **Pits narrowed:** Originally 8 tiles (62-69) and 5 tiles (105-109) — impossible for max jump distance (253px). Now 4 and 3 tiles.
-- **Enemy overlap:** Walkers at 23 and 100 overlapped Q_GROW and Q_STAR blocks, causing instant death on block bump. Moved to 20 and 98.
-- **Enemy crowding:** Removed walker at 40 (zone 32-61) and plant at 81,9 — reduced from 10 to 8 enemies for better flow.
-- **Speed tuning:** Walker 60→42, Shell 55→38, Shell live 430→300 for more controllable difficulty.
-- **Smoke test:** Updated pit existence check from 28,62,105 to 28,66,107 to match new level.
-
-## 🚀 Running
-
-Just open `index.html` in a browser (file:// works). No server needed.
-
-For tests:
 ```bash
-node smoke.js
-node fuzz.js
-node aiplay.js
+STAGE=8 node aiplay.js
+STAGE=15 GEOM_ONLY=1 node aiplay.js
+STAGE=15 node fuzz.js
 ```
 
-## 📝 License
+**Validation scope:** Terrain traversal deliberately disables enemies to test jump reachability. Combat tests separately cover the new enemies, armor, guardian health/finish gates, warning timing, projectile collisions and limits. Fuzz tests run with enemies enabled and exercise five input seeds across 60 simulated seconds per course. The baseline AI is not a complete strategy for expert combat or guardian fights.
+
+Additional smoke coverage includes all-stage unlocking, progress migration and reload, no Stage 16, life caps, bonus-room isolation, checkpoint recovery, custom controls, quality presets, sprite bounds, pipe seams, diamond expiry and castle entrances. Desktop Chromium checks exercised stage-selection locks, scrolling on a narrow viewport, custom keys, quality switching and new-stage rendering.
+
+No generated screenshots, downloaded browser tools or validation logs are required in the repository. `index.html` remains the only file needed to play.
+
+## License
 
 MIT — Made for Arena.

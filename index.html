@@ -6,9 +6,9 @@
 <meta name="theme-color" content="#070b16">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="mobile-web-app-capable" content="yes">
-<meta name="description" content="Maro — Gem Dash: Sunny Bluff. A pocket platform adventure.">
+<meta name="description" content="Maro — Gem Dash: The Gem Kingdom. A 15-stage platform adventure with new enemies and three guardians.">
 <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🦊</text></svg>">
-<title>Maro — Gem Dash: Sunny Bluff</title>
+<title>Maro — Gem Dash: The Gem Kingdom</title>
 <style>
 :root{
   --panel:#101a30; --line:#33477a; --accent:#ff9d47; --gold:#ffe14d;
@@ -135,6 +135,16 @@ body.in-game #sysbar{ display:flex; }
 }
 .panel ul{ text-align:left; font-size:14px; color:#b9c8ea; margin:10px 0 14px; padding-left:20px; }
 .panel li{ margin:5px 0; }
+#ov-stages{ z-index:32; background:rgba(5,9,20,.9); }
+.campaign-panel{ width:min(820px,100%); max-width:820px; }
+.stage-grid{ display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:10px; }
+.stage-grid .stage-card{ display:flex; flex-direction:column; align-items:flex-start; gap:7px; margin:0; padding:14px; text-align:left; min-height:116px; }
+.stage-number{ font-size:23px; color:var(--gold); }
+.stage-card strong{ font-size:12px; letter-spacing:.5px; }
+.stage-card small{ font-size:10px; color:#b7cce3; }
+.stage-card:disabled{ opacity:.4; cursor:not-allowed; filter:grayscale(.6); }
+.stage-card.cleared{ border-color:#76c695; background:#1d4b46; }
+@media(max-width:540px){ .stage-grid{ grid-template-columns:repeat(2,minmax(0,1fr)); } }
 .set-row{
   display:flex; align-items:center; justify-content:space-between; gap:12px;
   padding:10px 0; font-size:17px; border-bottom:1px solid rgba(255,255,255,.08);
@@ -205,16 +215,43 @@ input[type=range]{ width:200px; accent-color:var(--accent); }
   <div class="overlay" id="ov-title" hidden>
     <div class="panel">
       <div class="logo">MARO</div>
-      <div class="logo-sub"><strong>GEM DASH</strong> · SUNNY BLUFF · A POCKET PLATFORM ADVENTURE</div>
+      <div class="logo-sub"><strong>GEM DASH</strong> · THE GEM KINGDOM · 15-STAGE ADVENTURE</div>
       <div class="hi" id="title-hi">BEST 000000</div>
       <button type="button" class="btn btn-big" id="btn-start">TAP TO START</button>
-      <button type="button" class="btn" id="btn-stage2" hidden>PLAY STAGE 2 · SUNSET RIDGE</button>
+      <button type="button" class="btn" id="btn-continue" hidden>CONTINUE ADVENTURE</button>
+      <button type="button" class="btn" id="btn-stages">STAGE SELECT · 15 COURSES</button>
       <div class="row">
         <button type="button" class="btn" id="btn-how">HOW TO PLAY</button>
         <button type="button" class="btn btn-ico" id="btn-fs-t" aria-label="Toggle fullscreen">⛶</button>
         <button type="button" class="btn btn-ico" id="btn-snd-t" aria-label="Toggle sound">♪</button>
       </div>
-      <div class="tip">◀ ▶ move &nbsp;·&nbsp; A jump (hold = higher) &nbsp;·&nbsp; B run / shoot &nbsp;·&nbsp; ▼ crouch &amp; enter doors<br>Featuring Maro the flame-tailed fox 🦊 · Two stages · Gems &amp; power-ups · Secret bonus rooms!</div>
+      <div class="tip">◀ ▶ move &nbsp;·&nbsp; A jump (hold = higher) &nbsp;·&nbsp; B run / shoot &nbsp;·&nbsp; ▼ crouch &amp; enter doors<br>Featuring Maro the flame-tailed fox 🦊 · 15 stages · 4 new enemy types · 3 guardians · Secret bonus rooms!</div>
+    </div>
+  </div>
+
+  <div class="overlay" id="ov-stages" hidden>
+    <div class="panel campaign-panel">
+      <h2>THE GEM KINGDOM</h2>
+      <p class="setting-help" id="stage-progress" role="status"></p>
+      <div class="stage-grid">
+        <button type="button" class="btn stage-card" id="stage-1"><span class="stage-number">01</span><strong>SUNNY BLUFF</strong><small id="stage-status-1">LOCKED</small></button>
+        <button type="button" class="btn stage-card" id="stage-2"><span class="stage-number">02</span><strong>SUNSET RIDGE</strong><small id="stage-status-2">LOCKED</small></button>
+        <button type="button" class="btn stage-card" id="stage-3"><span class="stage-number">03</span><strong>MOSSWOOD TRAIL</strong><small id="stage-status-3">LOCKED</small></button>
+        <button type="button" class="btn stage-card" id="stage-4"><span class="stage-number">04</span><strong>CRYSTAL CAVERNS</strong><small id="stage-status-4">LOCKED</small></button>
+        <button type="button" class="btn stage-card" id="stage-5"><span class="stage-number">05</span><strong>COPPER OUTPOST</strong><small id="stage-status-5">LOCKED</small></button>
+        <button type="button" class="btn stage-card" id="stage-6"><span class="stage-number">06</span><strong>CORAL CAUSEWAY</strong><small id="stage-status-6">LOCKED</small></button>
+        <button type="button" class="btn stage-card" id="stage-7"><span class="stage-number">07</span><strong>MOONLIT GROVE</strong><small id="stage-status-7">LOCKED</small></button>
+        <button type="button" class="btn stage-card" id="stage-8"><span class="stage-number">08</span><strong>FROSTFALL PASS</strong><small id="stage-status-8">LOCKED</small></button>
+        <button type="button" class="btn stage-card" id="stage-9"><span class="stage-number">09</span><strong>THUNDER HEIGHTS</strong><small id="stage-status-9">LOCKED</small></button>
+        <button type="button" class="btn stage-card" id="stage-10"><span class="stage-number">10</span><strong>OBSIDIAN KEEP</strong><small id="stage-status-10">LOCKED</small></button>
+        <button type="button" class="btn stage-card" id="stage-11"><span class="stage-number">11</span><strong>MIRAGE DUNES</strong><small id="stage-status-11">LOCKED</small></button>
+        <button type="button" class="btn stage-card" id="stage-12"><span class="stage-number">12</span><strong>CLOCKWORK ASCENT</strong><small id="stage-status-12">LOCKED</small></button>
+        <button type="button" class="btn stage-card" id="stage-13"><span class="stage-number">13</span><strong>EMBER CHASM</strong><small id="stage-status-13">LOCKED</small></button>
+        <button type="button" class="btn stage-card" id="stage-14"><span class="stage-number">14</span><strong>ECLIPSE RIDGE</strong><small id="stage-status-14">LOCKED</small></button>
+        <button type="button" class="btn stage-card" id="stage-15"><span class="stage-number">15</span><strong>CROWN CITADEL</strong><small id="stage-status-15">LOCKED</small></button>
+      </div>
+      <p class="setting-help">Stages 1–5: Adventure · 6–10: Challenge · 11–15: Expert<br>Guardians on 5, 10 and 15. Use Next Stage after a clear to carry your lives, gems, score and form.</p>
+      <button type="button" class="btn" id="btn-stages-back">BACK</button>
     </div>
   </div>
 
@@ -235,6 +272,10 @@ input[type=range]{ width:200px; accent-color:var(--accent); }
         <li>Big Pip breaks bricks. The Nova Star makes you invincible.</li>
         <li>Secret: crouch (▼) at the little wooden door for a bonus room.</li>
         <li>Avoid pits, spikes, and running out of time!</li>
+        <li>Hoppers jump; bats fly. Both can be stomped or shot.</li>
+        <li>Armored beetles need two hits. Guardians on stages 5, 10 and 15 guard the finish.</li>
+        <li>Guardians flash before firing. Jump their bolts, then stomp or shoot. Nova Star defeats any enemy.</li>
+        <li>Clear each stage to unlock the next. Every third clear awards a life, up to nine.</li>
       </ul>
       <button type="button" class="btn btn-big" id="btn-tut-go">TAP TO PLAY</button>
     </div>
@@ -620,7 +661,7 @@ function $(id){
   if (!els[id]) els[id] = document.getElementById(id);
   return els[id];
 }
-const OV_IDS = ['ov-title','ov-tut','ov-pause','ov-set','ov-over','ov-clear'];
+const OV_IDS = ['ov-title','ov-tut','ov-pause','ov-set','ov-over','ov-clear','ov-stages'];
 function showOv(id){ const el = $(id); if (el) el.hidden = false; }
 function hideOv(id){ const el = $(id); if (el) el.hidden = true; }
 function hideAllOverlays(){ for (const id of OV_IDS) hideOv(id); }
@@ -1366,6 +1407,137 @@ const COURSES = [
   { name:'SUNSET RIDGE', rows:STAGE2_ROWS, enemies:STAGE2_ENEMIES, time:320 },
 ];
 
+// Hand-arranged module sequences: every course is deterministic and replayable.
+// All gaps are at most four tiles; early courses provide generous bridge assists.
+const CAMPAIGN_BLUEPRINTS = [
+  ['MOSSWOOD TRAIL',   'grove',   [0,1,2,0,1], 'Hoppers leap after a short pause. Stomp from above.'],
+  ['CRYSTAL CAVERNS',  'crystal', [2,0,4,1,2], 'Bats patrol the upper routes. Watch their flight path.'],
+  ['COPPER OUTPOST',   'copper',  [1,4,0,2,1], 'First guardian: dodge its glowing bolts, then stomp or shoot.'],
+  ['CORAL CAUSEWAY',   'coral',   [2,1,0,4,2], 'Armored beetles take two hits. Their shell lights show health.'],
+  ['MOONLIT GROVE',    'moon',    [4,0,3,1,2], 'Use the high route above the thorns.'],
+  ['FROSTFALL PASS',   'frost',   [1,2,4,0,2], 'Wider ravines ahead. Run before jumping; physics stay familiar.'],
+  ['THUNDER HEIGHTS',  'storm',   [2,3,1,4,2], 'Faster patrols and airborne enemies share the route.'],
+  ['OBSIDIAN KEEP',    'obsidian',[4,2,3,1,4], 'The second guardian fires faster. Wait for its warning flash.'],
+  ['MIRAGE DUNES',     'dunes',   [0,3,4,2,1], 'Take the gem routes for supplies before the final push.'],
+  ['CLOCKWORK ASCENT', 'clock',   [1,4,2,3,1], 'Mix short hops and full jumps through the clockwork terraces.'],
+  ['EMBER CHASM',      'ember',   [3,2,4,1,3], 'Thorns and ravines demand careful landings.'],
+  ['ECLIPSE RIDGE',    'eclipse', [4,3,2,4,1], 'The fastest patrols guard the road to the crown.'],
+  ['CROWN CITADEL',    'crown',   [3,4,2,3,4], 'Final guardian: five hits. Defeat it to free the Gem Kingdom!'],
+];
+const COURSE_THEMES = {
+  grove:   ['#256976','#c4e1a5','#6ba68f','#376957','#ffeab2'],
+  crystal: ['#252d61','#927fbd','#645e99','#3c426c','#d9faff'],
+  copper:  ['#873d54','#f9c488','#aa7f7b','#684e62','#ffda8a'],
+  coral:   ['#367e9b','#bdecdc','#77b7b0','#507c97','#ffdea5'],
+  moon:    ['#1d244d','#6c719d','#565d85','#323d61','#e9f5ff'],
+  frost:   ['#567caa','#e7f7ff','#a2c5d5','#638da9','#fff8e4'],
+  storm:   ['#26384d','#9aafc4','#6a849c','#3c526c','#e0eef3'],
+  obsidian:['#231e39','#996c87','#665579','#342f4e','#f7ad9a'],
+  dunes:   ['#ae655f','#ffe3a5','#c69776','#8e6b65','#fff1bc'],
+  clock:   ['#37516d','#c8b99b','#868f97','#555d75','#ffe4aa'],
+  ember:   ['#512c4b','#f7a371','#9e6267','#573e5d','#ffdc88'],
+  eclipse: ['#181f3c','#886992','#585477','#30324f','#f3bfd6'],
+  crown:   ['#3c295f','#db92a5','#8c6b9c','#4c4269','#ffe49c'],
+};
+function buildCampaignCourse(stage, blueprint){
+  const [name,theme,modules,tip] = blueprint;
+  const rows = Array.from({length:12}, (_,y) => Array(170).fill(y>=10?'#':'.'));
+  const enemies = [], gaps = [], checkpoints = [60,112];
+  const put = (x,y,text) => { for (let n=0;n<text.length;n++) rows[y][x+n] = text[n]; };
+  const gems = (x,y,n) => { for (let i=0;i<n;i++) if (rows[y][x+i] === '.') rows[y][x+i]='o'; };
+  const gapWidth = stage < 8 ? 3 : 4;
+  const gap = (x) => {
+    gaps.push({x,width:gapWidth});
+    for (let y=10;y<12;y++) put(x,y,'.'.repeat(gapWidth));
+    if (stage < 8) put(x-1,8,'==');
+    // Later assists remain optional: the four-tile ground jump is also possible.
+    else if (stage % 2 === 0) put(x,8,'==');
+    gems(x-1,6,gapWidth+2);
+  };
+  const pipe = (x,top) => {
+    put(x,top,'()'); for (let y=top+1;y<10;y++) put(x,y,'[]');
+    gems(x,top-1,2);
+  };
+  modules.forEach((type,i) => {
+    const x = 8+i*26;
+    put(x+3,7,i===0?'BGB':i===2?'BSB':i===4?'BIB':i===1?'BMB':'B?B');
+    gems(x+3,6,3); gems(x,9,3);
+    if (type === 0){ pipe(x+12,8); gap(x+20); }
+    else if (type === 1){
+      put(x+11,9,'######'); put(x+13,8,'##'); gems(x+11,7,6); gap(x+20);
+    } else if (type === 2){
+      gap(x+14); put(x+11,8,'=='); put(x+17,7,'==='); gems(x+17,6,3);
+    } else if (type === 3){
+      put(x+14,9,stage>=12?'^^':'^'); put(x+12,7,'====='); gems(x+12,6,5);
+    } else {
+      pipe(x+11,8); pipe(x+18,8);
+      if (stage >= 7 && i % 2 === 0) enemies.push(['plant',x+18,8]);
+    }
+    // Protected patrol pockets: never on a pit, spike, checkpoint, or pipe.
+    const kind = stage >= 6 && i % 2 === 1 ? 'beetle' : (i % 2 === 0 ? 'hopper' : 'walker');
+    enemies.push([kind,x+8,10,x+6,x+10]);
+    enemies.push([i%2===0?'shell':'walker',x+25,10,x+24,x+25]);
+    if (stage >= 4 && i < Math.min(5,Math.floor((stage-2)/2))){
+      enemies.push(['bat',x+15,5,x+11,x+20]);
+    }
+  });
+  // The bonus doorway and its return position stay clear on every course.
+  put(42,9,'D');
+  for (const x of checkpoints) for (let y=7;y<10;y++) put(x,y,'K');
+  // A safe final checkpoint and a flat arena for milestone guardians.
+  if (stage % 5 === 0){
+    checkpoints.push(136);
+    for (let y=7;y<10;y++) put(136,y,'K');
+    enemies.push(['guardian',145,10,141,150]);
+    put(139,7,'S'); gems(138,6,5);
+  } else { put(140,7,'+'); gems(139,6,4); }
+  for (let i=enemies.length-1;i>=0;i--){
+    if (enemies[i][0] !== 'guardian' && checkpoints.some(x=>Math.abs(x-enemies[i][1])<4)) enemies.splice(i,1);
+  }
+  for (let y=2;y<10;y++) put(152,y,'F');
+  for (let y=2;y<4;y++) put(156,y,'F');
+  for (let y=4;y<10;y++) put(155,y,y===4?'****':'******');
+  put(155,8,'E'); put(155,9,'E'); gems(147,9,3);
+  return {name,theme,tip,rows:rows.map(row=>row.join('')),enemies,gaps,checkpoints,
+    time:Math.max(250,325-stage*5), speedScale:1+(stage-2)*0.035,
+    difficulty:stage<=5?'ADVENTURE':stage<=10?'CHALLENGING':'EXPERT'};
+}
+for (let i=0;i<CAMPAIGN_BLUEPRINTS.length;i++) COURSES.push(buildCampaignCourse(i+3,CAMPAIGN_BLUEPRINTS[i]));
+COURSES[0].tip = 'Learn the jumps, collect gems and reach the castle.';
+COURSES[1].tip = 'Explore higher routes and look for the checkpoint pennants.';
+const TOTAL_STAGES = COURSES.length;
+
+function loadCampaignProgress(raw, oldStage2){
+  const valid = raw && typeof raw === 'object' && !Array.isArray(raw) ? raw : {};
+  const unlocked = Number.isInteger(valid.unlocked) ? clamp(valid.unlocked,1,TOTAL_STAGES) : (oldStage2 ? 2 : 1);
+  const cleared = Array.isArray(valid.cleared) ? [...new Set(valid.cleared.filter(n=>Number.isInteger(n)&&n>=1&&n<=TOTAL_STAGES&&n<=unlocked))] : [];
+  return {unlocked,cleared};
+}
+
+// Cache only the current later-stage backdrop, rather than 13 full canvas sets.
+function courseBackdrop(stage){
+  if (stage === 1) return ASSETS.bg;
+  if (stage === 2) return ASSETS.sunset;
+  if (ASSETS.courseBackdrop && ASSETS.courseBackdrop.stage === stage) return ASSETS.courseBackdrop;
+  const [top,bottom,far,near,sun] = COURSE_THEMES[COURSES[stage-1].theme];
+  const bg = {stage,sky:cv(VIEW_W,VIEW_H)};
+  const x = g2(bg.sky), grad = x.createLinearGradient(0,0,0,VIEW_H);
+  grad.addColorStop(0,top); grad.addColorStop(1,bottom);
+  x.fillStyle = grad; x.fillRect(0,0,VIEW_W,VIEW_H);
+  x.fillStyle = sun; x.beginPath(); x.arc(790,170,46,0,Math.PI*2); x.fill();
+  if ([4,7,10,14,15].includes(stage)){
+    x.fillStyle = '#e6e4ff';
+    for (let i=0;i<36;i++) x.fillRect((i*137+stage*19)%940,28+(i*73)%250,i%3===0?3:2,2);
+  }
+  for (const [name,color] of [['far',far],['near',near]]){
+    const source=ASSETS.bg[name], layer=cv(source.width,source.height), px=g2(layer);
+    px.drawImage(source,0,0); px.globalCompositeOperation='source-atop';
+    px.fillStyle=color; px.fillRect(0,0,layer.width,layer.height); bg[name]=layer;
+  }
+  ASSETS.courseBackdrop=bg;
+  return bg;
+}
+
 class Level {
   constructor(rows, isBonus){
     this.isBonus = !!isBonus;
@@ -1673,9 +1845,17 @@ class Enemy {
     this.state = kind === 'shell' ? 'walk' : 'walk';
     this.rise = 0; this.baseY = y; this.walkT = Math.random()*10;
     this.phase = 'hidden'; this.phaseT = 1 + Math.random();
+    this.hp = 1; this.maxHp = 1; this.hitT = 0; this.hopT = 1.1;
+    this.attackT = 1.6; this.warningT = 0;
+    this.patrolMin = x-72; this.patrolMax = x+120;
+    this.boundedPatrol = false;
     // Tuned for accessibility: slower walkers, shells less aggressive
     if (kind === 'walker'){ this.w = 34; this.h = 34; this.speed = 42; }
     else if (kind === 'shell'){ this.w = 36; this.h = 30; this.speed = 38; }
+    else if (kind === 'hopper'){ this.w=30; this.h=32; this.speed=48; }
+    else if (kind === 'bat'){ this.w=36; this.h=24; this.speed=64; }
+    else if (kind === 'beetle'){ this.w=38; this.h=30; this.speed=35; this.hp=this.maxHp=2; }
+    else if (kind === 'guardian'){ this.w=56; this.h=64; this.speed=38; this.hp=this.maxHp=3; this.phase='patrol'; }
     else { // plant
       this.w = 30; this.h = 26;
       this.baseY = y;               // pipe top (world y)
@@ -1706,8 +1886,33 @@ class Enemy {
       if (this.rise <= 0){ this.phase = 'hidden'; this.phaseT = 1.4 + Math.random()*1.2; }
     }
   }
+  updateBat(dt, G){
+    this.walkT += dt;
+    this.x += this.dir*this.speed*dt;
+    if (this.x < this.patrolMin){ this.x=this.patrolMin; this.dir=1; }
+    if (this.x+this.w > this.patrolMax){ this.x=this.patrolMax-this.w; this.dir=-1; }
+    this.y = this.baseY + Math.sin(this.walkT*2.4)*24;
+  }
+  updateGuardian(dt, G){
+    const near = Math.abs((G.player.x+G.player.w/2)-(this.x+this.w/2)) < 440;
+    this.attackT -= dt;
+    if (this.phase === 'warning'){
+      this.warningT -= dt;
+      if (this.warningT <= 0){
+        if (near && G.enemyShots.filter(s=>!s.remove).length < 6){
+          const dir = G.player.x < this.x ? -1 : 1;
+          G.enemyShots.push(new EnemyBolt(this.x+this.w/2+dir*36,this.y+this.h-18,dir,160+G.stage*4));
+          AudioSys.sfx.shoot();
+        }
+        this.phase='patrol'; this.attackT=Math.max(1.25,2.8-G.stage*0.06);
+      }
+    } else if (this.attackT<=0 && near){
+      this.phase='warning'; this.warningT=0.85; this.vx=0;
+    }
+  }
   update(dt, G){
     const lv = G.level, cam = G.cam.x;
+    this.hitT = Math.max(0,this.hitT-dt);
     if (!this.active){
       if (this.x > cam - 140 && this.x < cam + 1100) this.active = true;
       else return;
@@ -1724,13 +1929,24 @@ class Enemy {
       this.updatePlant(dt, G);
       return;
     }
+    if (this.kind === 'bat'){ this.updateBat(dt,G); return; }
+    if (this.kind === 'guardian') this.updateGuardian(dt,G);
+    if (this.kind === 'hopper' && this.onGround){
+      this.hopT -= dt;
+      if (this.hopT <= 0){ this.vy=-480; this.hopT=1.5; }
+    }
     let sp = this.speed;
+    if (this.kind === 'guardian' && this.phase === 'warning') sp=0;
     if (this.kind === 'shell' && this.state === 'live') sp = 300; // was 430, now more controllable
     if (this.kind === 'shell' && this.state === 'idle') sp = 0;
     this.vx = this.dir * sp;
     this.vy = Math.min(this.vy + PHYS.GRAV*dt, PHYS.MAX_FALL);
     this.prevBottom = this.y + this.h;
     moveAndCollide(lv, this, dt);
+    if (this.boundedPatrol && !(this.kind==='shell' && this.state==='live')){
+      if (this.x<this.patrolMin){ this.x=this.patrolMin; this.dir=1; }
+      if (this.x+this.w>this.patrolMax){ this.x=this.patrolMax-this.w; this.dir=-1; }
+    }
     if (this.onWall){
       this.dir *= -1;
       if (this.kind === 'shell' && this.state === 'live'){
@@ -1747,6 +1963,22 @@ class Enemy {
     this.walkT += dt;
     if (this.y > lv.h*TILE + 100) this.remove = true;
     if (this.kind === 'shell' && this.state === 'live' && (this.x < cam - 260 || this.x > cam + 1220)) this.remove = true;
+  }
+}
+
+// Guardian bolts are separate from player shots and freeze in bonus rooms.
+class EnemyBolt {
+  constructor(x,y,dir,speed){ this.x=x; this.y=y; this.vx=dir*speed; this.r=7; this.t=0; this.remove=false; }
+  update(dt,G){
+    this.t+=dt; this.x+=this.vx*dt;
+    if (this.t>4 || this.x<G.cam.x-160 || this.x>G.cam.x+VIEW_W+160 || tileSolidAt(G.level,this.x,this.y)){
+      this.remove=true; return;
+    }
+    if (circleRect(this,G.player)){
+      this.remove=true;
+      if (G.player.invT<=0) G.hurtPlayer({x:this.x,w:14});
+      else G.particles.spark(this.x,this.y,'#ffe14d',4);
+    }
   }
 }
 
@@ -1868,11 +2100,13 @@ const Game = {
   score: 0, gems: 0, lives: 3, timeLeft: LEVEL_TIME,
   high: Store.get('high', 0),
   stage: 1,
-  stage2Unlocked: Store.get('stage2Unlocked', false) === true,
+  progress: loadCampaignProgress(Store.get('campaign',null),Store.get('stage2Unlocked',false) === true),
+  get stage2Unlocked(){ return this.progress.unlocked >= 2; },
+  gateHintT: 0,
   get course(){ return COURSES[this.stage-1]; },
   level: null, mainLevel: null, bonusLevel: null, inBonus: false,
   player: null,
-  enemies: [], items: [], shots: [], pops: [],
+  enemies: [], items: [], shots: [], pops: [], enemyShots: [],
   texts: [],
   cam: { x: 0, y: 0 },
   shakeT: 0, shakeMag: 0, shakeDur: 1,
@@ -1897,7 +2131,7 @@ const Game = {
     this.spawnEntities();
     this.state = 'TITLE';
     this.cam.x = 30; this.cam.y = 0;
-    $('btn-stage2').hidden = !this.stage2Unlocked;
+    updateStageUI();
     $('title-hi').textContent = 'BEST ' + pad6(this.high);
     setupCanvas();
     TouchUI.init();
@@ -1916,13 +2150,25 @@ const Game = {
     this.items.length = 0;
     this.shots.length = 0;
     this.pops.length = 0;
+    this.enemyShots.length = 0;
     for (const s of this.course.enemies){
       if (s[0] === 'walker') this.enemies.push(new Enemy('walker', s[1]*TILE + 7, GROUND_ROW*TILE - 34));
       else if (s[0] === 'shell') this.enemies.push(new Enemy('shell', s[1]*TILE + 6, GROUND_ROW*TILE - 30));
       else if (s[0] === 'plant') this.enemies.push(new Enemy('plant', (s[1]+1)*TILE - 15, s[2]*TILE));
+      else {
+        const enemy=new Enemy(s[0],s[1]*TILE,(s[2]||GROUND_ROW)*TILE);
+        enemy.x += (TILE-enemy.w)/2; enemy.y -= enemy.h; enemy.baseY=enemy.y;
+        if(enemy.kind==='guardian') enemy.hp=enemy.maxHp=2+this.stage/5;
+        this.enemies.push(enemy);
+      }
+      const enemy=this.enemies[this.enemies.length-1];
+      if (s[3] !== undefined){
+        enemy.patrolMin=s[3]*TILE; enemy.patrolMax=(s[4]+1)*TILE; enemy.boundedPatrol=true;
+      }
+      if (this.course.speedScale && enemy.speed) enemy.speed *= this.course.speedScale;
     }
     // Predictable opening patrols make Stage 2 encounters learnable on retries.
-    if (this.stage === 2) for (const enemy of this.enemies) enemy.dir = -1;
+    if (this.stage >= 2) for (const enemy of this.enemies) enemy.dir = -1;
     for (const g of this.level.gemSpawns){
       this.items.push(new Item('gem', g.tx*TILE + 11, g.ty*TILE + 11));
     }
@@ -1941,12 +2187,13 @@ const Game = {
   // ---- flow ----
   startGame(stage = 1, carry = false){
     const form = carry && this.player ? this.player.form : 'small';
-    this.stage = stage === 2 ? 2 : 1;
+    this.stage = Number.isInteger(stage) ? clamp(stage,1,TOTAL_STAGES) : 1;
     AudioSys.unlock();
     hideAllOverlays();
     document.body.classList.add('in-game');
     if (!carry){ this.score = 0; this.gems = 0; this.lives = 3; }
     this.checkX = START_TX;
+    this.gateHintT = 0;
     this.mainLevel = new Level(this.course.rows, false);
     this.level = this.mainLevel;
     this.inBonus = false;
@@ -1974,9 +2221,12 @@ const Game = {
     this.mainLevel = new Level(this.course.rows, false);
     this.level = this.mainLevel;
     this.inBonus = false;
+    this.mainItems = [];
+    this.bonusLockT = 0;
     this.timeLeft = this.course.time;
     this.multiQ = 0;
     this.player.reset(this.checkX, this.player.form, GROUND_ROW);
+    if (this.stage>=3) this.player.hurtT=1.5; // Safe checkpoint recovery, not a free attack boost.
     this.spawnEntities();
     this.cam.x = clamp(this.player.x - 320, 0, this.level.w*TILE - VIEW_W);
     this.cam.y = 0;
@@ -2005,7 +2255,7 @@ const Game = {
     this.fade = null;
     this.state = 'TITLE';
     AudioSys.stopMusic();
-    $('btn-stage2').hidden = !this.stage2Unlocked;
+    updateStageUI();
     $('title-hi').textContent = 'BEST ' + pad6(this.high);
     showOv('ov-title');
     needRender = true;
@@ -2124,7 +2374,15 @@ const Game = {
     vib(12);
   },
   defeatEnemy(e, pts, style){
-    if (e.dead) return;
+    if (e.dead || e.remove || (e.hitT>0 && style!=='crush')) return;
+    if (e.hp>1 && style!=='crush'){
+      e.hp--; e.hitT=0.45;
+      this.particles.spark(e.x+e.w/2,e.y+10,'#ffe089',6);
+      this.addText(e.x+e.w/2,e.y-8,'HIT!', '#ffe089',14);
+      AudioSys.sfx.stomp(); return;
+    }
+    e.hp=0;
+    if(e.kind==='guardian'){ pts=1000+this.stage*100; this.enemyShots.length=0; }
     e.dead = true; e.deadT = 0;
     e.vy = -420;
     e.vx = (Math.random() < 0.5 ? -1 : 1) * 70;
@@ -2141,6 +2399,7 @@ const Game = {
     this.particles.spark(s.x, s.y, '#ffd23e', 6);
     if (e.kind === 'walker') this.defeatEnemy(e, 200, 'shot');
     else if (e.kind === 'plant') this.defeatEnemy(e, 200, 'shot');
+    else if (e.kind !== 'shell') this.defeatEnemy(e,200,'shot');
     else if (e.kind === 'shell'){
       if (e.state === 'live'){
         AudioSys.sfx.bounce();
@@ -2165,7 +2424,7 @@ const Game = {
         return;
       }
       p.vy = Input.jumpHeld ? -640 : -430;
-      if (e.kind === 'walker'){
+      if (e.kind !== 'shell'){
         this.stompChain++;
         this.chainT = 1.2;
         const pts = 100 * (1 << Math.min(this.stompChain - 1, 4));
@@ -2249,6 +2508,10 @@ const Game = {
   },
   onFlag(p, ty){
     if (this.state !== 'PLAYING') return;
+    if(this.enemies.some(e=>e.kind==='guardian'&&!e.dead&&!e.remove)){
+      if(this.gateHintT<=0){ this.addText(p.x,p.y-28,'DEFEAT THE GUARDIAN!', '#ffe089',16); this.gateHintT=1.5; }
+      return;
+    }
     this.state = 'CLEARING';
     this.clearPhase = 0;
     this.clearT = 0;
@@ -2306,7 +2569,7 @@ const Game = {
     }
   },
   nextStage(){
-    if (this.state === 'CLEAR' && this.stage === 1) this.startGame(2, true);
+    if (this.state === 'CLEAR' && this.stage < TOTAL_STAGES) this.startGame(this.stage+1, true);
   },
   finishClear(){
     if (this.state === 'CLEAR') return;
@@ -2320,12 +2583,18 @@ const Game = {
       '<br>TIME BONUS&nbsp;&nbsp;' + pad6(this.timeBonus) +
       '<br>GEMS&nbsp;&nbsp;×' + this.gems +
       '<br><span class="total">TOTAL ' + pad6(this.score) + '</span>';
-    if (this.stage === 1){
-      this.stage2Unlocked = true; Store.set('stage2Unlocked', true);
-    }
-    $('btn-next-stage').hidden = this.stage !== 1;
-    $('clear-heading').textContent = this.stage === 1 ? 'STAGE 1 CLEAR!' : 'STAGE 2 CLEAR!';
-    $('clear-message').textContent = this.stage === 1 ? 'Sunset Ridge unlocked. Your adventure continues!' : 'VICTORY — both bluffs are safe!';
+    const last = this.stage === TOTAL_STAGES;
+    this.progress.unlocked=Math.max(this.progress.unlocked,Math.min(TOTAL_STAGES,this.stage+1));
+    if(!this.progress.cleared.includes(this.stage)) this.progress.cleared.push(this.stage);
+    Store.set('campaign',this.progress);
+    if(this.stage===1) Store.set('stage2Unlocked',true); // migrate old two-stage saves
+    let reward='';
+    if(this.stage%3===0 && this.lives<MAX_LIVES){ this.lives++; reward=' +1 LIFE!'; }
+    $('btn-next-stage').hidden=last;
+    if(!last) $('btn-next-stage').textContent='NEXT → '+COURSES[this.stage].name;
+    $('clear-heading').textContent=last?'CAMPAIGN COMPLETE!':'STAGE '+this.stage+' / '+TOTAL_STAGES+' CLEAR!';
+    $('clear-message').textContent=(last?'The Gem Kingdom is safe. All 15 stages conquered!':COURSES[this.stage].name+' unlocked!')+reward;
+    updateStageUI();
     $('clear-hi').textContent = 'BEST ' + pad6(this.high);
     showOv('ov-clear');
   },
@@ -2412,6 +2681,7 @@ const Game = {
   },
   tickPlaying(dt){
     const p = this.player;
+    this.gateHintT=Math.max(0,this.gateHintT-dt);
     this.timeLeft -= dt;
     if (this.timeLeft <= 0){
       this.timeLeft = 0;
@@ -2470,7 +2740,7 @@ const Game = {
         if (e.kind !== 'shell' || e.state !== 'live' || e.dead || e.remove) continue;
         for (const o of this.enemies){
           if (o === e || o.dead || o.remove) continue;
-          if (o.kind === 'walker' || o.kind === 'plant'){
+          if (o.kind !== 'shell'){
             const b = o.box();
             if (b.active && aabb(e, b)) this.defeatEnemy(o, 200, 'shell');
           }
@@ -2496,6 +2766,7 @@ const Game = {
           if (circleRect(s, b)){ this.hitShot(s, e); break; }
         }
       }
+      for(const shot of this.enemyShots) if(!shot.remove) shot.update(dt,this);
       // player vs enemies
       for (const e of this.enemies){
         if (e.dead || e.remove) continue;
@@ -2512,6 +2783,7 @@ const Game = {
     this.compact(this.enemies);
     this.compact(this.items);
     this.compact(this.shots);
+    this.compact(this.enemyShots);
     this.compact(this.pops);
 
     this.particles.update(dt);
@@ -2698,8 +2970,16 @@ function drawStrip(img, y, par, camX){
 
 function drawScene(camX, camY){
   const G = Game;
-  const backdrop = G.stage === 2 ? ASSETS.sunset : ASSETS.bg;
+  const backdrop = courseBackdrop(G.stage);
   ctx.drawImage(backdrop.sky, 0, 0);
+  if([8,13,15].includes(G.stage)){
+    ctx.fillStyle=G.stage===8?'#e5f8ff':'#ffc489';
+    for(let i=0;i<(Settings.effectsReduced?10:28);i++){
+      const sx=mod(i*83+gameT*(G.stage===8?9:-12)-camX*0.1,VIEW_W);
+      const sy=mod(i*59+gameT*(G.stage===8?22:-16),VIEW_H);
+      ctx.fillRect(sx,sy,2,2);
+    }
+  }
   for (const cl of ASSETS.bg.clouds){
     const sx = mod(cl.x - camX*0.25, VIEW_W + 260) - 130;
     ctx.drawImage(cl.img, Math.round(sx), cl.y);
@@ -2749,18 +3029,23 @@ function drawScene(camX, camY){
     ctx.globalAlpha = 1;
   }
 
-  // enemies
-  for (const e of G.enemies){
+  // Main-course enemies must not leak into the safe bonus room.
+  for (const e of (G.inBonus?[]:G.enemies)){
     if (e.remove) continue;
     if (e.x < camX - 80 || e.x > camX + VIEW_W + 80) continue;
     if (e.dead && e.kind === 'plant') continue;   // plants pop, no corpse
     drawEnemy(e, camX, camY);
   }
 
+  if(!G.inBonus) for(const shot of G.enemyShots){
+    if(shot.remove) continue;
+    ctx.fillStyle='#8f497c'; ctx.beginPath(); ctx.arc(shot.x-camX,shot.y-camY,9,0,Math.PI*2); ctx.fill();
+    ctx.fillStyle='#ffdc96'; ctx.beginPath(); ctx.arc(shot.x-camX,shot.y-camY,5,0,Math.PI*2); ctx.fill();
+  }
   drawPlayer(camX, camY);
 
   // projectiles
-  for (const s of G.shots){
+  for (const s of (G.inBonus?[]:G.shots)){
     if (s.remove) continue;
     const sx = Math.round(s.x - camX), sy = Math.round(s.y - camY);
     ctx.fillStyle = '#ff9d47';
@@ -2873,12 +3158,56 @@ function drawPlant(e, camX, camY){
   ctx.fillRect(cx + 3, hy - 1, 2, 3);
 }
 
+function drawCampaignEnemy(e,x,y){
+  const R=(a,b,w,h,c)=>{ ctx.fillStyle=c; ctx.fillRect(x+a,y+b,w,h); };
+  if (e.hitT>0 && ((gameT*20)|0)%2===0) ctx.globalAlpha=0.5;
+  if (e.kind === 'bat'){
+    const flap=Math.sin(e.walkT*12)>0 ? -5 : 6;
+    R(0,5+flap,12,7,'#533c78'); R(24,5-flap,12,7,'#533c78');
+    R(2,6+flap,9,3,'#b394e3'); R(26,6-flap,8,3,'#b394e3');
+    R(10,5,16,16,'#7552a1'); R(11,0,4,8,'#7552a1'); R(21,0,4,8,'#7552a1');
+    R(12,9,5,5,'#fff4d5'); R(20,9,5,5,'#fff4d5');
+    R(15,10,2,3,'#2e254a'); R(22,10,2,3,'#2e254a'); R(17,17,3,4,'#fff4d5');
+  } else if (e.kind === 'hopper'){
+    const lift=e.onGround?0:3;
+    R(2,0,5,13,'#3c8f69'); R(23,0,5,13,'#3c8f69');
+    R(3,1,3,6,'#ffcd80'); R(24,1,3,6,'#ffcd80');
+    R(3,9,24,19,'#3c8f69'); R(7,18,16,9,'#c6e6ac');
+    R(6,12,6,6,'#fff'); R(19,12,6,6,'#fff');
+    R(9,14,3,3,'#183c43'); R(21,14,3,3,'#183c43');
+    R(0,27-lift,10,5,'#24575a'); R(20,27-lift,10,5,'#24575a');
+    if (e.onGround && e.hopT<0.35) R(11,3,8,3,'#ffe58c');
+  } else if (e.kind === 'beetle'){
+    const step=Math.sin(e.walkT*10)>0?2:0;
+    R(3,24,10,6,'#343d62'); R(26,24-step,9,6,'#343d62');
+    R(2,8,34,18,'#345b7a'); R(6,2,26,22,'#5a91a4');
+    R(8,4,20,4,'#a2d9cd'); R(17,6,3,16,'#345b7a');
+    R(e.dir>0?24:4,16,10,8,'#dceac4'); R(e.dir>0?29:5,17,3,4,'#23364a');
+    for(let i=0;i<e.hp;i++) R(10+i*12,10,5,4,'#ffe089');
+  } else {
+    R(5,53,17,11,'#302d49'); R(34,53,17,11,'#302d49');
+    R(5,18,46,38,'#62436a'); R(10,20,36,30,'#b96f68');
+    R(18,28,20,20,'#f6bc75'); R(23,31,10,12,e.phase==='warning'?'#fff4b4':'#8b5470');
+    R(9,4,38,22,'#765377'); R(12,7,32,14,'#f4d7a7');
+    R(4,0,9,10,'#e2aa63'); R(43,0,9,10,'#e2aa63');
+    R(15,10,8,5,'#302d49'); R(33,10,8,5,'#302d49');
+    R(0,27,9,23,'#765377'); R(47,27,9,23,'#765377');
+    if(e.phase==='warning'){
+      ctx.fillStyle='#ffe089'; ctx.font='bold 22px monospace'; ctx.textAlign='center';
+      ctx.fillText('!',x+28,y-22); ctx.textAlign='left';
+    }
+    R(0,-12,56,6,'#302d49'); R(1,-11,54*e.hp/e.maxHp,4,'#f4b86d');
+  }
+  ctx.globalAlpha=1;
+}
+
 function drawEnemy(e, camX, camY){
   const x = Math.round(e.x - camX), y = Math.round(e.y - camY);
   const kind = (xx, yy) => {
     if (e.kind === 'walker') drawWalker(e, xx, yy);
     else if (e.kind === 'shell') drawShell(e, xx, yy);
-    else drawPlant(e, camX, camY);
+    else if(e.kind==='plant') drawPlant(e, camX, camY);
+    else drawCampaignEnemy(e,xx,yy);
   };
   if (e.dead){
     const cxp = x + e.w/2, cyp = y + e.h/2;
@@ -2969,7 +3298,7 @@ function drawHUD(){
   ctx.textAlign = 'left';
   ctx.textBaseline = 'top';
   ctx.fillStyle = 'rgba(10,20,40,.75)';
-  const name = (G.inBonus ? 'SECRET ROOM' : G.stage + ' · ' + G.course.name);
+  const name = (G.inBonus ? 'SECRET ROOM' : G.stage + '/'+TOTAL_STAGES+' · ' + G.course.name);
   ctx.fillText(name, 21, 57);
   ctx.fillStyle = '#bcd0f5';
   ctx.fillText(name, 20, 56);
@@ -2979,16 +3308,16 @@ function drawHUD(){
   const labels = { small:'S', big:'G', shoot:'P', star:'*' };
   const cols = { small:'#9fb4dd', big:'#9fe870', shoot:'#ff9dd5', star:'#ffe14d' };
   ctx.fillStyle = 'rgba(10,20,40,.6)';
-  ctx.fillRect(148, 52, 34, 26);
+  ctx.fillRect(240, 52, 34, 26);
   ctx.strokeStyle = 'rgba(255,255,255,.35)';
-  ctx.strokeRect(148.5, 52.5, 33, 25);
+  ctx.strokeRect(240.5, 52.5, 33, 25);
   ctx.font = '800 18px "Courier New", monospace';
   ctx.fillStyle = cols[state];
-  ctx.fillText(labels[state], 156, 55);
+  ctx.fillText(labels[state], 248, 55);
   if (p.invT > 0){
     ctx.fillStyle = cols.star;
     ctx.font = '800 16px "Courier New", monospace';
-    ctx.fillText(Math.ceil(p.invT) + 's', 188, 56);
+    ctx.fillText(Math.ceil(p.invT) + 's', 280, 56);
   }
 }
 
@@ -3003,7 +3332,9 @@ function drawReady(){
   ctx.font = '800 26px "Courier New", monospace';
   ctx.globalAlpha = 0.6 + 0.4*Math.sin(gameT*6);
   ctx.fillStyle = '#fff';
-  ctx.fillText('STAGE '+Game.stage+' — GET READY!', 480, 262);
+  ctx.fillText('STAGE '+Game.stage+' / '+TOTAL_STAGES+' — GET READY!', 480, 262);
+  ctx.globalAlpha=1; ctx.font='700 14px monospace';
+  ctx.fillText(Game.course.tip || '',480,310);
   ctx.globalAlpha = 1;
   ctx.textAlign = 'left';
 }
@@ -3066,6 +3397,23 @@ function on(id, fn){
     AudioSys.unlock();
     fn();
   });
+}
+
+function startSelectedStage(stage){
+  if(!Number.isInteger(stage)||stage<1||stage>Game.progress.unlocked) return false;
+  Game.startGame(stage); return true;
+}
+function updateStageUI(){
+  $('btn-continue').hidden=Game.progress.unlocked<=1;
+  $('btn-continue').textContent='CONTINUE · '+Game.progress.unlocked+' / '+TOTAL_STAGES;
+  $('stage-progress').textContent=Game.progress.cleared.length+' / '+TOTAL_STAGES+' stages cleared · Unlocked stages start a fresh run.';
+  for(let stage=1;stage<=TOTAL_STAGES;stage++){
+    const b=$('stage-'+stage), unlocked=stage<=Game.progress.unlocked, done=Game.progress.cleared.includes(stage);
+    b.disabled=!unlocked;
+    b.classList.toggle('cleared',done);
+    b.setAttribute('aria-label','Stage '+stage+': '+COURSES[stage-1].name+(done?', cleared':unlocked?', unlocked':', locked'));
+    $('stage-status-'+stage).textContent=done?'✓ CLEARED':unlocked?(COURSES[stage-1].difficulty||'EXPLORER'):'LOCKED';
+  }
 }
 
 function updateToggles(){
@@ -3185,7 +3533,10 @@ function wireUI(){
     Store.set('opacity', Settings.opacity);
     Settings.apply();
   });
-  on('btn-stage2', () => { if (Game.stage2Unlocked) Game.startGame(2); });
+  on('btn-continue', () => Game.startGame(Game.progress.unlocked));
+  on('btn-stages', () => { updateStageUI(); showOv('ov-stages'); });
+  on('btn-stages-back', () => { hideOv('ov-stages'); showOv('ov-title'); });
+  for(let stage=1;stage<=TOTAL_STAGES;stage++) on('stage-'+stage,()=>startSelectedStage(stage));
   on('btn-next-stage', () => Game.nextStage());
   on('btn-retry', () => Game.startGame(Game.stage));
   on('btn-over-title', () => Game.toTitle());
@@ -3263,6 +3614,7 @@ function updateKeyboardUI(){
 }
 function keyboardDown(e){
   const k = e.key.toLowerCase();
+  if(k==='escape' && !$('ov-stages').hidden){ hideOv('ov-stages'); showOv('ov-title'); e.preventDefault(); return; }
   if (Keyboard.capture){
     e.preventDefault();
     if (e.repeat) return;

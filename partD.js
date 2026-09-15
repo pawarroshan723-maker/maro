@@ -747,19 +747,19 @@ const COURSES = [
 // Hand-arranged module sequences: every course is deterministic and replayable.
 // All gaps are at most four tiles; early courses provide generous bridge assists.
 const CAMPAIGN_BLUEPRINTS = [
-  ['MOSSWOOD TRAIL',   'grove',   [0,1,2,0,1], 'Hoppers leap after a short pause. Stomp from above.'],
-  ['CRYSTAL CAVERNS',  'crystal', [2,0,4,1,2], 'Bats patrol the upper routes. Watch their flight path.'],
-  ['COPPER OUTPOST',   'copper',  [1,4,0,2,1], 'First guardian: dodge its glowing bolts, then stomp or shoot.'],
-  ['CORAL CAUSEWAY',   'coral',   [2,1,0,4,2], 'Armored beetles take two hits. Their shell lights show health.'],
-  ['MOONLIT GROVE',    'moon',    [4,0,3,1,2], 'Use the high route above the thorns.'],
-  ['FROSTFALL PASS',   'frost',   [1,2,4,0,2], 'Wider ravines ahead. Run before jumping; physics stay familiar.'],
-  ['THUNDER HEIGHTS',  'storm',   [2,3,1,4,2], 'Faster patrols and airborne enemies share the route.'],
-  ['OBSIDIAN KEEP',    'obsidian',[4,2,3,1,4], 'The second guardian fires faster. Wait for its warning flash.'],
-  ['MIRAGE DUNES',     'dunes',   [0,3,4,2,1], 'Take the gem routes for supplies before the final push.'],
-  ['CLOCKWORK ASCENT', 'clock',   [1,4,2,3,1], 'Mix short hops and full jumps through the clockwork terraces.'],
-  ['EMBER CHASM',      'ember',   [3,2,4,1,3], 'Thorns and ravines demand careful landings.'],
-  ['ECLIPSE RIDGE',    'eclipse', [4,3,2,4,1], 'The fastest patrols guard the road to the crown.'],
-  ['CROWN CITADEL',    'crown',   [3,4,2,3,4], 'Final guardian: five hits. Defeat it to free the Gem Kingdom!'],
+  ['MOSSWOOD TRAIL',   'grove',   [0,5,2,6,1], 'Hoppers leap after a short pause. Stomp from above.'],
+  ['CRYSTAL CAVERNS',  'crystal', [2,0,6,1,5], 'Bats patrol the upper routes. Watch their flight path.'],
+  ['COPPER OUTPOST',   'copper',  [1,4,5,2,6], 'First guardian: dodge its glowing bolts, then stomp or shoot.'],
+  ['CORAL CAUSEWAY',   'coral',   [2,6,0,4,5], 'Armored beetles take two hits. Their shell lights show health.'],
+  ['MOONLIT GROVE',    'moon',    [4,0,3,5,2], 'Use the high route above the thorns.'],
+  ['FROSTFALL PASS',   'frost',   [1,5,4,0,6], 'Wider ravines ahead. Run before jumping; physics stay familiar.'],
+  ['THUNDER HEIGHTS',  'storm',   [2,3,6,4,5], 'Faster patrols and airborne enemies share the route.'],
+  ['OBSIDIAN KEEP',    'obsidian',[4,2,5,6,4], 'The second guardian fires faster. Wait for its warning flash.'],
+  ['MIRAGE DUNES',     'dunes',   [0,3,6,2,5], 'Take the gem routes for supplies before the final push.'],
+  ['CLOCKWORK ASCENT', 'clock',   [5,4,2,3,6], 'Mix short hops and full jumps through the clockwork terraces.'],
+  ['EMBER CHASM',      'ember',   [3,2,6,5,3], 'Thorns and ravines demand careful landings.'],
+  ['ECLIPSE RIDGE',    'eclipse', [4,5,2,6,1], 'The fastest patrols guard the road to the crown.'],
+  ['CROWN CITADEL',    'crown',   [5,4,6,3,4], 'Final guardian: five hits. Defeat it to free the Gem Kingdom!'],
 ];
 const COURSE_THEMES = {
   grove:   ['#256976','#c4e1a5','#6ba68f','#376957','#ffeab2'],
@@ -1059,6 +1059,15 @@ function buildCampaignCourse(stage, blueprint){
     } else if (type === 3){
       // Thorn beds grow a tile wider on the two hardest tiers of the campaign.
       put(x+14,9,stage>=13?'^^^':stage>=10?'^^':'^'); put(x+12,7,'====='); gems(x+12,6,5);
+    } else if (type === 5){
+      // Staircase climb: three rising steps crowned by a leap over the ravine.
+      put(x+11,9,'###'); put(x+14,8,'###'); put(x+17,7,'###');
+      gems(x+11,8,3); gems(x+14,7,3); gems(x+17,6,3);
+      gap(x+21);
+    } else if (type === 6){
+      // Pipe gauntlet: three pipes of shifting height, no ravine to rest on.
+      pipe(x+11,8); pipe(x+16, vary(61)>0.5?7:8); pipe(x+21,8);
+      gems(x+14,6,2); gems(x+19,6,2);
     } else {
       const p2 = x+18+(vary(19)>0.5?1:0);
       pipe(x+11, vary(23)>0.6?7:8); pipe(p2,8);

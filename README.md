@@ -24,6 +24,19 @@ This is a polished, fully-playable web game with no external dependencies. All g
 - Find the secret wooden door (D) — crouch (▼) to enter bonus room
 - Reach the flag pole (F) at col 152, then the destination door (E)
 
+## 🌄 Stage 2 — Sunset Ridge
+
+Clear Sunny Bluff and select **Next Stage → Sunset Ridge**. Your score, gems, remaining lives and power-up form carry over; the stage starts with a fresh 320-second timer and checkpoint. Once unlocked, **Play Stage 2** also appears on the title screen for fresh standalone runs. Unlocking is saved locally when browser storage is available.
+
+Sunset Ridge features a separate 170×12-tile layout, purple sunset hills, three short ravines, four pipes, nine enemies, 40+ gems, raised routes, growth/shooting/star/multi-gem blocks, a bonus room and grounded checkpoints at columns 60 and 114. Death and restart keep you in the current stage. Finishing Stage 2 completes the adventure.
+
+Stage-specific validation:
+```bash
+STAGE=2 node aiplay.js
+STAGE=2 GEOM_ONLY=1 node aiplay.js
+STAGE=2 node fuzz.js
+```
+
 ## ⚙️ Controls and graphics settings
 
 Pause with **P / Esc**, then open **Settings**.

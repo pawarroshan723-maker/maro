@@ -3,6 +3,9 @@ const Game = {
   state: 'BOOT',                       // TITLE READY PLAYING PAUSED DYING CLEARING CLEAR GAMEOVER
   score: 0, gems: 0, lives: 3, timeLeft: LEVEL_TIME,
   high: Store.get('high', 0),
+  stage: 1,
+  stage2Unlocked: Store.get('stage2Unlocked', false) === true,
+  get course(){ return COURSES[this.stage-1]; },
   level: null, mainLevel: null, bonusLevel: null, inBonus: false,
   player: null,
   enemies: [], items: [], shots: [], pops: [],
@@ -22,7 +25,7 @@ const Game = {
   init(){
     Particles.init();
     this.particles = Particles;
-    this.level = new Level(MAIN_ROWS, false);
+    this.level = new Level(this.course.rows, false);
     this.mainLevel = this.level;
     this.bonusLevel = new Level(BONUS_ROWS, true);
     this.player = new Player(this);
@@ -30,6 +33,7 @@ const Game = {
     this.spawnEntities();
     this.state = 'TITLE';
     this.cam.x = 30; this.cam.y = 0;
+    $('btn-stage2').hidden = !this.stage2Unlocked;
     $('title-hi').textContent = 'BEST ' + pad6(this.high);
     setupCanvas();
     TouchUI.init();
@@ -48,11 +52,13 @@ const Game = {
     this.items.length = 0;
     this.shots.length = 0;
     this.pops.length = 0;
-    for (const s of ENEMY_SPAWNS){
+    for (const s of this.course.enemies){
       if (s[0] === 'walker') this.enemies.push(new Enemy('walker', s[1]*TILE + 7, GROUND_ROW*TILE - 34));
       else if (s[0] === 'shell') this.enemies.push(new Enemy('shell', s[1]*TILE + 6, GROUND_ROW*TILE - 30));
       else if (s[0] === 'plant') this.enemies.push(new Enemy('plant', (s[1]+1)*TILE - 15, s[2]*TILE));
     }
+    // Predictable opening patrols make Stage 2 encounters learnable on retries.
+    if (this.stage === 2) for (const enemy of this.enemies) enemy.dir = -1;
     for (const g of this.level.gemSpawns){
       this.items.push(new Item('gem', g.tx*TILE + 11, g.ty*TILE + 11));
     }
@@ -69,20 +75,26 @@ const Game = {
   },
 
   // ---- flow ----
-  startGame(){
+  startGame(stage = 1, carry = false){
+    const form = carry && this.player ? this.player.form : 'small';
+    this.stage = stage === 2 ? 2 : 1;
     AudioSys.unlock();
     hideAllOverlays();
     document.body.classList.add('in-game');
-    this.score = 0; this.gems = 0; this.lives = 3;
+    if (!carry){ this.score = 0; this.gems = 0; this.lives = 3; }
     this.checkX = START_TX;
-    this.mainLevel = new Level(MAIN_ROWS, false);
+    this.mainLevel = new Level(this.course.rows, false);
     this.level = this.mainLevel;
     this.inBonus = false;
-    this.timeLeft = LEVEL_TIME;
+    this.bonusLevel = new Level(BONUS_ROWS, true);
+    this.mainItems = [];
+    this.bonusLockT = 0;
+    this.shakeT = 0;
+    this.timeLeft = this.course.time;
     this.multiQ = 0;
     this.stompChain = 0; this.chainT = 0;
     this.player = new Player(this);
-    this.player.reset(START_TX, 'small', GROUND_ROW);
+    this.player.reset(START_TX, form, GROUND_ROW);
     this.spawnEntities();
     this.particles.clear();
     this.texts.length = 0;
@@ -95,10 +107,10 @@ const Game = {
     needRender = true;
   },
   restartLevel(){
-    this.mainLevel = new Level(MAIN_ROWS, false);
+    this.mainLevel = new Level(this.course.rows, false);
     this.level = this.mainLevel;
     this.inBonus = false;
-    this.timeLeft = LEVEL_TIME;
+    this.timeLeft = this.course.time;
     this.multiQ = 0;
     this.player.reset(this.checkX, this.player.form, GROUND_ROW);
     this.spawnEntities();
@@ -113,9 +125,10 @@ const Game = {
     needRender = true;
   },
   toTitle(){
+    this.stage = 1;
     hideAllOverlays();
     document.body.classList.remove('in-game');
-    this.mainLevel = new Level(MAIN_ROWS, false);
+    this.mainLevel = new Level(this.course.rows, false);
     this.level = this.mainLevel;
     this.bonusLevel = new Level(BONUS_ROWS, true);
     this.inBonus = false;
@@ -128,6 +141,7 @@ const Game = {
     this.fade = null;
     this.state = 'TITLE';
     AudioSys.stopMusic();
+    $('btn-stage2').hidden = !this.stage2Unlocked;
     $('title-hi').textContent = 'BEST ' + pad6(this.high);
     showOv('ov-title');
     needRender = true;
@@ -427,7 +441,11 @@ const Game = {
       this.fade = null;
     }
   },
+  nextStage(){
+    if (this.state === 'CLEAR' && this.stage === 1) this.startGame(2, true);
+  },
   finishClear(){
+    if (this.state === 'CLEAR') return;
     this.state = 'CLEAR';
     this.timeBonus = Math.ceil(this.timeLeft) * 50;
     this.score += this.timeBonus;
@@ -438,6 +456,12 @@ const Game = {
       '<br>TIME BONUS&nbsp;&nbsp;' + pad6(this.timeBonus) +
       '<br>GEMS&nbsp;&nbsp;×' + this.gems +
       '<br><span class="total">TOTAL ' + pad6(this.score) + '</span>';
+    if (this.stage === 1){
+      this.stage2Unlocked = true; Store.set('stage2Unlocked', true);
+    }
+    $('btn-next-stage').hidden = this.stage !== 1;
+    $('clear-heading').textContent = this.stage === 1 ? 'STAGE 1 CLEAR!' : 'STAGE 2 CLEAR!';
+    $('clear-message').textContent = this.stage === 1 ? 'Sunset Ridge unlocked. Your adventure continues!' : 'VICTORY — both bluffs are safe!';
     $('clear-hi').textContent = 'BEST ' + pad6(this.high);
     showOv('ov-clear');
   },
@@ -810,13 +834,14 @@ function drawStrip(img, y, par, camX){
 
 function drawScene(camX, camY){
   const G = Game;
-  ctx.drawImage(ASSETS.bg.sky, 0, 0);
+  const backdrop = G.stage === 2 ? ASSETS.sunset : ASSETS.bg;
+  ctx.drawImage(backdrop.sky, 0, 0);
   for (const cl of ASSETS.bg.clouds){
     const sx = mod(cl.x - camX*0.25, VIEW_W + 260) - 130;
     ctx.drawImage(cl.img, Math.round(sx), cl.y);
   }
-  drawStrip(ASSETS.bg.far, 248, 0.15, camX);
-  drawStrip(ASSETS.bg.near, 336, 0.42, camX);
+  drawStrip(backdrop.far, 248, 0.15, camX);
+  drawStrip(backdrop.near, 336, 0.42, camX);
 
   const lv = G.level;
   const x0 = Math.floor(camX/TILE) - 1;
@@ -1080,7 +1105,7 @@ function drawHUD(){
   ctx.textAlign = 'left';
   ctx.textBaseline = 'top';
   ctx.fillStyle = 'rgba(10,20,40,.75)';
-  const name = (G.inBonus ? 'SECRET ROOM' : LEVEL_NAME);
+  const name = (G.inBonus ? 'SECRET ROOM' : G.stage + ' · ' + G.course.name);
   ctx.fillText(name, 21, 57);
   ctx.fillStyle = '#bcd0f5';
   ctx.fillText(name, 20, 56);
@@ -1108,13 +1133,13 @@ function drawReady(){
   ctx.textBaseline = 'top';
   ctx.font = '900 46px "Courier New", monospace';
   ctx.fillStyle = 'rgba(10,20,40,.8)';
-  ctx.fillText(LEVEL_NAME, 481, 196);
+  ctx.fillText(Game.course.name, 481, 196);
   ctx.fillStyle = '#ffe14d';
-  ctx.fillText(LEVEL_NAME, 480, 194);
+  ctx.fillText(Game.course.name, 480, 194);
   ctx.font = '800 26px "Courier New", monospace';
   ctx.globalAlpha = 0.6 + 0.4*Math.sin(gameT*6);
   ctx.fillStyle = '#fff';
-  ctx.fillText('GET READY!', 480, 262);
+  ctx.fillText('STAGE '+Game.stage+' — GET READY!', 480, 262);
   ctx.globalAlpha = 1;
   ctx.textAlign = 'left';
 }
@@ -1296,7 +1321,9 @@ function wireUI(){
     Store.set('opacity', Settings.opacity);
     Settings.apply();
   });
-  on('btn-retry', () => Game.startGame());
+  on('btn-stage2', () => { if (Game.stage2Unlocked) Game.startGame(2); });
+  on('btn-next-stage', () => Game.nextStage());
+  on('btn-retry', () => Game.startGame(Game.stage));
   on('btn-over-title', () => Game.toTitle());
   on('btn-again', () => Game.startGame());
   on('btn-clear-title', () => Game.toTitle());

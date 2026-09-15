@@ -617,6 +617,19 @@ function buildItems(){
 function buildAssets(){
   buildTiles();
   buildBackground();
+  // Separate sunset layers keep the original course artwork unchanged.
+  const sunset = ASSETS.sunset = {};
+  sunset.sky = cv(VIEW_W, VIEW_H);
+  const sx = g2(sunset.sky), gradient = sx.createLinearGradient(0,0,0,VIEW_H);
+  gradient.addColorStop(0,'#514779'); gradient.addColorStop(0.6,'#df8a91'); gradient.addColorStop(1,'#ffd2a0');
+  sx.fillStyle = gradient; sx.fillRect(0,0,VIEW_W,VIEW_H);
+  sx.fillStyle = '#ffe8aa'; sx.beginPath(); sx.arc(800,210,54,0,Math.PI*2); sx.fill();
+  for (const [name,color] of [['far','#87759e'],['near','#594e79']]){
+    const source = ASSETS.bg[name], layer = cv(source.width,source.height), lx = g2(layer);
+    lx.drawImage(source,0,0); lx.globalCompositeOperation = 'source-atop';
+    lx.fillStyle = color; lx.fillRect(0,0,layer.width,layer.height);
+    sunset[name] = layer;
+  }
   buildPip();
   buildItems();
 }
@@ -695,6 +708,38 @@ const ENEMY_SPAWNS = [
 ];
 
 // ---------------- level (tile grid + helpers) ----------------
+// Stage 2: a new course with three short ravines, pipe gardens and gem routes.
+const STAGE2_ROWS = (() => {
+  const rows = Array.from({length:12}, (_, y) => Array(170).fill(y >= 10 ? '#' : '.'));
+  const put = (x,y,text) => { for (let i=0;i<text.length;i++) rows[y][x+i] = text[i]; };
+  for (const start of [32,69,123]) for (let y=10;y<12;y++) put(start,y,'...');
+  for (const [x,y] of [[24,8],[58,8],[88,7],[118,8]]){
+    put(x,y,'()'); for (let r=y+1;r<10;r++) put(x,r,'[]');
+  }
+  for (const [x,text] of [[9,'BGB'],[36,'B?B'],[51,'BSB'],[79,'BMB'],[103,'BIB'],[130,'B?B']]) put(x,7,text);
+  put(42,9,'D');
+  // Optional raised paths reward exploration without blocking the ground route.
+  put(30,8,'==='); put(67,8,'=='); put(70,7,'===');
+  put(95,8,'==='); put(121,8,'=====');
+  for (const x of [60,114]) for (let y=7;y<10;y++) put(x,y,'K');
+  for (const [x,y,text] of [[6,9,'ooo'],[15,9,'oo'],[24,7,'oo'],[30,7,'ooo'],
+    [36,6,'ooo'],[46,9,'ooo'],[58,7,'oo'],[67,6,'oooooo'],[79,6,'ooo'],
+    [88,5,'oo'],[95,7,'ooo'],[103,6,'ooo'],[118,7,'oo'],[122,7,'ooo'],[130,6,'ooo'],[146,9,'ooo']]) put(x,y,text);
+  for (let y=2;y<10;y++) put(152,y,'F');
+  put(156,2,'F'); put(156,3,'F');
+  for (let y=4;y<10;y++) put(155,y,y===4?'****':'******');
+  put(155,8,'E'); put(155,9,'E');
+  return rows.map(row => row.join(''));
+})();
+const STAGE2_ENEMIES = [
+  ['walker',14], ['walker',40], ['shell',64], ['walker',73],
+  ['plant',88,7], ['walker',106], ['shell',112], ['walker',135], ['shell',142],
+];
+const COURSES = [
+  { name:'SUNNY BLUFF', rows:MAIN_ROWS, enemies:ENEMY_SPAWNS, time:300 },
+  { name:'SUNSET RIDGE', rows:STAGE2_ROWS, enemies:STAGE2_ENEMIES, time:320 },
+];
+
 class Level {
   constructor(rows, isBonus){
     this.isBonus = !!isBonus;

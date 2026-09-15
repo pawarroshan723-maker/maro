@@ -82,7 +82,7 @@ body.in-game #sysbar{ display:flex; }
   touch-action:none;
   overscroll-behavior:none;
 }
-.overlay[hidden]{ display:none; }
+.overlay[hidden], .btn[hidden]{ display:none; }
 #ov-set{ z-index:31; background:rgba(5,9,20,.78); }
 .panel{
   background:linear-gradient(180deg, rgba(24,36,66,.97), rgba(13,20,40,.97));
@@ -208,12 +208,13 @@ input[type=range]{ width:200px; accent-color:var(--accent); }
       <div class="logo-sub"><strong>GEM DASH</strong> · SUNNY BLUFF · A POCKET PLATFORM ADVENTURE</div>
       <div class="hi" id="title-hi">BEST 000000</div>
       <button type="button" class="btn btn-big" id="btn-start">TAP TO START</button>
+      <button type="button" class="btn" id="btn-stage2" hidden>PLAY STAGE 2 · SUNSET RIDGE</button>
       <div class="row">
         <button type="button" class="btn" id="btn-how">HOW TO PLAY</button>
         <button type="button" class="btn btn-ico" id="btn-fs-t" aria-label="Toggle fullscreen">⛶</button>
         <button type="button" class="btn btn-ico" id="btn-snd-t" aria-label="Toggle sound">♪</button>
       </div>
-      <div class="tip">◀ ▶ move &nbsp;·&nbsp; A jump (hold = higher) &nbsp;·&nbsp; B run / shoot &nbsp;·&nbsp; ▼ crouch &amp; enter doors<br>Featuring Maro the flame-tailed fox 🦊 · 8 foes · 21+ gems · Secret bonus room!</div>
+      <div class="tip">◀ ▶ move &nbsp;·&nbsp; A jump (hold = higher) &nbsp;·&nbsp; B run / shoot &nbsp;·&nbsp; ▼ crouch &amp; enter doors<br>Featuring Maro the flame-tailed fox 🦊 · Two stages · Gems &amp; power-ups · Secret bonus rooms!</div>
     </div>
   </div>
 
@@ -289,10 +290,11 @@ input[type=range]{ width:200px; accent-color:var(--accent); }
   <!-- course clear / victory -->
   <div class="overlay" id="ov-clear" hidden>
     <div class="panel">
-      <h2 class="big-gold">COURSE CLEAR!</h2>
-      <div class="victory">VICTORY — the Gem Bluff is safe!</div>
+      <h2 class="big-gold" id="clear-heading">COURSE CLEAR!</h2>
+      <div class="victory" id="clear-message">VICTORY — the Gem Bluff is safe!</div>
       <div id="clear-stats"></div>
       <div class="hi" id="clear-hi">BEST 000000</div>
+      <button type="button" class="btn btn-big" id="btn-next-stage" hidden>NEXT STAGE → SUNSET RIDGE</button>
       <button type="button" class="btn btn-big" id="btn-again">PLAY AGAIN</button>
       <button type="button" class="btn" id="btn-clear-title">TITLE SCREEN</button>
     </div>
@@ -1241,6 +1243,19 @@ function buildItems(){
 function buildAssets(){
   buildTiles();
   buildBackground();
+  // Separate sunset layers keep the original course artwork unchanged.
+  const sunset = ASSETS.sunset = {};
+  sunset.sky = cv(VIEW_W, VIEW_H);
+  const sx = g2(sunset.sky), gradient = sx.createLinearGradient(0,0,0,VIEW_H);
+  gradient.addColorStop(0,'#514779'); gradient.addColorStop(0.6,'#df8a91'); gradient.addColorStop(1,'#ffd2a0');
+  sx.fillStyle = gradient; sx.fillRect(0,0,VIEW_W,VIEW_H);
+  sx.fillStyle = '#ffe8aa'; sx.beginPath(); sx.arc(800,210,54,0,Math.PI*2); sx.fill();
+  for (const [name,color] of [['far','#87759e'],['near','#594e79']]){
+    const source = ASSETS.bg[name], layer = cv(source.width,source.height), lx = g2(layer);
+    lx.drawImage(source,0,0); lx.globalCompositeOperation = 'source-atop';
+    lx.fillStyle = color; lx.fillRect(0,0,layer.width,layer.height);
+    sunset[name] = layer;
+  }
   buildPip();
   buildItems();
 }
@@ -1319,6 +1334,38 @@ const ENEMY_SPAWNS = [
 ];
 
 // ---------------- level (tile grid + helpers) ----------------
+// Stage 2: a new course with three short ravines, pipe gardens and gem routes.
+const STAGE2_ROWS = (() => {
+  const rows = Array.from({length:12}, (_, y) => Array(170).fill(y >= 10 ? '#' : '.'));
+  const put = (x,y,text) => { for (let i=0;i<text.length;i++) rows[y][x+i] = text[i]; };
+  for (const start of [32,69,123]) for (let y=10;y<12;y++) put(start,y,'...');
+  for (const [x,y] of [[24,8],[58,8],[88,7],[118,8]]){
+    put(x,y,'()'); for (let r=y+1;r<10;r++) put(x,r,'[]');
+  }
+  for (const [x,text] of [[9,'BGB'],[36,'B?B'],[51,'BSB'],[79,'BMB'],[103,'BIB'],[130,'B?B']]) put(x,7,text);
+  put(42,9,'D');
+  // Optional raised paths reward exploration without blocking the ground route.
+  put(30,8,'==='); put(67,8,'=='); put(70,7,'===');
+  put(95,8,'==='); put(121,8,'=====');
+  for (const x of [60,114]) for (let y=7;y<10;y++) put(x,y,'K');
+  for (const [x,y,text] of [[6,9,'ooo'],[15,9,'oo'],[24,7,'oo'],[30,7,'ooo'],
+    [36,6,'ooo'],[46,9,'ooo'],[58,7,'oo'],[67,6,'oooooo'],[79,6,'ooo'],
+    [88,5,'oo'],[95,7,'ooo'],[103,6,'ooo'],[118,7,'oo'],[122,7,'ooo'],[130,6,'ooo'],[146,9,'ooo']]) put(x,y,text);
+  for (let y=2;y<10;y++) put(152,y,'F');
+  put(156,2,'F'); put(156,3,'F');
+  for (let y=4;y<10;y++) put(155,y,y===4?'****':'******');
+  put(155,8,'E'); put(155,9,'E');
+  return rows.map(row => row.join(''));
+})();
+const STAGE2_ENEMIES = [
+  ['walker',14], ['walker',40], ['shell',64], ['walker',73],
+  ['plant',88,7], ['walker',106], ['shell',112], ['walker',135], ['shell',142],
+];
+const COURSES = [
+  { name:'SUNNY BLUFF', rows:MAIN_ROWS, enemies:ENEMY_SPAWNS, time:300 },
+  { name:'SUNSET RIDGE', rows:STAGE2_ROWS, enemies:STAGE2_ENEMIES, time:320 },
+];
+
 class Level {
   constructor(rows, isBonus){
     this.isBonus = !!isBonus;
@@ -1820,6 +1867,9 @@ const Game = {
   state: 'BOOT',                       // TITLE READY PLAYING PAUSED DYING CLEARING CLEAR GAMEOVER
   score: 0, gems: 0, lives: 3, timeLeft: LEVEL_TIME,
   high: Store.get('high', 0),
+  stage: 1,
+  stage2Unlocked: Store.get('stage2Unlocked', false) === true,
+  get course(){ return COURSES[this.stage-1]; },
   level: null, mainLevel: null, bonusLevel: null, inBonus: false,
   player: null,
   enemies: [], items: [], shots: [], pops: [],
@@ -1839,7 +1889,7 @@ const Game = {
   init(){
     Particles.init();
     this.particles = Particles;
-    this.level = new Level(MAIN_ROWS, false);
+    this.level = new Level(this.course.rows, false);
     this.mainLevel = this.level;
     this.bonusLevel = new Level(BONUS_ROWS, true);
     this.player = new Player(this);
@@ -1847,6 +1897,7 @@ const Game = {
     this.spawnEntities();
     this.state = 'TITLE';
     this.cam.x = 30; this.cam.y = 0;
+    $('btn-stage2').hidden = !this.stage2Unlocked;
     $('title-hi').textContent = 'BEST ' + pad6(this.high);
     setupCanvas();
     TouchUI.init();
@@ -1865,11 +1916,13 @@ const Game = {
     this.items.length = 0;
     this.shots.length = 0;
     this.pops.length = 0;
-    for (const s of ENEMY_SPAWNS){
+    for (const s of this.course.enemies){
       if (s[0] === 'walker') this.enemies.push(new Enemy('walker', s[1]*TILE + 7, GROUND_ROW*TILE - 34));
       else if (s[0] === 'shell') this.enemies.push(new Enemy('shell', s[1]*TILE + 6, GROUND_ROW*TILE - 30));
       else if (s[0] === 'plant') this.enemies.push(new Enemy('plant', (s[1]+1)*TILE - 15, s[2]*TILE));
     }
+    // Predictable opening patrols make Stage 2 encounters learnable on retries.
+    if (this.stage === 2) for (const enemy of this.enemies) enemy.dir = -1;
     for (const g of this.level.gemSpawns){
       this.items.push(new Item('gem', g.tx*TILE + 11, g.ty*TILE + 11));
     }
@@ -1886,20 +1939,26 @@ const Game = {
   },
 
   // ---- flow ----
-  startGame(){
+  startGame(stage = 1, carry = false){
+    const form = carry && this.player ? this.player.form : 'small';
+    this.stage = stage === 2 ? 2 : 1;
     AudioSys.unlock();
     hideAllOverlays();
     document.body.classList.add('in-game');
-    this.score = 0; this.gems = 0; this.lives = 3;
+    if (!carry){ this.score = 0; this.gems = 0; this.lives = 3; }
     this.checkX = START_TX;
-    this.mainLevel = new Level(MAIN_ROWS, false);
+    this.mainLevel = new Level(this.course.rows, false);
     this.level = this.mainLevel;
     this.inBonus = false;
-    this.timeLeft = LEVEL_TIME;
+    this.bonusLevel = new Level(BONUS_ROWS, true);
+    this.mainItems = [];
+    this.bonusLockT = 0;
+    this.shakeT = 0;
+    this.timeLeft = this.course.time;
     this.multiQ = 0;
     this.stompChain = 0; this.chainT = 0;
     this.player = new Player(this);
-    this.player.reset(START_TX, 'small', GROUND_ROW);
+    this.player.reset(START_TX, form, GROUND_ROW);
     this.spawnEntities();
     this.particles.clear();
     this.texts.length = 0;
@@ -1912,10 +1971,10 @@ const Game = {
     needRender = true;
   },
   restartLevel(){
-    this.mainLevel = new Level(MAIN_ROWS, false);
+    this.mainLevel = new Level(this.course.rows, false);
     this.level = this.mainLevel;
     this.inBonus = false;
-    this.timeLeft = LEVEL_TIME;
+    this.timeLeft = this.course.time;
     this.multiQ = 0;
     this.player.reset(this.checkX, this.player.form, GROUND_ROW);
     this.spawnEntities();
@@ -1930,9 +1989,10 @@ const Game = {
     needRender = true;
   },
   toTitle(){
+    this.stage = 1;
     hideAllOverlays();
     document.body.classList.remove('in-game');
-    this.mainLevel = new Level(MAIN_ROWS, false);
+    this.mainLevel = new Level(this.course.rows, false);
     this.level = this.mainLevel;
     this.bonusLevel = new Level(BONUS_ROWS, true);
     this.inBonus = false;
@@ -1945,6 +2005,7 @@ const Game = {
     this.fade = null;
     this.state = 'TITLE';
     AudioSys.stopMusic();
+    $('btn-stage2').hidden = !this.stage2Unlocked;
     $('title-hi').textContent = 'BEST ' + pad6(this.high);
     showOv('ov-title');
     needRender = true;
@@ -2244,7 +2305,11 @@ const Game = {
       this.fade = null;
     }
   },
+  nextStage(){
+    if (this.state === 'CLEAR' && this.stage === 1) this.startGame(2, true);
+  },
   finishClear(){
+    if (this.state === 'CLEAR') return;
     this.state = 'CLEAR';
     this.timeBonus = Math.ceil(this.timeLeft) * 50;
     this.score += this.timeBonus;
@@ -2255,6 +2320,12 @@ const Game = {
       '<br>TIME BONUS&nbsp;&nbsp;' + pad6(this.timeBonus) +
       '<br>GEMS&nbsp;&nbsp;×' + this.gems +
       '<br><span class="total">TOTAL ' + pad6(this.score) + '</span>';
+    if (this.stage === 1){
+      this.stage2Unlocked = true; Store.set('stage2Unlocked', true);
+    }
+    $('btn-next-stage').hidden = this.stage !== 1;
+    $('clear-heading').textContent = this.stage === 1 ? 'STAGE 1 CLEAR!' : 'STAGE 2 CLEAR!';
+    $('clear-message').textContent = this.stage === 1 ? 'Sunset Ridge unlocked. Your adventure continues!' : 'VICTORY — both bluffs are safe!';
     $('clear-hi').textContent = 'BEST ' + pad6(this.high);
     showOv('ov-clear');
   },
@@ -2627,13 +2698,14 @@ function drawStrip(img, y, par, camX){
 
 function drawScene(camX, camY){
   const G = Game;
-  ctx.drawImage(ASSETS.bg.sky, 0, 0);
+  const backdrop = G.stage === 2 ? ASSETS.sunset : ASSETS.bg;
+  ctx.drawImage(backdrop.sky, 0, 0);
   for (const cl of ASSETS.bg.clouds){
     const sx = mod(cl.x - camX*0.25, VIEW_W + 260) - 130;
     ctx.drawImage(cl.img, Math.round(sx), cl.y);
   }
-  drawStrip(ASSETS.bg.far, 248, 0.15, camX);
-  drawStrip(ASSETS.bg.near, 336, 0.42, camX);
+  drawStrip(backdrop.far, 248, 0.15, camX);
+  drawStrip(backdrop.near, 336, 0.42, camX);
 
   const lv = G.level;
   const x0 = Math.floor(camX/TILE) - 1;
@@ -2897,7 +2969,7 @@ function drawHUD(){
   ctx.textAlign = 'left';
   ctx.textBaseline = 'top';
   ctx.fillStyle = 'rgba(10,20,40,.75)';
-  const name = (G.inBonus ? 'SECRET ROOM' : LEVEL_NAME);
+  const name = (G.inBonus ? 'SECRET ROOM' : G.stage + ' · ' + G.course.name);
   ctx.fillText(name, 21, 57);
   ctx.fillStyle = '#bcd0f5';
   ctx.fillText(name, 20, 56);
@@ -2925,13 +2997,13 @@ function drawReady(){
   ctx.textBaseline = 'top';
   ctx.font = '900 46px "Courier New", monospace';
   ctx.fillStyle = 'rgba(10,20,40,.8)';
-  ctx.fillText(LEVEL_NAME, 481, 196);
+  ctx.fillText(Game.course.name, 481, 196);
   ctx.fillStyle = '#ffe14d';
-  ctx.fillText(LEVEL_NAME, 480, 194);
+  ctx.fillText(Game.course.name, 480, 194);
   ctx.font = '800 26px "Courier New", monospace';
   ctx.globalAlpha = 0.6 + 0.4*Math.sin(gameT*6);
   ctx.fillStyle = '#fff';
-  ctx.fillText('GET READY!', 480, 262);
+  ctx.fillText('STAGE '+Game.stage+' — GET READY!', 480, 262);
   ctx.globalAlpha = 1;
   ctx.textAlign = 'left';
 }
@@ -3113,7 +3185,9 @@ function wireUI(){
     Store.set('opacity', Settings.opacity);
     Settings.apply();
   });
-  on('btn-retry', () => Game.startGame());
+  on('btn-stage2', () => { if (Game.stage2Unlocked) Game.startGame(2); });
+  on('btn-next-stage', () => Game.nextStage());
+  on('btn-retry', () => Game.startGame(Game.stage));
   on('btn-over-title', () => Game.toTitle());
   on('btn-again', () => Game.startGame());
   on('btn-clear-title', () => Game.toTitle());

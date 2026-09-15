@@ -29,12 +29,13 @@
       <div class="logo-sub"><strong>GEM DASH</strong> · SUNNY BLUFF · A POCKET PLATFORM ADVENTURE</div>
       <div class="hi" id="title-hi">BEST 000000</div>
       <button type="button" class="btn btn-big" id="btn-start">TAP TO START</button>
+      <button type="button" class="btn" id="btn-stage2" hidden>PLAY STAGE 2 · SUNSET RIDGE</button>
       <div class="row">
         <button type="button" class="btn" id="btn-how">HOW TO PLAY</button>
         <button type="button" class="btn btn-ico" id="btn-fs-t" aria-label="Toggle fullscreen">⛶</button>
         <button type="button" class="btn btn-ico" id="btn-snd-t" aria-label="Toggle sound">♪</button>
       </div>
-      <div class="tip">◀ ▶ move &nbsp;·&nbsp; A jump (hold = higher) &nbsp;·&nbsp; B run / shoot &nbsp;·&nbsp; ▼ crouch &amp; enter doors<br>Featuring Maro the flame-tailed fox 🦊 · 8 foes · 21+ gems · Secret bonus room!</div>
+      <div class="tip">◀ ▶ move &nbsp;·&nbsp; A jump (hold = higher) &nbsp;·&nbsp; B run / shoot &nbsp;·&nbsp; ▼ crouch &amp; enter doors<br>Featuring Maro the flame-tailed fox 🦊 · Two stages · Gems &amp; power-ups · Secret bonus rooms!</div>
     </div>
   </div>
 
@@ -110,10 +111,11 @@
   <!-- course clear / victory -->
   <div class="overlay" id="ov-clear" hidden>
     <div class="panel">
-      <h2 class="big-gold">COURSE CLEAR!</h2>
-      <div class="victory">VICTORY — the Gem Bluff is safe!</div>
+      <h2 class="big-gold" id="clear-heading">COURSE CLEAR!</h2>
+      <div class="victory" id="clear-message">VICTORY — the Gem Bluff is safe!</div>
       <div id="clear-stats"></div>
       <div class="hi" id="clear-hi">BEST 000000</div>
+      <button type="button" class="btn btn-big" id="btn-next-stage" hidden>NEXT STAGE → SUNSET RIDGE</button>
       <button type="button" class="btn btn-big" id="btn-again">PLAY AGAIN</button>
       <button type="button" class="btn" id="btn-clear-title">TITLE SCREEN</button>
     </div>

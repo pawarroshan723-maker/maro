@@ -7,7 +7,7 @@ const m = html.match(/<script>([\s\S]*)<\/script>/);
 if (!m){ console.error('no script block'); process.exit(1); }
 let code = m[1];
 code += '\n;globalThis.__G = { Game, Input, AudioSys, Settings, Level, MAIN_ROWS, BONUS_ROWS, T, ' +
-  'toggleMute, doPause, doResume, rectSolid, moveAndCollide, Player, Enemy, Item, Projectile, ASSETS, tileImage, Keyboard, keyboardDown, keyboardUp, setQuality };\n';
+  'toggleMute, doPause, doResume, rectSolid, moveAndCollide, Player, Enemy, Item, Projectile, ASSETS, tileImage, Keyboard, keyboardDown, keyboardUp, setQuality, COURSES };\n';
 
 function makeCtx(){
   const ops = [];
@@ -350,6 +350,59 @@ console.log('== game over flow ==');
   G.toggleMute();
   G.toggleMute();
   Game.toTitle();
+}
+
+console.log('== stage 2 progression and level ==');
+{
+  fresh();
+  Game.score = 1234; Game.gems = 12; Game.lives = 4;
+  Game.player.setForm('big');
+  Game.finishClear();
+  const total = Game.score;
+  check(Game.stage2Unlocked && JSON.parse(localStorageObj.getItem('gemdash.stage2Unlocked')) === true,
+    'clearing Stage 1 unlocks Stage 2 persistently');
+  check(!elCache['btn-next-stage'].hidden, 'Stage 1 completion offers Next Stage');
+  Game.nextStage();
+  check(Game.stage === 2 && Game.state === 'READY' && Game.course.name === 'SUNSET RIDGE',
+    'Next Stage loads Sunset Ridge');
+  check(Game.score === total && Game.gems === 12 && Game.lives === 4 && Game.player.form === 'big',
+    'progression carries score, gems, lives and form');
+  check(Game.timeLeft === 320 && Game.checkX === 2 && !Game.inBonus && !Game.fade,
+    'new stage resets timer, checkpoint and room state');
+  Game.nextStage();
+  check(Game.score === total, 'repeated Next Stage does not reset an active stage');
+  const lv = Game.level;
+  check(lv.w === 170 && lv.h === 12 && Game.enemies.length === 9 && lv.gemSpawns.length >= 40,
+    'Stage 2 has a full course, nine enemies and new gem routes');
+  check([32,69,123].every(x => !lv.solid(x,10) && !lv.solid(x+2,11) && lv.solid(x+3,10)),
+    'three bounded ravines have safe landing ground');
+  check([60,114].every(x => lv.get(x,7) === T.CHECK && lv.get(x,9) === T.CHECK && lv.solid(x,10)),
+    'both Stage 2 checkpoints have grounded continuous poles');
+  for (const e of Game.enemies){
+    if (e.kind === 'plant') check(lv.get(88,e.baseY/48) === T.PIPE_TL, 'Stage 2 flower sits on its pipe');
+    else check(!lv.solid(Math.floor(e.x/48),9) && lv.solid(Math.floor(e.x/48),10), 'enemy has clear supported spawn');
+  }
+  pump(90);
+  Game.onCheckpoint(114);
+  Game.restartLevel();
+  check(Game.stage === 2 && Game.checkX === 114 && Game.level.get(123,10) === T.EMPTY && Game.timeLeft === 320,
+    'death/restart retains Stage 2 and its checkpoint');
+  Game.enemies.length = 0; pump(90);
+  Game.enterBonus(); pump(60);
+  check(Game.inBonus && Game.stage === 2, 'Stage 2 bonus room can be entered');
+  Game.exitBonus(); pump(60);
+  check(!Game.inBonus && Game.stage === 2 && Game.level === Game.mainLevel, 'bonus exit returns to Stage 2');
+  Game.onFlag(Game.player,6); pump(600);
+  check(Game.state === 'CLEAR' && elCache['btn-next-stage'].hidden, 'Stage 2 finish reaches final victory without Stage 3');
+  const finalScore = Game.score; Game.finishClear();
+  check(Game.score === finalScore, 'final completion cannot award time bonus twice');
+  Game.toTitle();
+  check(Game.stage === 1 && !elCache['btn-stage2'].hidden, 'title restores Stage 1 preview and offers unlocked Stage 2');
+  Game.startGame(2);
+  check(Game.stage === 2 && Game.score === 0 && Game.lives === 3 && Game.player.form === 'small',
+    'direct Stage 2 replay starts a fresh run');
+  Game.startGame();
+  check(Game.stage === 1 && Game.level.get(28,10) === T.EMPTY, 'new adventure still starts at Stage 1');
 }
 
 console.log('== custom keyboard and quality settings ==');

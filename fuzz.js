@@ -28,7 +28,7 @@ new Function('document','window','navigator','localStorage','performance','reque
 const { Game, Input, rectSolid } = globalThis.__G;
 function pump(frames){ for (let i=0;i<frames;i++){ nowMs += 1000/60; const cbs = rafCbs.splice(0); for (const cb of cbs) cb(nowMs); } }
 
-Game.startGame(); pump(90);
+Game.startGame(process.env.STAGE === '2' ? 2 : 1); pump(90);
 let stuckSecs = 0, errors = [];
 const SECS = 60, SEEDS = [1, 7, 42, 1234, 99999];
 function rnd(seed){ let s = seed; return () => { s = (s*1103515245 + 12345) & 0x7fffffff; return s / 0x7fffffff; }; }
@@ -55,8 +55,8 @@ for (let sec = 0; sec < SECS; sec++){
     errors.push(`sec ${sec}: ${e.message}`);
     break;
   }
-  if (Game.state === 'GAMEOVER'){ Game.startGame(); pump(90); }
-  if (Game.state === 'CLEAR'){ Game.toTitle(); Game.startGame(); pump(90); }
+  if (Game.state === 'GAMEOVER'){ Game.startGame(process.env.STAGE === '2' ? 2 : 1); pump(90); }
+  if (Game.state === 'CLEAR'){ Game.toTitle(); Game.startGame(process.env.STAGE === '2' ? 2 : 1); pump(90); }
   // stuck monitor: embedded in solid for >2s straight (small player idle)
   const p = Game.player;
   if (Game.state === 'PLAYING' && !p.dead && rectSolid(Game.level, p.x, p.y, p.w, p.h)){

@@ -30,7 +30,7 @@ function p0(){ return Game.player; }
 function pump(frames){ for (let i=0;i<frames;i++){ nowMs += 1000/60; const cbs = rafCbs.splice(0); for (const cb of cbs) cb(nowMs); } }
 const SOLID = new Set([T.GROUND,T.DIRT,T.BRICK,T.Q_GEM,T.Q_GROW,T.Q_SHOT,T.Q_STAR,T.Q_LIFE,T.Q_MULTI,T.USED,T.PIPE_TL,T.PIPE_TR,T.PIPE_BL,T.PIPE_BR,T.BUILD]);
 
-Game.startGame(); pump(90);
+Game.startGame(process.env.STAGE === '2' ? 2 : 1); pump(90);
 if (process.env.GEOM_ONLY) { Game.enemies.length = 0; console.log('GEOM_ONLY: enemies removed'); }
 let deaths = 0, maxX = 0, lastLog = 0, waitFrames = 0, prevSt='PLAYING', deathCols=[], airFromTap=false, tapHold=0;
 const START = nowMs;
@@ -173,4 +173,4 @@ while (nowMs - START < 6*60*1000){
   }
 }
 console.log('final:', Game.state, 'maxCol=', (maxX/48).toFixed(1), 'deaths=', deaths, 'score=', Game.score, 'deathCols=', deathCols.slice(0,40).join(','));
-process.exit(0);
+process.exit(Game.state === 'CLEAR' ? 0 : 1);

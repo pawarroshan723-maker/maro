@@ -39,7 +39,11 @@ Stomp enemies from above or use fireballs. Kick stationary shells to hit other e
 | 14 | Eclipse Ridge | Fast patrols and fewer gap assists |
 | 15 | Crown Citadel | Final Gate Guardian: 5 hits |
 
-Every course has a distinct deterministic tile layout, a bonus room, gems and power-ups. Stages 3–15 use separately arranged obstacle modules with stage-specific scenery. Later courses progressively increase patrol speed, reduce the timer, widen ravines (never beyond four tiles), and mix more enemy behaviors. Snow and ember effects are cosmetic; physics remain consistent.
+Every course has a distinct deterministic tile layout, a bonus room, gems and power-ups. Stages 3–15 use separately arranged obstacle modules with stage-specific scenery. Later courses progressively increase patrol speed, reduce the timer, widen ravines earlier (never beyond four tiles), and mix more enemy behaviors: armored beetles and extra patrols arrive sooner, thorn beds grow wider on the top tiers, and guardians strike faster with more hit points. Snow, rain, embers and the other weather effects are cosmetic; physics remain consistent.
+
+**Difficulty tiers:** each stage is badged TUTORIAL, ADVENTURE, CHALLENGING, EXPERT or MASTER on its intro card, HUD plate and Stage Select tile, so the ramp is always visible.
+
+**Per-stage art:** every course draws its own landmark skyline — windmills on Sunny Bluff, crystal spires, watchtowers, coral arches, gears, monoliths and the golden Crown Citadel — plus its own ambient weather. The HUD frames each stage's name in its own palette with a numbered crest, and every stage opens with a themed intro card.
 
 **Progression:** Clear a stage and choose **Next Stage** to carry score, gems, lives and form onward. Each new stage starts with a fresh timer and checkpoint. Every third clear awards a life, capped at nine. Stage 15 ends the campaign.
 

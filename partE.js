@@ -317,13 +317,14 @@ class Enemy {
       if (this.warningT <= 0){
         if (near && G.enemyShots.filter(s=>!s.remove).length < 6){
           const dir = G.player.x < this.x ? -1 : 1;
-          G.enemyShots.push(new EnemyBolt(this.x+this.w/2+dir*36,this.y+this.h-18,dir,160+G.stage*4));
+          G.enemyShots.push(new EnemyBolt(this.x+this.w/2+dir*36,this.y+this.h-18,dir,185+G.stage*6));
           AudioSys.sfx.shoot();
         }
-        this.phase='patrol'; this.attackT=Math.max(1.25,2.8-G.stage*0.06);
+        this.phase='patrol'; this.attackT=Math.max(0.95,2.35-G.stage*0.07);
       }
     } else if (this.attackT<=0 && near){
-      this.phase='warning'; this.warningT=0.85; this.vx=0;
+      // Guardians telegraph less generously on later courses, but never below 0.6s.
+      this.phase='warning'; this.warningT=Math.max(0.6,0.9-G.stage*0.012); this.vx=0;
     }
   }
   update(dt, G){

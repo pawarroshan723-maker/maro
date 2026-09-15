@@ -367,13 +367,13 @@ console.log('== stage 2 progression and level ==');
     'Next Stage loads Sunset Ridge');
   check(Game.score === total && Game.gems === 12 && Game.lives === 4 && Game.player.form === 'big',
     'progression carries score, gems, lives and form');
-  check(Game.timeLeft === 320 && Game.checkX === 2 && !Game.inBonus && !Game.fade,
+  check(Game.timeLeft === 285 && Game.checkX === 2 && !Game.inBonus && !Game.fade,
     'new stage resets timer, checkpoint and room state');
   Game.nextStage();
   check(Game.score === total, 'repeated Next Stage does not reset an active stage');
   const lv = Game.level;
-  check(lv.w === 170 && lv.h === 12 && Game.enemies.length === 9 && lv.gemSpawns.length >= 40,
-    'Stage 2 has a full course, nine enemies and new gem routes');
+  check(lv.w === 170 && lv.h === 12 && Game.enemies.length === 10 && lv.gemSpawns.length >= 40,
+    'Stage 2 has a full course, ten enemies and new gem routes');
   check([32,69,123].every(x => !lv.solid(x,10) && !lv.solid(x+2,11) && lv.solid(x+3,10)),
     'three bounded ravines have safe landing ground');
   check([60,114].every(x => lv.get(x,7) === T.CHECK && lv.get(x,9) === T.CHECK && lv.solid(x,10)),
@@ -385,7 +385,7 @@ console.log('== stage 2 progression and level ==');
   pump(90);
   Game.onCheckpoint(114);
   Game.restartLevel();
-  check(Game.stage === 2 && Game.checkX === 114 && Game.level.get(123,10) === T.EMPTY && Game.timeLeft === 320,
+  check(Game.stage === 2 && Game.checkX === 114 && Game.level.get(123,10) === T.EMPTY && Game.timeLeft === 285,
     'death/restart retains Stage 2 and its checkpoint');
   Game.enemies.length = 0; pump(90);
   Game.enterBonus(); pump(60);
@@ -501,7 +501,7 @@ console.log('== new enemies and guardian combat ==');
   for(const stage of [5,10,15]){
     Game.startGame(stage); Game.state='PLAYING';
     const boss=Game.enemies.find(e=>e.kind==='guardian');
-    check(boss.hp===2+stage/5, 'guardian '+stage+' has scaled hit points');
+    check(boss.hp===3+stage/5, 'guardian '+stage+' has scaled hit points');
     Game.onFlag(Game.player,8);
     check(Game.state==='PLAYING', 'guardian '+stage+' prevents bypassing the finish');
     const hp=boss.hp;

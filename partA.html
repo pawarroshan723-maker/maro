@@ -6,7 +6,9 @@
 <meta name="theme-color" content="#070b16">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="mobile-web-app-capable" content="yes">
-<title>Gem Dash — Sunny Bluff</title>
+<meta name="description" content="Maro — Gem Dash: Sunny Bluff. A pocket platform adventure.">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🦊</text></svg>">
+<title>Maro — Gem Dash: Sunny Bluff</title>
 <style>
 :root{
   --panel:#101a30; --line:#33477a; --accent:#ff9d47; --gold:#ffe14d;
@@ -94,8 +96,11 @@ body.in-game #sysbar{ display:flex; }
   color:var(--gold);
   text-shadow:0 3px 0 #c47a16, 0 6px 0 rgba(0,0,0,.35);
   margin-bottom:4px;
+  animation:logoPop 0.6s ease-out;
 }
+@keyframes logoPop{ 0%{ transform:scale(0.8); opacity:0; } 100%{ transform:scale(1); opacity:1; } }
 .logo-sub{ font-size:13px; letter-spacing:2px; color:#9fb4dd; margin-bottom:16px; }
+.logo-sub strong{ color:var(--gold); }
 .hi{ font-size:18px; font-weight:700; color:#7ef0ff; margin-bottom:16px; letter-spacing:2px; }
 .btn{
   display:block; width:100%; margin:10px 0; padding:13px 20px;

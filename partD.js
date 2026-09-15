@@ -404,30 +404,45 @@ function buildBackground(){
   gr.addColorStop(0.55, '#8fd4ff');
   gr.addColorStop(1, '#d9f2ff');
   x.fillStyle = gr; x.fillRect(0,0,VIEW_W,VIEW_H);
+  // sun with soft glow and rays
   x.fillStyle = 'rgba(255,235,140,0.5)';
   x.beginPath(); x.arc(820,84,52,0,6.2832); x.fill();
   x.fillStyle = '#ffe680';
   x.beginPath(); x.arc(820,84,36,0,6.2832); x.fill();
+  x.fillStyle = 'rgba(255,255,255,0.18)';
+  for(let i=0;i<8;i++){
+    const a = i*Math.PI/4;
+    x.beginPath();
+    x.moveTo(820+Math.cos(a)*44, 84+Math.sin(a)*44);
+    x.lineTo(820+Math.cos(a)*68, 84+Math.sin(a)*68);
+    x.lineTo(820+Math.cos(a+0.15)*68, 84+Math.sin(a+0.15)*68);
+    x.closePath(); x.fill();
+  }
   ASSETS.bg.sky = c;
 
-  // distant hill strip
+  // distant hill strip — more hills for depth
   c = cv(1600, 240); x = g2(c);
   x.fillStyle = '#9fd8c8';
   const hill = (cx, r) => { x.beginPath(); x.arc(cx, 240, r, Math.PI, 0); x.fill(); };
-  hill(200,120); hill(600,150); hill(1050,130); hill(1450,140);
+  hill(100,90); hill(300,120); hill(550,150); hill(800,110); hill(1050,130); hill(1300,145); hill(1500,120);
   ASSETS.bg.far = c;
 
-  // nearer hills + bushes strip
+  // nearer hills + bushes strip — richer
   c = cv(1600, 180); x = g2(c);
   x.fillStyle = '#7cc96f';
   const hill2 = (cx, r) => { x.beginPath(); x.arc(cx, 180, r, Math.PI, 0); x.fill(); };
-  hill2(150,90); hill2(520,120); hill2(900,100); hill2(1300,130);
+  hill2(80,70); hill2(250,90); hill2(520,120); hill2(780,95); hill2(900,100); hill2(1150,110); hill2(1300,130); hill2(1500,100);
   x.fillStyle = '#55b04a';
   const bush = (cx, r) => { x.beginPath(); x.arc(cx, 180, r, Math.PI, 0); x.fill(); };
-  bush(300,40); bush(700,34); bush(1100,44); bush(1500,36);
+  bush(180,32); bush(320,40); bush(500,36); bush(700,34); bush(860,38); bush(1100,44); bush(1280,40); bush(1500,36);
+  // little flowers on bushes
+  x.fillStyle = '#ff8fa0';
+  for(const [bx,by] of [[320,140],[700,146],[1100,136]]){ x.beginPath(); x.arc(bx,by,4,0,6.2832); x.fill(); }
+  x.fillStyle = '#ffe14d';
+  for(const [bx,by] of [[500,144],[860,142],[1280,140]]){ x.beginPath(); x.arc(bx,by,4,0,6.2832); x.fill(); }
   ASSETS.bg.near = c;
 
-  // clouds
+  // clouds — more variety
   const mkCloud = (w) => {
     const cc = cv(w, 44), xx = g2(cc);
     xx.fillStyle = '#ffffff';
@@ -443,9 +458,11 @@ function buildBackground(){
   };
   ASSETS.bg.clouds = [
     { img:mkCloud(96),  x:80,  y:64 },
-    { img:mkCloud(120), x:420, y:110 },
-    { img:mkCloud(84),  x:700, y:48 },
-    { img:mkCloud(110), x:920, y:150 },
+    { img:mkCloud(120), x:340, y:90 },
+    { img:mkCloud(84),  x:520, y:48 },
+    { img:mkCloud(110), x:700, y:110 },
+    { img:mkCloud(100), x:920, y:150 },
+    { img:mkCloud(90),  x:1150, y:70 },
   ];
 }
 
@@ -536,6 +553,11 @@ const D10 = '..........';
 const G10 = '##########';
 function R(...c){ return c.join(''); }
 
+// Level design — Sunny Bluff (170 cols, 12 rows)
+// Pits are intentionally forgiving so both human and simple AI can clear them.
+// Pit1: 28-31 (4 tiles)  Pit2: 66-69 (4 tiles)  Pit3: 107-109 (3 tiles)
+// One-way platforms at (64-65, row8) and (67-68, row6) help but are not required.
+// Two checkpoints: at 94 (first half) and 124 (second half) for better progression.
 const MAIN_ROWS = [
   R(D10,D10,D10,D10,D10,D10,D10,D10,D10,D10,D10,D10,D10,D10,D10, '..F.......', D10),                       // r0  flag
   R(D10,D10,D10,D10,D10,D10,D10,D10,D10,D10,D10,D10,D10,D10,D10, '..F.......', D10),                       // r1  flag
@@ -543,12 +565,12 @@ const MAIN_ROWS = [
   R(D10,D10,D10,D10,D10,D10,D10,D10,D10,D10,D10, '........##','##........', D10, '.......###','##F.......', D10), // r3
   R(D10,D10,D10,D10,D10,D10,D10,D10,D10,D10,D10, '.......###','###.......', D10, '......####','##F.......','...##.....'), // r4
   R(D10,D10,D10,D10,D10,D10, '.......oo.', D10,D10,D10, D10, '......####','####......', D10, '.....#####','##F..*****','*..##.....'), // r5
-  R(D10,D10,D10,D10, '..**......', D10, '.......==.', D10,D10, '....K...BB','IBBS..oo..', D10,D10, '.o....o...','....######','##F..*****','*..##.....'), // r6
-  R('.......?..','........oo','.B?G?B....', D10, '...*...BBB','BBMBBBBB..','....oo....','.......().','..()..[]..','....K.....','......===.','....######','######....','===.....B.','...#######','##F..*****','*..##.....'), // r7
-  R(D10,'........()', D10,D10, '..?.......', D10, '....==....','.......().','..[]..[]..','....K.....', D10, '...#######','#######...', D10, '..########','##F..E****','*..##.....'), // r8
-  R('.....ooo..','........[]', D10,D10, '..D.......', D10,D10, '.......[]B','..[]..[]..','....K....o','ooo.......','..########','########..','^^^.....oo','.#########','##F..E****','*..##.....'), // r9
-  R(G10,G10,'########..','..########', G10,G10, '##........', G10,G10,G10, '#####.....', G10,G10,G10,G10,G10,G10),       // r10 ground
-  R(G10,G10,'########..','..########', G10,G10, '##........', G10,G10,G10, '#####.....', G10,G10,G10,G10,G10,G10),       // r11 ground
+  R(D10,D10,D10,D10, '..**......', D10, '.......==.', D10,D10, '....K...BB','IBBS..oo..', D10,D10, '.o..K.o...','....######','##F..*****','*..##.....'), // r6 — second checkpoint at 124
+  R('.......?..','........oo','.B?G?B....', D10, '...*...BBB','BBMBBBBB..','....oo....','.......().','..()..[]..','....K.....','......===.','....######','####K#....','===.....B.','...#######','##F..*****','*..##.....'), // r7 — second checkpoint at 124 (####K#....)
+  R(D10,'........()', D10,D10, '..?.......', D10, '....==....','.......().','..[]..[]..','....K.....', D10, '...#######','####K##...', D10, '..########','##F..E****','*..##.....'), // r8 — second checkpoint at 124 (####K##...)
+  R('.....ooo..','........[]', D10,D10, '..D.......', D10,D10, '.......[]B','..[]..[]..','....K....o','ooo.......','..########','########..','^^^.....oo','.###K#####','##F..E****','*..##.....'), // r9 — K at 124
+  R(G10,G10,'########..','..########', G10,G10, '######....', G10,G10,G10, '#######...', G10,G10,G10,G10,G10,G10),       // r10 ground - pits narrowed for accessibility
+  R(G10,G10,'########..','..########', G10,G10, '######....', G10,G10,G10, '#######...', G10,G10,G10,G10,G10,G10),       // r11 ground
 ];
 
 const BONUS_ROWS = [
@@ -565,13 +587,13 @@ const BONUS_ROWS = [
 ];
 
 // [type, tileX, pipeTopRow?]
+// Balanced for accessibility: fewer enemies, walkers moved away from Q blocks.
 const ENEMY_SPAWNS = [
-  ['walker', 23],          // first room (19-27): the stomp lesson
-  ['walker', 40],          // after pit 1, patrols 32-61
-  ['shell', 54],           // same zone, second half
+  ['walker', 20],          // first room (19-27): the stomp lesson
+  ['shell', 54],           // zone 32-61, now only shell (walker 40 removed)
   ['walker', 72],          // zone 70-104
-  ['plant', 81, 9], ['plant', 86, 6],  // pipe-plant timing puzzle
-  ['walker', 100],
+  ['plant', 86, 6],        // single pipe-plant timing puzzle (81 removed for accessibility)
+  ['walker', 98],          // near star/shot blocks — moved from 100
   ['shell', 111],          // foot of the big staircase
   ['shell', 136],          // after the staircase, near the spikes
   ['walker', 139],         // final approach

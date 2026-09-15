@@ -261,8 +261,9 @@ class Enemy {
     this.state = kind === 'shell' ? 'walk' : 'walk';
     this.rise = 0; this.baseY = y; this.walkT = Math.random()*10;
     this.phase = 'hidden'; this.phaseT = 1 + Math.random();
-    if (kind === 'walker'){ this.w = 34; this.h = 34; this.speed = 60; }
-    else if (kind === 'shell'){ this.w = 36; this.h = 30; this.speed = 55; }
+    // Tuned for accessibility: slower walkers, shells less aggressive
+    if (kind === 'walker'){ this.w = 34; this.h = 34; this.speed = 42; }
+    else if (kind === 'shell'){ this.w = 36; this.h = 30; this.speed = 38; }
     else { // plant
       this.w = 30; this.h = 26;
       this.baseY = y;               // pipe top (world y)
@@ -312,7 +313,7 @@ class Enemy {
       return;
     }
     let sp = this.speed;
-    if (this.kind === 'shell' && this.state === 'live') sp = 430;
+    if (this.kind === 'shell' && this.state === 'live') sp = 300; // was 430, now more controllable
     if (this.kind === 'shell' && this.state === 'idle') sp = 0;
     this.vx = this.dir * sp;
     this.vy = Math.min(this.vy + PHYS.GRAV*dt, PHYS.MAX_FALL);

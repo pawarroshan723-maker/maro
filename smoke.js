@@ -115,7 +115,8 @@ console.log('== level data ==');
   check(lv.get(42, 9) === T.DOOR, 'bonus door at (42,9)');
   check(lv.get(7, 7) === T.Q_GEM, 'mystery gem at (7,7)');
   check(lv.get(155, 8) === T.END_DOOR && lv.get(155, 9) === T.END_DOOR, '2-tile destination door');
-  check(lv.get(28, 10) === T.EMPTY && lv.get(62, 10) === T.EMPTY && lv.get(105, 10) === T.EMPTY, 'pits exist');
+  // pits were narrowed for accessibility: original 62 and 105 are now ground, new pits at 66 and 107
+  check(lv.get(28, 10) === T.EMPTY && lv.get(66, 10) === T.EMPTY && lv.get(107, 10) === T.EMPTY, 'pits exist');
   check(lv.gemSpawns.length > 0, 'floating gems: ' + lv.gemSpawns.length);
   const blv = new G.Level(G.BONUS_ROWS, true);
   check(blv.w === 18 && blv.h === 10, 'bonus room 18x10');

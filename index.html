@@ -6,7 +6,9 @@
 <meta name="theme-color" content="#070b16">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="mobile-web-app-capable" content="yes">
-<title>Gem Dash — Sunny Bluff</title>
+<meta name="description" content="Maro — Gem Dash: Sunny Bluff. A pocket platform adventure.">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🦊</text></svg>">
+<title>Maro — Gem Dash: Sunny Bluff</title>
 <style>
 :root{
   --panel:#101a30; --line:#33477a; --accent:#ff9d47; --gold:#ffe14d;
@@ -94,8 +96,11 @@ body.in-game #sysbar{ display:flex; }
   color:var(--gold);
   text-shadow:0 3px 0 #c47a16, 0 6px 0 rgba(0,0,0,.35);
   margin-bottom:4px;
+  animation:logoPop 0.6s ease-out;
 }
+@keyframes logoPop{ 0%{ transform:scale(0.8); opacity:0; } 100%{ transform:scale(1); opacity:1; } }
 .logo-sub{ font-size:13px; letter-spacing:2px; color:#9fb4dd; margin-bottom:16px; }
+.logo-sub strong{ color:var(--gold); }
 .hi{ font-size:18px; font-weight:700; color:#7ef0ff; margin-bottom:16px; letter-spacing:2px; }
 .btn{
   display:block; width:100%; margin:10px 0; padding:13px 20px;
@@ -185,8 +190,8 @@ input[type=range]{ width:200px; accent-color:var(--accent); }
   <!-- title screen -->
   <div class="overlay" id="ov-title" hidden>
     <div class="panel">
-      <div class="logo">GEM DASH</div>
-      <div class="logo-sub">SUNNY BLUFF · A POCKET PLATFORM ADVENTURE</div>
+      <div class="logo">MARO</div>
+      <div class="logo-sub"><strong>GEM DASH</strong> · SUNNY BLUFF · A POCKET PLATFORM ADVENTURE</div>
       <div class="hi" id="title-hi">BEST 000000</div>
       <button type="button" class="btn btn-big" id="btn-start">TAP TO START</button>
       <div class="row">
@@ -194,7 +199,7 @@ input[type=range]{ width:200px; accent-color:var(--accent); }
         <button type="button" class="btn btn-ico" id="btn-fs-t" aria-label="Toggle fullscreen">⛶</button>
         <button type="button" class="btn btn-ico" id="btn-snd-t" aria-label="Toggle sound">♪</button>
       </div>
-      <div class="tip">◀ ▶ move &nbsp;·&nbsp; A jump (hold = higher) &nbsp;·&nbsp; B run / shoot &nbsp;·&nbsp; ▼ crouch &amp; enter doors</div>
+      <div class="tip">◀ ▶ move &nbsp;·&nbsp; A jump (hold = higher) &nbsp;·&nbsp; B run / shoot &nbsp;·&nbsp; ▼ crouch &amp; enter doors<br>Featuring Maro the flame-tailed fox 🦊 · 8 foes · 21+ gems · Secret bonus room!</div>
     </div>
   </div>
 
@@ -994,30 +999,45 @@ function buildBackground(){
   gr.addColorStop(0.55, '#8fd4ff');
   gr.addColorStop(1, '#d9f2ff');
   x.fillStyle = gr; x.fillRect(0,0,VIEW_W,VIEW_H);
+  // sun with soft glow and rays
   x.fillStyle = 'rgba(255,235,140,0.5)';
   x.beginPath(); x.arc(820,84,52,0,6.2832); x.fill();
   x.fillStyle = '#ffe680';
   x.beginPath(); x.arc(820,84,36,0,6.2832); x.fill();
+  x.fillStyle = 'rgba(255,255,255,0.18)';
+  for(let i=0;i<8;i++){
+    const a = i*Math.PI/4;
+    x.beginPath();
+    x.moveTo(820+Math.cos(a)*44, 84+Math.sin(a)*44);
+    x.lineTo(820+Math.cos(a)*68, 84+Math.sin(a)*68);
+    x.lineTo(820+Math.cos(a+0.15)*68, 84+Math.sin(a+0.15)*68);
+    x.closePath(); x.fill();
+  }
   ASSETS.bg.sky = c;
 
-  // distant hill strip
+  // distant hill strip — more hills for depth
   c = cv(1600, 240); x = g2(c);
   x.fillStyle = '#9fd8c8';
   const hill = (cx, r) => { x.beginPath(); x.arc(cx, 240, r, Math.PI, 0); x.fill(); };
-  hill(200,120); hill(600,150); hill(1050,130); hill(1450,140);
+  hill(100,90); hill(300,120); hill(550,150); hill(800,110); hill(1050,130); hill(1300,145); hill(1500,120);
   ASSETS.bg.far = c;
 
-  // nearer hills + bushes strip
+  // nearer hills + bushes strip — richer
   c = cv(1600, 180); x = g2(c);
   x.fillStyle = '#7cc96f';
   const hill2 = (cx, r) => { x.beginPath(); x.arc(cx, 180, r, Math.PI, 0); x.fill(); };
-  hill2(150,90); hill2(520,120); hill2(900,100); hill2(1300,130);
+  hill2(80,70); hill2(250,90); hill2(520,120); hill2(780,95); hill2(900,100); hill2(1150,110); hill2(1300,130); hill2(1500,100);
   x.fillStyle = '#55b04a';
   const bush = (cx, r) => { x.beginPath(); x.arc(cx, 180, r, Math.PI, 0); x.fill(); };
-  bush(300,40); bush(700,34); bush(1100,44); bush(1500,36);
+  bush(180,32); bush(320,40); bush(500,36); bush(700,34); bush(860,38); bush(1100,44); bush(1280,40); bush(1500,36);
+  // little flowers on bushes
+  x.fillStyle = '#ff8fa0';
+  for(const [bx,by] of [[320,140],[700,146],[1100,136]]){ x.beginPath(); x.arc(bx,by,4,0,6.2832); x.fill(); }
+  x.fillStyle = '#ffe14d';
+  for(const [bx,by] of [[500,144],[860,142],[1280,140]]){ x.beginPath(); x.arc(bx,by,4,0,6.2832); x.fill(); }
   ASSETS.bg.near = c;
 
-  // clouds
+  // clouds — more variety
   const mkCloud = (w) => {
     const cc = cv(w, 44), xx = g2(cc);
     xx.fillStyle = '#ffffff';
@@ -1033,9 +1053,11 @@ function buildBackground(){
   };
   ASSETS.bg.clouds = [
     { img:mkCloud(96),  x:80,  y:64 },
-    { img:mkCloud(120), x:420, y:110 },
-    { img:mkCloud(84),  x:700, y:48 },
-    { img:mkCloud(110), x:920, y:150 },
+    { img:mkCloud(120), x:340, y:90 },
+    { img:mkCloud(84),  x:520, y:48 },
+    { img:mkCloud(110), x:700, y:110 },
+    { img:mkCloud(100), x:920, y:150 },
+    { img:mkCloud(90),  x:1150, y:70 },
   ];
 }
 
@@ -1126,6 +1148,11 @@ const D10 = '..........';
 const G10 = '##########';
 function R(...c){ return c.join(''); }
 
+// Level design — Sunny Bluff (170 cols, 12 rows)
+// Pits are intentionally forgiving so both human and simple AI can clear them.
+// Pit1: 28-31 (4 tiles)  Pit2: 66-69 (4 tiles)  Pit3: 107-109 (3 tiles)
+// One-way platforms at (64-65, row8) and (67-68, row6) help but are not required.
+// Two checkpoints: at 94 (first half) and 124 (second half) for better progression.
 const MAIN_ROWS = [
   R(D10,D10,D10,D10,D10,D10,D10,D10,D10,D10,D10,D10,D10,D10,D10, '..F.......', D10),                       // r0  flag
   R(D10,D10,D10,D10,D10,D10,D10,D10,D10,D10,D10,D10,D10,D10,D10, '..F.......', D10),                       // r1  flag
@@ -1133,12 +1160,12 @@ const MAIN_ROWS = [
   R(D10,D10,D10,D10,D10,D10,D10,D10,D10,D10,D10, '........##','##........', D10, '.......###','##F.......', D10), // r3
   R(D10,D10,D10,D10,D10,D10,D10,D10,D10,D10,D10, '.......###','###.......', D10, '......####','##F.......','...##.....'), // r4
   R(D10,D10,D10,D10,D10,D10, '.......oo.', D10,D10,D10, D10, '......####','####......', D10, '.....#####','##F..*****','*..##.....'), // r5
-  R(D10,D10,D10,D10, '..**......', D10, '.......==.', D10,D10, '....K...BB','IBBS..oo..', D10,D10, '.o....o...','....######','##F..*****','*..##.....'), // r6
-  R('.......?..','........oo','.B?G?B....', D10, '...*...BBB','BBMBBBBB..','....oo....','.......().','..()..[]..','....K.....','......===.','....######','######....','===.....B.','...#######','##F..*****','*..##.....'), // r7
-  R(D10,'........()', D10,D10, '..?.......', D10, '....==....','.......().','..[]..[]..','....K.....', D10, '...#######','#######...', D10, '..########','##F..E****','*..##.....'), // r8
-  R('.....ooo..','........[]', D10,D10, '..D.......', D10,D10, '.......[]B','..[]..[]..','....K....o','ooo.......','..########','########..','^^^.....oo','.#########','##F..E****','*..##.....'), // r9
-  R(G10,G10,'########..','..########', G10,G10, '##........', G10,G10,G10, '#####.....', G10,G10,G10,G10,G10,G10),       // r10 ground
-  R(G10,G10,'########..','..########', G10,G10, '##........', G10,G10,G10, '#####.....', G10,G10,G10,G10,G10,G10),       // r11 ground
+  R(D10,D10,D10,D10, '..**......', D10, '.......==.', D10,D10, '....K...BB','IBBS..oo..', D10,D10, '.o..K.o...','....######','##F..*****','*..##.....'), // r6 — second checkpoint at 124
+  R('.......?..','........oo','.B?G?B....', D10, '...*...BBB','BBMBBBBB..','....oo....','.......().','..()..[]..','....K.....','......===.','....######','####K#....','===.....B.','...#######','##F..*****','*..##.....'), // r7 — second checkpoint at 124 (####K#....)
+  R(D10,'........()', D10,D10, '..?.......', D10, '....==....','.......().','..[]..[]..','....K.....', D10, '...#######','####K##...', D10, '..########','##F..E****','*..##.....'), // r8 — second checkpoint at 124 (####K##...)
+  R('.....ooo..','........[]', D10,D10, '..D.......', D10,D10, '.......[]B','..[]..[]..','....K....o','ooo.......','..########','########..','^^^.....oo','.###K#####','##F..E****','*..##.....'), // r9 — K at 124
+  R(G10,G10,'########..','..########', G10,G10, '######....', G10,G10,G10, '#######...', G10,G10,G10,G10,G10,G10),       // r10 ground - pits narrowed for accessibility
+  R(G10,G10,'########..','..########', G10,G10, '######....', G10,G10,G10, '#######...', G10,G10,G10,G10,G10,G10),       // r11 ground
 ];
 
 const BONUS_ROWS = [
@@ -1155,13 +1182,13 @@ const BONUS_ROWS = [
 ];
 
 // [type, tileX, pipeTopRow?]
+// Balanced for accessibility: fewer enemies, walkers moved away from Q blocks.
 const ENEMY_SPAWNS = [
-  ['walker', 23],          // first room (19-27): the stomp lesson
-  ['walker', 40],          // after pit 1, patrols 32-61
-  ['shell', 54],           // same zone, second half
+  ['walker', 20],          // first room (19-27): the stomp lesson
+  ['shell', 54],           // zone 32-61, now only shell (walker 40 removed)
   ['walker', 72],          // zone 70-104
-  ['plant', 81, 9], ['plant', 86, 6],  // pipe-plant timing puzzle
-  ['walker', 100],
+  ['plant', 86, 6],        // single pipe-plant timing puzzle (81 removed for accessibility)
+  ['walker', 98],          // near star/shot blocks — moved from 100
   ['shell', 111],          // foot of the big staircase
   ['shell', 136],          // after the staircase, near the spikes
   ['walker', 139],         // final approach
@@ -1475,8 +1502,9 @@ class Enemy {
     this.state = kind === 'shell' ? 'walk' : 'walk';
     this.rise = 0; this.baseY = y; this.walkT = Math.random()*10;
     this.phase = 'hidden'; this.phaseT = 1 + Math.random();
-    if (kind === 'walker'){ this.w = 34; this.h = 34; this.speed = 60; }
-    else if (kind === 'shell'){ this.w = 36; this.h = 30; this.speed = 55; }
+    // Tuned for accessibility: slower walkers, shells less aggressive
+    if (kind === 'walker'){ this.w = 34; this.h = 34; this.speed = 42; }
+    else if (kind === 'shell'){ this.w = 36; this.h = 30; this.speed = 38; }
     else { // plant
       this.w = 30; this.h = 26;
       this.baseY = y;               // pipe top (world y)
@@ -1526,7 +1554,7 @@ class Enemy {
       return;
     }
     let sp = this.speed;
-    if (this.kind === 'shell' && this.state === 'live') sp = 430;
+    if (this.kind === 'shell' && this.state === 'live') sp = 300; // was 430, now more controllable
     if (this.kind === 'shell' && this.state === 'idle') sp = 0;
     this.vx = this.dir * sp;
     this.vy = Math.min(this.vy + PHYS.GRAV*dt, PHYS.MAX_FALL);

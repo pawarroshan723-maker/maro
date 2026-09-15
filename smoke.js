@@ -115,7 +115,7 @@ console.log('== level data ==');
   check(MAIN_ROWS.every(r => r.length === 170), 'main rows all 170 cols');
   const lv = new G.Level(MAIN_ROWS, false);
   check(lv.get(2, 10) === T.GROUND, 'ground under start');
-  check(lv.get(152, 0) === T.FLAG && lv.get(152, 9) === T.FLAG, 'flag pole rows 0-9 at col 152');
+  check(lv.get(152, 0) === T.EMPTY && lv.get(152, 2) === T.FLAG && lv.get(152, 9) === T.FLAG, 'flag pole rows 2-9 at col 152');
   check(lv.get(42, 9) === T.DOOR, 'bonus door at (42,9)');
   check(lv.get(7, 7) === T.Q_GEM, 'mystery gem at (7,7)');
   check(lv.get(155, 8) === T.END_DOOR && lv.get(155, 9) === T.END_DOOR, '2-tile destination door');
@@ -350,6 +350,23 @@ console.log('== game over flow ==');
   G.toggleMute();
   G.toggleMute();
   Game.toTitle();
+}
+
+console.log('== destination castle layout ==');
+{
+  fresh();
+  const lv = Game.level;
+  let supported = true, clearApproach = true;
+  for (let y=0; y<10; y++) for (let x=142; x<=160; x++){
+    if (x<152 && lv.get(x,y) === T.BUILD) clearApproach = false;
+    if (lv.get(x,y) === T.BUILD && !lv.solid(x,y+1) && lv.get(x,y+1) !== T.END_DOOR) supported = false;
+  }
+  check(supported && clearApproach, 'castle walls are supported and no masonry floats over approach');
+  check(lv.flagTop === 2, 'flags start below HUD');
+  check(G.tileImage(T.END_DOOR,155,8) === G.ASSETS.tiles.endDoorTop &&
+    G.tileImage(T.END_DOOR,155,9) === G.ASSETS.tiles.endDoorBottom,
+    'entrance uses distinct halves of one tall door');
+  check(!lv.solid(155,8) && !lv.solid(155,9), 'entrance remains passable');
 }
 
 console.log('== reward animation and independent checkpoints ==');

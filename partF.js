@@ -787,6 +787,7 @@ function tileImage(c, tx, ty){
     if (lv.get(tx, ty+1) !== T.CHECK) return ASSETS.tiles.checkBase;
     return ASSETS.tiles.flagMid;
   }
+  if (c === T.END_DOOR) return lv.get(tx,ty-1) === T.END_DOOR ? ASSETS.tiles.endDoorBottom : ASSETS.tiles.endDoorTop;
   if (c === T.BUILD) return ((tx*7 + ty*13) % 3 === 0) ? ASSETS.tiles.build1 : ASSETS.tiles.build0;
   return ASSETS.tiles[c] || null;
 }

@@ -468,6 +468,14 @@ function buildTiles(){
   // arch highlight
   x.fillStyle = '#a8bdd8'; x.fillRect(2,2,44,2); x.fillRect(2,2,2,44);
   t[T.END_DOOR] = c;
+  // One tall entrance, sliced into two tiles rather than repeating two doors.
+  const entrance = cv(TILE,TILE*2);
+  g2(entrance).drawImage(c,0,0,TILE,TILE*2);
+  for (let half = 0; half < 2; half++){
+    const tile = cv(TILE,TILE);
+    g2(tile).drawImage(entrance,0,half*TILE,TILE,TILE,0,0,TILE,TILE);
+    t[half ? 'endDoorBottom' : 'endDoorTop'] = tile;
+  }
 }
 
 function buildBackground(){
@@ -648,6 +656,23 @@ const MAIN_ROWS = [
   R(G10,G10,'########..','..########', G10,G10, '######....', G10,G10,G10, '#######...', G10,G10,G10,G10,G10,G10),       // r10 ground - pits narrowed for accessibility
   R(G10,G10,'########..','..########', G10,G10, '######....', G10,G10,G10, '#######...', G10,G10,G10,G10,G10,G10),       // r11 ground
 ];
+
+// Rebuild the destination silhouette without suspended approach masonry.
+// Keep the finish lane and two-tile entrance non-solid for the clear walk.
+for (let row = 0; row < 10; row++){
+  const cells = MAIN_ROWS[row].split('');
+  for (let col = 142; col <= 160; col++){
+    if (cells[col] === '*' || cells[col] === 'F' || cells[col] === 'E') cells[col] = '.';
+  }
+  if (row >= 2) cells[152] = 'F';
+  if (row === 2 || row === 3) cells[156] = 'F';
+  if (row >= 4){
+    const right = row === 4 ? 158 : 160;
+    for (let col = 155; col <= right; col++) cells[col] = '*';
+  }
+  if (row === 8 || row === 9) cells[155] = 'E';
+  MAIN_ROWS[row] = cells.join('');
+}
 
 const BONUS_ROWS = [
   '******************',

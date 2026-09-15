@@ -1,0 +1,160 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<meta name="theme-color" content="#070b16">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<title>Gem Dash — Sunny Bluff</title>
+<style>
+:root{
+  --panel:#101a30; --line:#33477a; --accent:#ff9d47; --gold:#ffe14d;
+  --safe-b: env(safe-area-inset-bottom, 0px);
+  --safe-l: env(safe-area-inset-left, 0px);
+  --safe-r: env(safe-area-inset-right, 0px);
+  --safe-t: env(safe-area-inset-top, 0px);
+}
+*{ box-sizing:border-box; margin:0; padding:0; }
+html,body{
+  width:100%; height:100%; overflow:hidden; background:#070b16;
+  touch-action:none; overscroll-behavior:none;
+  -webkit-user-select:none; user-select:none; -webkit-touch-callout:none;
+  -webkit-tap-highlight-color:transparent;
+  font-family:-apple-system,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;
+}
+#stage{ position:fixed; inset:0; display:flex; align-items:center; justify-content:center; }
+#game{
+  image-rendering:pixelated; image-rendering:crisp-edges;
+  background:#4fb3f6; box-shadow:0 0 42px rgba(0,0,0,.55);
+}
+button{ font-family:inherit; cursor:pointer; -webkit-tap-highlight-color:transparent; }
+
+/* ---------- touch controls ---------- */
+#touch-ui{ position:fixed; inset:0; z-index:20; display:none; pointer-events:none; }
+body.in-game #touch-ui{ display:block; }
+#touch-ui .cluster{
+  position:absolute; bottom:calc(14px + var(--safe-b));
+  display:flex; gap:16px; align-items:flex-end; pointer-events:none;
+}
+#touch-ui .cluster-left{ left:calc(14px + var(--safe-l)); }
+#touch-ui .cluster-right{ right:calc(14px + var(--safe-r)); }
+.tbtn{
+  pointer-events:auto; touch-action:none;
+  width:70px; height:70px; border-radius:20px;
+  border:3px solid rgba(255,255,255,.65);
+  background:rgba(15,25,45,.42);
+  color:#fff; font-weight:800; font-size:26px; line-height:1;
+  display:flex; align-items:center; justify-content:center;
+  -webkit-user-select:none; user-select:none;
+}
+.tbtn.on, .tbtn:active{ background:rgba(255,255,255,.42); transform:scale(.95); }
+.tbtn-sm{ width:58px; height:58px; font-size:22px; border-radius:16px; margin-bottom:6px; }
+.tbtn-a{ width:88px; height:88px; border-radius:50%; font-size:34px; background:rgba(38,96,60,.48); }
+.tbtn-b{ width:66px; height:66px; border-radius:50%; font-size:26px; background:rgba(122,62,28,.48); margin-bottom:12px; }
+
+/* ---------- system buttons (top right) ---------- */
+#sysbar{
+  position:fixed; top:calc(8px + var(--safe-t)); right:calc(8px + var(--safe-r));
+  z-index:22; display:none; gap:8px;
+}
+body.in-game #sysbar{ display:flex; }
+.sysbtn{
+  width:46px; height:46px; border-radius:12px;
+  border:2px solid rgba(255,255,255,.55); background:rgba(15,25,45,.48);
+  color:#fff; font-size:18px; line-height:1;
+}
+.sysbtn:active{ background:rgba(255,255,255,.38); }
+.sysbtn.off{ opacity:.55; text-decoration:line-through; }
+
+/* ---------- overlays ---------- */
+.overlay{
+  position:fixed; inset:0; z-index:30;
+  display:flex; align-items:center; justify-content:center;
+  background:rgba(5,9,20,.58);
+  padding:16px;
+  padding-top:calc(16px + var(--safe-t));
+  padding-bottom:calc(16px + var(--safe-b));
+  padding-left:calc(16px + var(--safe-l));
+  padding-right:calc(16px + var(--safe-r));
+}
+.overlay[hidden]{ display:none; }
+#ov-set{ z-index:31; background:rgba(5,9,20,.78); }
+.panel{
+  background:linear-gradient(180deg, rgba(24,36,66,.97), rgba(13,20,40,.97));
+  border:3px solid var(--line); border-radius:20px;
+  padding:24px 28px; width:min(560px, 100%);
+  color:#eaf2ff; text-align:center;
+  box-shadow:0 18px 60px rgba(0,0,0,.5);
+  max-height:100%; overflow:auto;
+}
+.panel h2{ font-size:28px; letter-spacing:3px; margin-bottom:16px; color:var(--gold); }
+.logo{
+  font-size:clamp(42px, 9vw, 68px); font-weight:900; letter-spacing:6px;
+  color:var(--gold);
+  text-shadow:0 3px 0 #c47a16, 0 6px 0 rgba(0,0,0,.35);
+  margin-bottom:4px;
+}
+.logo-sub{ font-size:13px; letter-spacing:2px; color:#9fb4dd; margin-bottom:16px; }
+.hi{ font-size:18px; font-weight:700; color:#7ef0ff; margin-bottom:16px; letter-spacing:2px; }
+.btn{
+  display:block; width:100%; margin:10px 0; padding:13px 20px;
+  min-height:52px; border-radius:14px; border:2px solid #4a6db5;
+  background:#22335c; color:#fff; font-size:18px; font-weight:800; letter-spacing:1.5px;
+}
+.btn:active{ transform:scale(.97); background:#2c4272; }
+.btn-big{ font-size:24px; padding:16px 24px; background:var(--accent); border-color:#c96f1e; color:#3a2200; }
+.btn-big:active{ background:#ffb269; }
+.row{ display:flex; gap:10px; margin-top:6px; }
+.row .btn{ margin:0; }
+.btn-ico{ width:58px; min-width:58px; font-size:20px; }
+.tip{ margin-top:16px; font-size:13px; color:#8fa5d6; line-height:1.5; }
+.tut-grid{
+  display:grid; grid-template-columns:auto 1fr; gap:8px 14px;
+  text-align:left; margin:12px 0; font-size:16px;
+}
+.tut-key{
+  font-weight:800; color:var(--gold); background:#0d1526;
+  border:1px solid var(--line); border-radius:8px;
+  padding:5px 10px; text-align:center; white-space:nowrap;
+}
+.panel ul{ text-align:left; font-size:14px; color:#b9c8ea; margin:10px 0 14px; padding-left:20px; }
+.panel li{ margin:5px 0; }
+.set-row{
+  display:flex; align-items:center; justify-content:space-between; gap:12px;
+  padding:10px 0; font-size:17px; border-bottom:1px solid rgba(255,255,255,.08);
+}
+.tog{ width:92px; margin:0; padding:8px 0; min-height:44px; font-size:15px; }
+.tog.on{ background:#2e7d32; border-color:#4caf50; }
+input[type=range]{ width:200px; accent-color:var(--accent); }
+.big-red{ color:#ff6a5e !important; }
+.big-gold{ color:var(--gold) !important; }
+.victory{ font-size:18px; color:#9fe870; margin-bottom:12px; }
+.total{ font-size:26px; font-weight:900; color:var(--gold); letter-spacing:2px; }
+#clear-stats, #over-score, #over-hi{
+  font-size:17px; font-weight:700; letter-spacing:1px; margin:6px 0; color:#cfe0ff;
+}
+#over-score{ font-size:22px; }
+
+/* ---------- portrait hint ---------- */
+#ov-rotate{
+  position:fixed; inset:0; z-index:50; display:none;
+  align-items:center; justify-content:center; flex-direction:column; gap:18px;
+  background:rgba(5,9,20,.93); color:#fff; text-align:center;
+}
+.rot-phone{
+  width:56px; height:96px; border:5px solid #fff; border-radius:12px;
+  animation:rotd 1.6s ease-in-out infinite;
+}
+@keyframes rotd{ 0%,25%{ transform:rotate(0deg);} 60%,100%{ transform:rotate(90deg);} }
+.rot-text strong{ display:block; font-size:22px; letter-spacing:2px; margin-bottom:6px; }
+.rot-text span{ color:#9fb4dd; font-size:14px; }
+@media (orientation:portrait) and (pointer:coarse){
+  #ov-rotate{ display:flex; }
+}
+/* desktop: hide on-screen pad, keep sysbar */
+@media (hover:hover) and (pointer:fine){
+  #touch-ui{ display:none !important; }
+}
+</style>
+</head>

@@ -1,0 +1,119 @@
+<body>
+<div id="stage">
+  <canvas id="game" width="960" height="540" role="img" aria-label="Gem Dash game screen"></canvas>
+
+  <!-- small system buttons (pause / sound / fullscreen) -->
+  <div id="sysbar">
+    <button type="button" class="sysbtn" id="sb-pause" aria-label="Pause game">❚❚</button>
+    <button type="button" class="sysbtn" id="sb-sound" aria-label="Toggle sound">♪</button>
+    <button type="button" class="sysbtn" id="sb-fs" aria-label="Toggle fullscreen">⛶</button>
+  </div>
+
+  <!-- touch control pad -->
+  <div id="touch-ui" aria-label="Touch controls">
+    <div class="cluster cluster-left">
+      <button type="button" class="tbtn" id="btn-left" aria-label="Move left">◀</button>
+      <button type="button" class="tbtn tbtn-sm" id="btn-down" aria-label="Crouch or enter">▼</button>
+      <button type="button" class="tbtn" id="btn-right" aria-label="Move right">▶</button>
+    </div>
+    <div class="cluster cluster-right">
+      <button type="button" class="tbtn tbtn-b" id="btn-action" aria-label="Run or shoot">B</button>
+      <button type="button" class="tbtn tbtn-a" id="btn-jump" aria-label="Jump">A</button>
+    </div>
+  </div>
+
+  <!-- title screen -->
+  <div class="overlay" id="ov-title" hidden>
+    <div class="panel">
+      <div class="logo">GEM DASH</div>
+      <div class="logo-sub">SUNNY BLUFF · A POCKET PLATFORM ADVENTURE</div>
+      <div class="hi" id="title-hi">BEST 000000</div>
+      <button type="button" class="btn btn-big" id="btn-start">TAP TO START</button>
+      <div class="row">
+        <button type="button" class="btn" id="btn-how">HOW TO PLAY</button>
+        <button type="button" class="btn btn-ico" id="btn-fs-t" aria-label="Toggle fullscreen">⛶</button>
+        <button type="button" class="btn btn-ico" id="btn-snd-t" aria-label="Toggle sound">♪</button>
+      </div>
+      <div class="tip">◀ ▶ move &nbsp;·&nbsp; A jump (hold = higher) &nbsp;·&nbsp; B run / shoot &nbsp;·&nbsp; ▼ crouch &amp; enter doors</div>
+    </div>
+  </div>
+
+  <!-- tutorial -->
+  <div class="overlay" id="ov-tut" hidden>
+    <div class="panel">
+      <h2>HOW TO PLAY</h2>
+      <div class="tut-grid">
+        <span class="tut-key">◀ ▶</span><span>Move left / right</span>
+        <span class="tut-key">A</span><span>Jump — hold for a higher jump</span>
+        <span class="tut-key">B</span><span>Run · shoot (with Spark Bloom) · kick shells</span>
+        <span class="tut-key">▼</span><span>Crouch · enter hidden doors</span>
+        <span class="tut-key">⌨</span><span>Keys: arrows / WASD · Z or Space jump · X or Shift run · P pause</span>
+      </div>
+      <ul>
+        <li>Stomp foes from above. Kicked shells take out others in a row.</li>
+        <li>Hit glowing ? blocks from below for gems and powers.</li>
+        <li>Big Pip breaks bricks. The Nova Star makes you invincible.</li>
+        <li>Secret: crouch (▼) at the little wooden door for a bonus room.</li>
+        <li>Avoid pits, spikes, and running out of time!</li>
+      </ul>
+      <button type="button" class="btn btn-big" id="btn-tut-go">TAP TO PLAY</button>
+    </div>
+  </div>
+
+  <!-- pause -->
+  <div class="overlay" id="ov-pause" hidden>
+    <div class="panel">
+      <h2>PAUSED</h2>
+      <button type="button" class="btn btn-big" id="btn-resume">RESUME</button>
+      <button type="button" class="btn" id="btn-restart">RESTART COURSE</button>
+      <button type="button" class="btn" id="btn-settings">SETTINGS</button>
+      <button type="button" class="btn" id="btn-to-title">TITLE SCREEN</button>
+    </div>
+  </div>
+
+  <!-- settings -->
+  <div class="overlay" id="ov-set" hidden>
+    <div class="panel">
+      <h2>SETTINGS</h2>
+      <div class="set-row">Sound <button type="button" class="btn tog" id="tg-sound" aria-label="Toggle sound">ON</button></div>
+      <div class="set-row">Vibration <button type="button" class="btn tog" id="tg-vib" aria-label="Toggle vibration">ON</button></div>
+      <div class="set-row">Touch opacity <input id="rg-op" type="range" min="20" max="100" value="85" aria-label="Touch control opacity"></div>
+      <div class="set-row">Reduced effects <button type="button" class="btn tog" id="tg-reduced" aria-label="Toggle reduced effects">OFF</button></div>
+      <button type="button" class="btn btn-big" id="btn-set-back">BACK</button>
+    </div>
+  </div>
+
+  <!-- game over -->
+  <div class="overlay" id="ov-over" hidden>
+    <div class="panel">
+      <h2 class="big-red">GAME OVER</h2>
+      <div id="over-score">SCORE 000000</div>
+      <div id="over-hi">BEST 000000</div>
+      <button type="button" class="btn btn-big" id="btn-retry">TRY AGAIN</button>
+      <button type="button" class="btn" id="btn-over-title">TITLE SCREEN</button>
+    </div>
+  </div>
+
+  <!-- course clear / victory -->
+  <div class="overlay" id="ov-clear" hidden>
+    <div class="panel">
+      <h2 class="big-gold">COURSE CLEAR!</h2>
+      <div class="victory">VICTORY — the Gem Bluff is safe!</div>
+      <div id="clear-stats"></div>
+      <div class="hi" id="clear-hi">BEST 000000</div>
+      <button type="button" class="btn btn-big" id="btn-again">PLAY AGAIN</button>
+      <button type="button" class="btn" id="btn-clear-title">TITLE SCREEN</button>
+    </div>
+  </div>
+
+  <!-- portrait hint -->
+  <div id="ov-rotate" aria-hidden="true">
+    <div class="rot-phone"></div>
+    <div class="rot-text">
+      <strong>ROTATE YOUR DEVICE</strong>
+      <span>Gem Dash is best played in landscape</span>
+    </div>
+  </div>
+</div>
+<script>
+'use strict';

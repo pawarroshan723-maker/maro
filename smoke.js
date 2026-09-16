@@ -743,6 +743,143 @@ console.log('== pipe seams and diamond capture regressions ==');
   check(touches, 'bobbing diamond touching the head is captured');
 }
 
+
+console.log('== secrets, the new roster and the Spark Bloom gate ==');
+{
+  const TILE = 48;
+  // ---- hidden gem blocks ----
+  Game.startGame(1); pump(90);
+  const lv = Game.level;
+  check(lv.hiddenCount === 3 && Game.secretTotal === 3,
+    'stage 1 advertises its 3 hidden gems (got ' + Game.secretTotal + ')');
+  let hx = -1, hy = -1;
+  for (let y = 0; y < lv.h && hx < 0; y++)
+    for (let x = 0; x < lv.w; x++) if (lv.get(x, y) === T.HIDDEN){ hx = x; hy = y; break; }
+  check(hx >= 0, 'stage 1 carries a hidden gem block');
+  check(hx >= 0 && !lv.solid(hx, hy), 'a hidden block is intangible until found');
+  // Every hidden block must be a real, reachable jump: clear headroom, a clear
+  // column down to a standing surface, and within reach of a standing jump.
+  let unreachable = 0;
+  for (let y = 0; y < lv.h; y++) for (let x = 0; x < lv.w; x++){
+    if (lv.get(x, y) !== T.HIDDEN) continue;
+    let sr = -1;
+    for (let r = 0; r < lv.h; r++)
+      if (lv.solid(x, r) && !lv.solid(x, r-1) && !lv.solid(x, r-2)){ sr = r; break; }
+    let ok = sr >= 0 && sr - y >= 3;
+    if (ok) for (let r = y + 1; r < sr; r++) if (lv.get(x, r) !== T.EMPTY) ok = false;
+    if (ok) for (let d = 1; d <= 3; d++) if (lv.get(x, y - d) !== T.EMPTY) ok = false;
+    // small Maro, standing jump: head must reach the block's row
+    if (ok && (sr*TILE - 40 - 288) > (y + 1)*TILE) ok = false;
+    if (!ok) unreachable++;
+  }
+  check(unreachable === 0, 'every hidden block is placed in clear, reachable air');
+  // Stand on the real surface under the block (topmost solid with clear air
+  // above it), not simply the first solid row from row 10 down.
+  let ground = -1;
+  for (let r = 0; r < lv.h; r++){
+    if (lv.solid(hx, r) && !lv.solid(hx, r-1) && !lv.solid(hx, r-2)){ ground = r; break; }
+  }
+  check(ground > hy, 'the hidden block has a surface to jump from below it');
+  Game.player.reset(hx, 'small', ground);
+  check(Game.player.y === ground*TILE - Game.player.h,
+    'unstick() leaves an unstuck Maro exactly where reset put him');
+  Input.jumpHeld = true; Input.jumpQueued = true;
+  pump(60);
+  Input.jumpHeld = false;
+  check(lv.get(hx, hy) === T.PLATFORM, 'jumping into it reveals a one-way ledge');
+  check(!lv.solid(hx, hy), 'a revealed block never blocks the jump that found it');
+  check(Game.secretsFound === 1, 'finding it advances the secret counter');
+
+  // ---- armoured vault / Spark Bloom gate ----
+  Game.startGame(2); pump(90);
+  const vv = Game.level;
+  check(vv.vaultCount === 1 && Game.secretTotal === 3,
+    'stage 2 counts its cache once, not once per tile (got ' + Game.secretTotal + ')');
+  let vx = -1, vy = -1;
+  for (let y = 0; y < vv.h && vx < 0; y++)
+    for (let x = 0; x < vv.w; x++) if (vv.get(x, y) === T.VAULT){ vx = x; vy = y; break; }
+  check(vx >= 0 && vv.solid(vx, vy), 'stage 2 hides an armoured cache');
+  check(vx >= 0 && !vv.solid(vx, vy + 2), 'the cache never walls off the walking corridor');
+  Game.state = 'PLAYING';
+  Game.player.form = 'big';
+  Game.player.x = vx*TILE + 8; Game.player.y = (vy + 2)*TILE + 4; Game.player.vy = -700;
+  pump(16);
+  check(vv.get(vx, vy) === T.VAULT, 'a head bump cannot crack the cache');
+  Game.player.form = 'shoot'; Game.player.hurtT = 0;
+  const gems0 = Game.gems;
+  Game.player.x = vx*TILE - 140; Game.player.y = vy*TILE + 40;
+  Game.cam.x = Game.player.x - 320;
+  Game.shots.push(new G.Projectile(vx*TILE - 60, vy*TILE + 24, 1));
+  for (let i = 0; i < 40 && vv.get(vx, vy) === T.VAULT; i++) pump(1);
+  check(vv.get(vx, vy) === T.EMPTY, 'a fireball cracks the cache');
+  let left = 0;
+  for (let y = 0; y < vv.h; y++) if (vv.get(vx, y) === T.VAULT) left++;
+  check(left === 0, 'one hit clears every tile of that cache (' + left + ' left)');
+  check(Game.secretsFound === 1, 'the cache counts as exactly one secret');
+  pump(60);
+  check(Game.gems >= gems0 + 3, 'the cache pays out three gems');
+
+  // ---- shielder ----
+  Game.startGame(12); pump(90); Game.state = 'PLAYING'; Game.enemies.length = 0;
+  const sh = new G.Enemy('shielder', 600, 446); sh.active = true; Game.enemies.push(sh);
+  sh.dir = 1;
+  Game.hitShot({x: sh.x - 20, y: sh.y + 18, vx: 400}, sh);
+  check(!sh.dead, 'the shield plate eats a fireball fired head-on');
+  sh.hitT = 0;
+  Game.hitShot({x: sh.x + 60, y: sh.y + 18, vx: -400}, sh);
+  check(sh.dead, 'a shot to the back defeats the shielder');
+
+  // ---- turret ----
+  Game.startGame(12); pump(90); Game.state = 'PLAYING'; Game.enemies.length = 0;
+  const tu = new G.Enemy('turret', 700, 446); tu.active = true; Game.enemies.push(tu);
+  check(tu.hp > 1, 'the turret is armoured (hp=' + tu.hp + ')');
+  Game.player.reset(2, 'big', 10); Game.player.hurtT = 0; Game.player.invT = 0;
+  Game.player.vy = 200; Game.player.prevBottom = tu.y - 1;
+  Game.playerVsEnemy(tu, tu.box());
+  check(!tu.dead, 'stomping a spiked turret does not kill it');
+  Game.player.hurtT = 0;
+  const need = tu.hp;
+  for (let i = 0; i < need; i++){ tu.hitT = 0; Game.hitShot({x: tu.x, y: tu.y, vx: -400}, tu); }
+  check(tu.dead, 'the turret falls to repeated fireballs');
+
+  // ---- charger ----
+  Game.startGame(12); pump(90); Game.state = 'PLAYING'; Game.enemies.length = 0;
+  const ch = new G.Enemy('charger', 500, 446); ch.active = true; ch.onGround = true;
+  Game.enemies.push(ch);
+  Game.player.x = ch.x + 150; Game.player.y = 446;
+  ch.update(1/60, Game);
+  check(ch.phase === 'charge' && ch.vx === 0, 'the charger telegraphs before it moves');
+  for (let i = 0; i < 40; i++) ch.update(1/60, Game);
+  check(ch.phase === 'dash' && Math.abs(ch.vx) > 200, 'then it commits to a fast dash');
+
+  // ---- gel ----
+  Game.startGame(12); pump(90); Game.state = 'PLAYING'; Game.enemies.length = 0;
+  const gel = new G.Enemy('gel', 600, 452); gel.active = true; Game.enemies.push(gel);
+  Game.player.reset(2, 'big', 10); Game.player.hurtT = 0;
+  Game.player.vy = 200; Game.player.prevBottom = gel.y - 1;
+  Game.playerVsEnemy(gel, gel.box());
+  pump(2);
+  const kids = Game.enemies.filter(e => e.kind === 'gel' && !e.dead);
+  check(gel.dead && kids.length === 2, 'stomping a gel splits it in two');
+  check(kids.every(k => k.gen === 1), 'children are flagged so they cannot split again');
+  Game.enemies.length = 0;
+  const gel2 = new G.Enemy('gel', 600, 452); gel2.active = true; Game.enemies.push(gel2);
+  Game.hitShot({x: gel2.x, y: gel2.y, vx: 400}, gel2);
+  pump(2);
+  check(gel2.dead && Game.enemies.filter(e => e.kind === 'gel' && !e.dead).length === 0,
+    'a fireball dissolves a gel without splitting it');
+
+  // ---- roster spread ----
+  const kinds = new Set();
+  for (let s = 1; s <= G.TOTAL_STAGES; s++) for (const e of G.COURSES[s-1].enemies) kinds.add(e[0]);
+  for (const k of ['charger','shielder','turret','gel'])
+    check(kinds.has(k), k + ' appears somewhere in the campaign');
+  const easy = new Set(G.COURSES[0].enemies.map(e => e[0]));
+  check(!easy.has('turret') && !easy.has('charger') && !easy.has('shielder'),
+    'the tutorial course stays free of the new threats');
+  fresh();
+}
+
 G.AudioSys.stopMusic();
 console.log(failures === 0 ? '\nALL CHECKS PASSED' : '\n' + failures + ' CHECKS FAILED');
 process.exit(failures === 0 ? 0 : 1);

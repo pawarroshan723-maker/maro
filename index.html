@@ -35,6 +35,8 @@ button{ font-family:inherit; cursor:pointer; -webkit-tap-highlight-color:transpa
 /* ---------- touch controls ---------- */
 #touch-ui{ position:fixed; inset:0; z-index:20; display:none; pointer-events:none; }
 body.in-game #touch-ui{ display:block; }
+/* Game-over / course-clear panels cover the pad; sound and fullscreen stay. */
+body.ended #touch-ui{ display:none; }
 #touch-ui .cluster{
   position:absolute; bottom:calc(14px + var(--safe-b));
   display:flex; gap:16px; align-items:flex-end; pointer-events:none;
@@ -155,6 +157,8 @@ body.in-game #sysbar{ display:flex; }
 .key-bind.listening{ border-color:var(--gold); color:var(--gold); }
 .tog{ width:92px; margin:0; padding:8px 0; min-height:44px; font-size:15px; }
 .tog.on{ background:#2e7d32; border-color:#4caf50; }
+.tog:disabled{ opacity:.5; cursor:not-allowed; }
+button:disabled{ cursor:not-allowed; }
 input[type=range]{ width:200px; accent-color:var(--accent); }
 .big-red{ color:#ff6a5e !important; }
 .big-gold{ color:var(--gold) !important; }
@@ -250,7 +254,7 @@ input[type=range]{ width:200px; accent-color:var(--accent); }
         <button type="button" class="btn stage-card" id="stage-14"><span class="stage-number">14</span><strong>ECLIPSE RIDGE</strong><small id="stage-status-14">LOCKED</small></button>
         <button type="button" class="btn stage-card" id="stage-15"><span class="stage-number">15</span><strong>CROWN CITADEL</strong><small id="stage-status-15">LOCKED</small></button>
       </div>
-      <p class="setting-help">Stages 1–5: Adventure · 6–10: Challenge · 11–15: Expert<br>Guardians on 5, 10 and 15. Use Next Stage after a clear to carry your lives, gems, score and form.</p>
+      <p class="setting-help">Stage 1: Tutorial · 2–4: Adventure · 5–8: Challenging · 9–12: Expert · 13–15: Master<br>Guardians on 5, 10 and 15. Use Next Stage after a clear to carry your lives, gems, score and form.</p>
       <button type="button" class="btn" id="btn-stages-back">BACK</button>
     </div>
   </div>
@@ -275,6 +279,13 @@ input[type=range]{ width:200px; accent-color:var(--accent); }
         <li>Hoppers jump; bats fly. Both can be stomped or shot.</li>
         <li>Armored beetles need two hits. Guardians on stages 5, 10 and 15 guard the finish.</li>
         <li>Guardians flash before firing. Jump their bolts, then stomp or shoot. Nova Star defeats any enemy.</li>
+        <li>Chargers crouch and glow, then dash. Jump them as they commit.</li>
+        <li>Shielders block fireballs head-on — stomp them, or shoot them in the back.</li>
+        <li>Turrets have spiked crowns: stomping hurts. Shoot them or bowl a shell in.</li>
+        <li>Gels split in two when stomped, but a fireball dissolves them whole.</li>
+        <li>Hidden gem blocks are invisible. Jump into thin air to reveal them.</li>
+        <li>Armoured caches ignore head bumps. Crack them with Spark Bloom for three gems.</li>
+        <li>The SEC counter in the HUD tracks the secrets in the current course.</li>
         <li>Clear each stage to unlock the next. Every third clear awards a life, up to nine.</li>
       </ul>
       <button type="button" class="btn btn-big" id="btn-tut-go">TAP TO PLAY</button>
@@ -286,7 +297,7 @@ input[type=range]{ width:200px; accent-color:var(--accent); }
     <div class="panel">
       <h2>PAUSED</h2>
       <button type="button" class="btn btn-big" id="btn-resume">RESUME</button>
-      <button type="button" class="btn" id="btn-restart">RESTART COURSE</button>
+      <button type="button" class="btn" id="btn-restart">RESTART FROM CHECKPOINT</button>
       <button type="button" class="btn" id="btn-settings">SETTINGS</button>
       <button type="button" class="btn" id="btn-to-title">TITLE SCREEN</button>
     </div>
@@ -301,7 +312,7 @@ input[type=range]{ width:200px; accent-color:var(--accent); }
       <div class="set-row">Touch opacity <input id="rg-op" type="range" min="20" max="100" value="85" aria-label="Touch control opacity"></div>
       <div class="set-row">Reduced effects <button type="button" class="btn tog" id="tg-reduced" aria-label="Toggle reduced effects">OFF</button></div>
       <div class="set-row"><label for="sel-quality">Graphics quality</label><select id="sel-quality"><option value="standard">Standard</option><option value="high">High</option></select></div>
-      <p class="setting-help" id="quality-help">High: sharper rendering and full effects. Standard: lighter rendering and fewer effects.</p>
+      <p class="setting-help" id="quality-help">High: sharper rendering and full effects. Standard: lighter rendering — it always keeps effects reduced, so the Reduced effects switch below only applies in High.</p>
       <div class="set-row"><label for="sel-controls">Keyboard controls</label><select id="sel-controls"><option value="default">Default</option><option value="custom">Custom</option></select></div>
       <p class="setting-help" id="default-keys">Move: A/D or ←/→ · Crouch: S/↓ · Jump: Space/W/Z/↑ · Run/shoot: Shift/X</p>
       <div id="custom-keys" hidden>
@@ -390,6 +401,7 @@ const T = {
   Q_GEM:4, Q_GROW:5, Q_SHOT:6, Q_STAR:7, Q_LIFE:8, Q_MULTI:9, USED:10,
   PIPE_TL:11, PIPE_TR:12, PIPE_BL:13, PIPE_BR:14,
   PLATFORM:15, HAZARD:16, DOOR:17, FLAG:18, CHECK:19, BUILD:20, END_DOOR:21,
+  HIDDEN:22, VAULT:23,
 };
 const TILE_CHAR = {
   '#':T.GROUND, '%':T.DIRT, 'B':T.BRICK,
@@ -397,12 +409,14 @@ const TILE_CHAR = {
   '=':T.PLATFORM, '^':T.HAZARD,
   '(':T.PIPE_TL, ')':T.PIPE_TR, '[':T.PIPE_BL, ']':T.PIPE_BR,
   'D':T.DOOR, 'F':T.FLAG, 'K':T.CHECK, '*':T.BUILD, 'E':T.END_DOOR,
+  'h':T.HIDDEN, 'v':T.VAULT,
 };
-const SOLID = new Set([T.GROUND,T.DIRT,T.BRICK,T.Q_GEM,T.Q_GROW,T.Q_SHOT,T.Q_STAR,T.Q_LIFE,T.Q_MULTI,T.USED,T.PIPE_TL,T.PIPE_TR,T.PIPE_BL,T.PIPE_BR,T.BUILD]);
+// HIDDEN is deliberately absent: it is intangible until Maro jumps into it,
+// at which point it turns into a solid USED block.
+const SOLID = new Set([T.GROUND,T.DIRT,T.BRICK,T.Q_GEM,T.Q_GROW,T.Q_SHOT,T.Q_STAR,T.Q_LIFE,T.Q_MULTI,T.USED,T.PIPE_TL,T.PIPE_TR,T.PIPE_BL,T.PIPE_BR,T.BUILD,T.VAULT]);
 const QCODES = new Set([T.Q_GEM,T.Q_GROW,T.Q_SHOT,T.Q_STAR,T.Q_LIFE,T.Q_MULTI]);
 
-const LEVEL_NAME = 'SUNNY BLUFF';
-const LEVEL_TIME = 300;                // seconds per course
+const LEVEL_TIME = 300;                // placeholder until a course sets its own timer
 const START_TX = 2;
 const FLAG_TX = 152;
 const BUMP_DUR = 0.18;                 // mystery-block bump animation (s)
@@ -675,7 +689,8 @@ const Particles = {
     }
   },
   spawn(o){
-    const p = this.pool[this.idx++ % MAX_PARTICLES];
+    this.idx = (this.idx + 1) % MAX_PARTICLES;
+    const p = this.pool[this.idx];
     p.on = true;
     p.x = o.x; p.y = o.y;
     p.vx = o.vx || 0; p.vy = o.vy || 0;
@@ -972,6 +987,24 @@ function buildTiles(){
     qf.push(c);
   }
   t.qframes = qf;
+
+  // armoured gem cache — only a fireball or a bowling shell can crack it
+  c = cv(TILE,TILE); x = g2(c);
+  x.fillStyle = '#2c3348'; x.fillRect(0,0,48,48);
+  x.fillStyle = '#404b66'; x.fillRect(3,3,42,42);
+  x.fillStyle = '#565f7d'; x.fillRect(6,6,36,36);
+  x.fillStyle = '#7c86a8'; x.fillRect(6,6,36,4); x.fillRect(6,6,4,36);
+  x.fillStyle = '#20263a'; x.fillRect(6,38,36,4); x.fillRect(38,6,4,36);
+  // rivets
+  x.fillStyle = '#98a3c4';
+  for (const [rx,ry] of [[10,10],[34,10],[10,34],[34,34]]) x.fillRect(rx,ry,4,4);
+  // gem emblem behind bars
+  x.fillStyle = '#59d6ff';
+  x.beginPath(); x.moveTo(24,16); x.lineTo(32,24); x.lineTo(24,32); x.lineTo(16,24); x.closePath(); x.fill();
+  x.fillStyle = '#eaffff'; x.fillRect(20,20,5,4);
+  x.fillStyle = '#151a28';
+  x.fillRect(20,14,3,20); x.fillRect(26,14,3,20);
+  t[T.VAULT] = c;
 
   // used block
   c = cv(TILE,TILE); x = g2(c);
@@ -1310,6 +1343,47 @@ const D10 = '..........';
 const G10 = '##########';
 function R(...c){ return c.join(''); }
 
+// Drops hidden gem blocks into open air only.
+//
+// A hidden block has to be *reachable* to be a secret rather than a bug: it
+// needs headroom above, a clean run-up below (otherwise the jump that would
+// reveal it bonks a ceiling first) and solid ground somewhere underneath to
+// jump from. Every candidate is validated before it is written, and the search
+// is seeded so the same course always hides its gems in the same places.
+// Works on both string rows (hand-authored courses) and array rows (generated).
+function hideGemsInAir(rows, count, seed){
+  const h = rows.length, w = rows[0].length;
+  const cell = (x, y) => (x >= 0 && x < w && y >= 0 && y < h) ? (rows[y][x] || '.') : '#';
+  const isSolid = (x, y) => SOLID.has(TILE_CHAR[cell(x, y)] || T.EMPTY);
+  // The surface Maro would stand on in this column: the topmost solid tile
+  // that has two clear rows above it (a big Maro needs both).
+  const standRow = (x) => {
+    for (let r = 0; r < h; r++){
+      if (isSolid(x, r) && !isSolid(x, r-1) && !isSolid(x, r-2)) return r;
+    }
+    return -1;
+  };
+  let placed = 0;
+  for (let attempt = 0; attempt < 600 && placed < count; attempt++){
+    const x = 5 + Math.floor(shash(seed, attempt, 7) * (w - 10));
+    const y = 3 + Math.floor(shash(seed, attempt, 13) * 3);      // rows 3-5
+    if (cell(x, y) !== '.') continue;
+    const sr = standRow(x);
+    // Needs a real jump to reach, not merely head height when standing.
+    if (sr < 0 || sr - y < 3) continue;
+    // Clear air from just under the block down to the standing surface, plus
+    // headroom above, so the jump that reveals it can actually be made.
+    let open = true;
+    for (let r = y + 1; r < sr && open; r++) if (cell(x, r) !== '.') open = false;
+    for (let d = 1; d <= 3 && open; d++) if (cell(x, y - d) !== '.') open = false;
+    if (!open) continue;
+    if (typeof rows[y] === 'string') rows[y] = rows[y].slice(0, x) + 'h' + rows[y].slice(x + 1);
+    else rows[y][x] = 'h';
+    placed++;
+  }
+  return placed;
+}
+
 // Level design — Sunny Bluff (170 cols, 12 rows)
 // Pits are intentionally forgiving so both human and simple AI can clear them.
 // Pit1: 28-31 (4 tiles)  Pit2: 66-69 (4 tiles)  Pit3: 107-109 (3 tiles)
@@ -1361,9 +1435,15 @@ const BONUS_ROWS = [
   '*' + '......DD........' + '*',
   '******************',
 ];
+// Two blind-jump secrets: a gem only shows itself if Maro jumps into nothing.
+hideGemsInAir(BONUS_ROWS, 2, 211);
 
 // [type, tileX, pipeTopRow?]
 // Balanced for accessibility and beauty: fewer enemies, beautiful spacing, no vertical pipe cut
+// Stage 1 secrets: three hidden gem blocks, each validated to hang in reachable
+// open air with a clean run-up and solid ground beneath.
+hideGemsInAir(MAIN_ROWS, 3, 101);
+
 const ENEMY_SPAWNS = [
   ['walker', 20],          // first room (19-27): the stomp lesson - beautiful start
   ['walker', 72],          // zone 70-104 - open area
@@ -1396,6 +1476,13 @@ const STAGE2_ROWS = (() => {
   put(156,2,'F'); put(156,3,'F');
   for (let y=4;y<10;y++) put(155,y,y===4?'****':'******');
   put(155,8,'E'); put(155,9,'E');
+  // Stage 2 secrets: two hidden blocks, plus an armoured cache on the flats
+  // past the Spark Bloom block — the first course that can actually open one.
+  hideGemsInAir(rows, 2, 307);
+  // The cache sits ON the raised deck at row 8, never on the walking corridor:
+  // a vault is unbreakable by bumping, so it must never be able to wall a
+  // player in — and the ground route below stays two tiles clear.
+  put(123,7,'v');
   return rows.map(row => row.join(''));
 })();
 const STAGE2_ENEMIES = [
@@ -1418,15 +1505,15 @@ const CAMPAIGN_BLUEPRINTS = [
   ['CRYSTAL CAVERNS',  'crystal', [2,0,6,1,5], 'Bats patrol the upper routes. Watch their flight path.'],
   ['COPPER OUTPOST',   'copper',  [1,4,5,2,6], 'First guardian: dodge its glowing bolts, then stomp or shoot.'],
   ['CORAL CAUSEWAY',   'coral',   [2,6,0,4,5], 'Armored beetles take two hits. Their shell lights show health.'],
-  ['MOONLIT GROVE',    'moon',    [4,0,3,5,2], 'Use the high route above the thorns.'],
-  ['FROSTFALL PASS',   'frost',   [1,5,4,0,6], 'Wider ravines ahead. Run before jumping; physics stay familiar.'],
-  ['THUNDER HEIGHTS',  'storm',   [2,3,6,4,5], 'Faster patrols and airborne enemies share the route.'],
-  ['OBSIDIAN KEEP',    'obsidian',[4,2,5,6,4], 'The second guardian fires faster. Wait for its warning flash.'],
-  ['MIRAGE DUNES',     'dunes',   [0,3,6,2,5], 'Take the gem routes for supplies before the final push.'],
-  ['CLOCKWORK ASCENT', 'clock',   [5,4,2,3,6], 'Mix short hops and full jumps through the clockwork terraces.'],
-  ['EMBER CHASM',      'ember',   [3,2,6,5,3], 'Thorns and ravines demand careful landings.'],
-  ['ECLIPSE RIDGE',    'eclipse', [4,5,2,6,1], 'The fastest patrols guard the road to the crown.'],
-  ['CROWN CITADEL',    'crown',   [5,4,6,3,4], 'Final guardian: five hits. Defeat it to free the Gem Kingdom!'],
+  ['MOONLIT GROVE',    'moon',    [4,0,3,8,2], 'Use the high route above the thorns. A cache sits on the deck.'],
+  ['FROSTFALL PASS',   'frost',   [1,5,7,0,6], 'Wider ravines ahead. Run before jumping; physics stay familiar.'],
+  ['THUNDER HEIGHTS',  'storm',   [2,3,6,4,8], 'Faster patrols and airborne enemies share the route.'],
+  ['OBSIDIAN KEEP',    'obsidian',[7,2,5,6,4], 'The second guardian fires faster. Wait for its warning flash.'],
+  ['MIRAGE DUNES',     'dunes',   [0,3,6,2,7], 'Take the gem routes for supplies before the final push.'],
+  ['CLOCKWORK ASCENT', 'clock',   [5,4,8,3,6], 'Mix short hops and full jumps through the clockwork terraces.'],
+  ['EMBER CHASM',      'ember',   [3,7,6,5,8], 'Thorns and ravines demand careful landings.'],
+  ['ECLIPSE RIDGE',    'eclipse', [7,5,2,8,1], 'The fastest patrols guard the road to the crown.'],
+  ['CROWN CITADEL',    'crown',   [8,4,7,3,4], 'Final guardian: eight hits and three-bolt volleys. Free the Gem Kingdom!'],
 ];
 const COURSE_THEMES = {
   grove:   ['#256976','#c4e1a5','#6ba68f','#376957','#ffeab2'],
@@ -1697,6 +1784,8 @@ function buildCampaignCourse(stage, blueprint){
   // because that is the widest a running jump can clear.
   const gapWidth = stage < 6 ? 3 : 4;
   const gap = (x) => {
+    // Safety net: never punch a ravine out from under a checkpoint or the arena.
+    if (checkpoints.some(cx => cx >= x - 1 && cx <= x + gapWidth)) return;
     gaps.push({x,width:gapWidth});
     for (let y=10;y<12;y++) put(x,y,'.'.repeat(gapWidth));
     if (stage < 6) put(x-1,8,'==');
@@ -1735,6 +1824,23 @@ function buildCampaignCourse(stage, blueprint){
       // Pipe gauntlet: three pipes of shifting height, no ravine to rest on.
       pipe(x+11,8); pipe(x+16, vary(61)>0.5?7:8); pipe(x+21,8);
       gems(x+14,6,2); gems(x+19,6,2);
+    } else if (type === 7){
+      // Thorn gauntlet: spike beds on the deck, a one-way high line above, and
+      // hidden blocks paying out only to players who take the risky route.
+      put(x+11,9,'####'); put(x+15,9,'^^'); put(x+17,9,'####');
+      put(x+12,6,'====='); put(x+18,5,'===');
+      gems(x+12,5,5);
+      gap(x+21);
+    } else if (type === 8){
+      // Vault chamber: an armoured cache behind a turret. Cracking it needs
+      // Spark Bloom or a bowling shell, and the ground fireball reaches it.
+      put(x+11,9,'#####');
+      put(x+13,8,'v'); put(x+13,9,'v');
+      put(x+17,9,'####');
+      // The ? block on the deck hands out the Spark Bloom the cache demands.
+      put(x+20,7,'S'); gems(x+19,6,3);
+      gems(x+11,8,5);
+      enemies.push(['turret',x+22,10]);
     } else {
       const p2 = x+18+(vary(19)>0.5?1:0);
       pipe(x+11, vary(23)>0.6?7:8); pipe(p2,8);
@@ -1742,10 +1848,16 @@ function buildCampaignCourse(stage, blueprint){
     }
     // Enemy rotation is seeded per stage, not a fixed parity pattern.
     const r = vary(29);
-    const kind = stage >= 5 && r > 0.5 ? 'beetle' : (r > 0.25 ? 'hopper' : 'walker');
+    let kind;
+    if (stage >= 9 && r > 0.82) kind = 'shielder';       // needs a flank or a stomp
+    else if (stage >= 7 && r > 0.62) kind = 'charger';   // telegraphed dash
+    else if (stage >= 5 && r > 0.42) kind = 'beetle';
+    else if (r > 0.25) kind = 'hopper';
+    else kind = 'walker';
     enemies.push([kind,x+8,10,x+6,x+10]);
     enemies.push([vary(31)>0.5?'shell':'walker',x+25,10,x+24,x+25]);
     if (stage >= 11 && vary(37) > 0.4) enemies.push(['beetle',x+6,10,x+6,x+8]);
+    if (stage >= 8 && vary(59) > 0.62) enemies.push(['gel',x+22,10,x+20,x+24]);
     if (stage >= 3 && i < Math.min(5,Math.floor((stage-1)/2))){
       enemies.push(['bat',x+15,5,x+11,x+20]);
     }
@@ -1768,14 +1880,29 @@ function buildCampaignCourse(stage, blueprint){
     enemies.push(['guardian',145,10,141,150]);
     put(139,7,'S'); gems(138,6,5);
   } else { put(140,7,'+'); gems(139,6,4); }
-  for (let i=enemies.length-1;i>=0;i--){
-    if (enemies[i][0] !== 'guardian' && checkpoints.some(x=>Math.abs(x-enemies[i][1])<4)) enemies.splice(i,1);
-  }
   for (let y=2;y<10;y++) put(152,y,'F');
   for (let y=2;y<4;y++) put(156,y,'F');
   for (let y=4;y<10;y++) put(155,y,y===4?'****':'******');
   put(155,8,'E'); put(155,9,'E'); gems(147,9,3);
-  return {name,theme,tip,rows:rows.map(row=>row.join('')),enemies,gaps,checkpoints,
+
+  const grid = rows.map(row => row.join(''));
+  // Hidden gems: more of them on the harder tiers, always in validated air.
+  hideGemsInAir(grid, stage >= 10 ? 4 : 3, stage * 977);
+  // Safety net: every ground enemy must start on solid footing with clear air
+  // above it. Anything that would spawn inside a pipe, a wall or a vault — or
+  // over a ravine — is dropped rather than left stuck in the scenery.
+  const solidCell = (tx, ty) => {
+    if (tx < 0 || tx >= 170 || ty < 0 || ty >= grid.length) return true;
+    return SOLID.has(TILE_CHAR[grid[ty][tx]] || T.EMPTY);
+  };
+  for (let i=enemies.length-1;i>=0;i--){
+    const col = enemies[i][1];
+    if (enemies[i][0] !== 'guardian' && checkpoints.some(x=>Math.abs(x-col)<4)){ enemies.splice(i,1); continue; }
+    const groundRow = enemies[i][2] === undefined ? GROUND_ROW : enemies[i][2];
+    if (groundRow !== GROUND_ROW) continue;      // flyers are placed in open air
+    if (!solidCell(col,10) || solidCell(col,9) || solidCell(col,8)) enemies.splice(i,1);
+  }
+  return {name,theme,tip,rows:grid,enemies,gaps,checkpoints,
     time:Math.max(195,300-stage*7), speedScale:1+(stage-2)*0.052,
     difficulty:stage<=4?'ADVENTURE':stage<=8?'CHALLENGING':stage<=12?'EXPERT':'MASTER'};
 }
@@ -1834,6 +1961,7 @@ class Level {
     for (const r of rows) if (r.length > this.w) this.w = r.length;
     this.tiles = new Uint8Array(this.w * this.h);
     this.gemSpawns = [];
+    this.hiddenCount = 0; this.vaultCount = 0;
     for (let y = 0; y < this.h; y++){
       const row = rows[y];
       for (let x = 0; x < this.w; x++){
@@ -1841,17 +1969,21 @@ class Level {
         let code = T.EMPTY;
         if (TILE_CHAR[ch]) code = TILE_CHAR[ch];
         if (ch === 'o') this.gemSpawns.push({ tx:x, ty:y });
+        if (code === T.HIDDEN) this.hiddenCount++;
+        // A cache is a vertical pillar of vault tiles; count it once, at its top.
+        if (code === T.VAULT && this.tiles[(y-1)*this.w + x] !== T.VAULT) this.vaultCount++;
         this.tiles[y*this.w + x] = code;
       }
     }
     this.bumps = new Map();   // key (tx*100+ty) -> time left
-    this.flagTop = -1; this.flagBottom = -1;
-    this.checkTop = -1; this.checkBottom = -1;
-    for (let y = 0; y < this.h; y++){
+    // Top row of the first flag / checkpoint pole — level-integrity metadata
+    // asserted by the smoke suite.
+    this.flagTop = -1; this.checkTop = -1;
+    for (let y = 0; y < this.h && (this.flagTop < 0 || this.checkTop < 0); y++){
       for (let x = 0; x < this.w; x++){
         const c = this.tiles[y*this.w + x];
-        if (c === T.FLAG){ if (this.flagTop < 0) this.flagTop = y; this.flagBottom = y; }
-        if (c === T.CHECK){ if (this.checkTop < 0) this.checkTop = y; this.checkBottom = y; }
+        if (c === T.FLAG && this.flagTop < 0) this.flagTop = y;
+        if (c === T.CHECK && this.checkTop < 0) this.checkTop = y;
       }
     }
   }
@@ -2001,6 +2133,10 @@ class Player {
   }
   unstick(){
     const lv = this.G.level;
+    // Only search for a free spot if Maro is actually embedded. Without this
+    // guard the first candidate ([0,-4]) is almost always clear, so every
+    // reset and form change nudged him 4px upward for no reason.
+    if (!rectSolid(lv, this.x, this.y, this.w, this.h)) return;
     const tries = [[0,-4],[0,-12],[0,-24],[4,0],[-4,0],[8,0],[-8,0],[0,-40],[12,-4],[-12,-4]];
     for (const [dx,dy] of tries){
       if (!rectSolid(lv, this.x+dx, this.y+dy, this.w, this.h)){
@@ -2090,6 +2226,9 @@ class Player {
 
     // move + collide
     this.prevBottom = this.y + this.h;
+    // Jumping into a hidden block reveals it before it turns solid, so the
+    // normal upward collision below stops Maro against it.
+    if (this.vy < 0) G.revealHidden(this, dt);
     moveAndCollide(lv, this, dt);
     if (this.ceilTy !== null){
       const t = ceilTileAt(lv, this, this.ceilTy);
@@ -2128,11 +2267,13 @@ class Enemy {
   constructor(kind, x, y){
     this.kind = kind;
     this.x = x; this.y = y; this.vx = 0; this.vy = 0;
-    this.dir = Math.random() < 0.5 ? -1 : 1;
+    // Spawn state is deterministic; spawnEntities() varies it per course so a
+    // retry always replays exactly the same encounter.
+    this.dir = -1;
     this.active = false; this.dead = false; this.deadT = 0; this.remove = false;
-    this.state = kind === 'shell' ? 'walk' : 'walk';
-    this.rise = 0; this.baseY = y; this.walkT = Math.random()*10;
-    this.phase = 'hidden'; this.phaseT = 1 + Math.random();
+    this.state = 'walk';
+    this.rise = 0; this.baseY = y; this.walkT = 0;
+    this.phase = 'hidden'; this.phaseT = 1.4;
     this.hp = 1; this.maxHp = 1; this.hitT = 0; this.hopT = 1.1;
     this.attackT = 1.6; this.warningT = 0;
     this.patrolMin = x-72; this.patrolMax = x+120;
@@ -2146,6 +2287,18 @@ class Enemy {
     else if (kind === 'bat'){ this.w=36; this.h=24; this.speed=64; }
     else if (kind === 'beetle'){ this.w=38; this.h=30; this.speed=35; this.hp=this.maxHp=2; }
     else if (kind === 'guardian'){ this.w=56; this.h=64; this.speed=38; this.hp=this.maxHp=3; this.phase='patrol'; }
+    // --- Gen-2 roster ---
+    // Charger: telegraphs, then dashes. Two hits so a single stomp won't do it.
+    else if (kind === 'charger'){ this.w=38; this.h=34; this.speed=46; this.hp=this.maxHp=2;
+      this.phase='patrol'; this.chargeT=0; this.dashT=0; this.cooldownT=0; this.dashSpeed=340; }
+    // Shielder: its plate eats fireballs head-on; stomp it or shoot its back.
+    else if (kind === 'shielder'){ this.w=40; this.h=36; this.speed=40; }
+    // Turret: rooted gun with a spiked crown. Stomping hurts — shoot it or
+    // bowl a shell into it. This is the Spark-Bloom gate.
+    else if (kind === 'turret'){ this.w=36; this.h=34; this.speed=0; this.hp=this.maxHp=2;
+      this.phase='patrol'; this.attackT=1.4; }
+    // Gel: stomping splits it. Fireballs dissolve it without a split.
+    else if (kind === 'gel'){ this.w=34; this.h=28; this.speed=54; this.gen=0; this.bounceT=0; }
     else { // plant
       this.w = 30; this.h = 26;
       this.baseY = y;               // pipe top (world y)
@@ -2186,10 +2339,65 @@ class Enemy {
   }
   fireBolt(G){
     if (G.enemyShots.filter(s=>!s.remove).length >= 6) return;
-    const dir = G.player.x < this.x ? -1 : 1;
+    // A telegraphed shot locks its direction when the warning starts, so
+    // side-stepping a bolt is a real answer instead of a homing coin-flip.
+    const dir = this.phase === 'warning' ? this.dir : (G.player.x < this.x ? -1 : 1);
     const spd = 185 + G.stage*6 + (this.boss >= 3 ? 40 : 0);
     G.enemyShots.push(new EnemyBolt(this.x+this.w/2+dir*36, this.y+this.h-18, dir, spd));
     AudioSys.sfx.shoot();
+  }
+  // Charger: patrol -> wind up (visible tell) -> dash -> recover. Jump it.
+  updateCharger(dt, G){
+    const p = G.player;
+    const dx = (p.x + p.w/2) - (this.x + this.w/2);
+    const dy = Math.abs((p.y + p.h) - (this.y + this.h));
+    if (this.phase === 'charge'){
+      this.chargeT -= dt;
+      this.vx = 0;
+      if (this.chargeT <= 0){
+        this.phase = 'dash';
+        this.dashT = 0.85;
+        this.dir = dx >= 0 ? 1 : -1;
+        AudioSys.sfx.shoot();
+      }
+      return;
+    }
+    if (this.phase === 'dash'){
+      this.dashT -= dt;
+      if (this.dashT <= 0 || this.onWall){
+        this.phase = 'patrol';
+        this.cooldownT = 1.15;
+      }
+      return;
+    }
+    if (this.cooldownT > 0){ this.cooldownT -= dt; this.vx = 0; return; }
+    if (Math.abs(dx) < 300 && dy < 70 && this.onGround){
+      this.phase = 'charge';
+      this.chargeT = 0.45;                 // long enough to read, short enough to threaten
+      AudioSys.sfx.bounce();
+      G.particles.spark(this.x + this.w/2, this.y + 6, '#ffd166', 5);
+    }
+  }
+  // Turret: rooted, telegraphs briefly, then fires. Stomp-proof by design.
+  updateTurret(dt, G){
+    const p = G.player;
+    const dx = (p.x + p.w/2) - (this.x + this.w/2);
+    const near = Math.abs(dx) < 430 && Math.abs((p.y + p.h) - (this.y + this.h)) < 96;
+    if (this.phase === 'warning'){
+      this.warningT -= dt;
+      if (this.warningT <= 0){
+        this.dir = dx >= 0 ? 1 : -1;
+        this.fireBolt(G);
+        this.phase = 'patrol';
+        this.attackT = 2.25;
+      }
+      return;
+    }
+    this.attackT -= dt;
+    if (this.attackT <= 0 && near){
+      this.phase = 'warning';
+      this.warningT = 0.45;
+    }
   }
   updateGuardian(dt, G){
     const v = this.boss || 1;
@@ -2244,12 +2452,23 @@ class Enemy {
     }
     if (this.kind === 'bat'){ this.updateBat(dt,G); return; }
     if (this.kind === 'guardian') this.updateGuardian(dt,G);
+    if (this.kind === 'charger') this.updateCharger(dt,G);
+    if (this.kind === 'turret') this.updateTurret(dt,G);
     if (this.kind === 'hopper' && this.onGround){
       this.hopT -= dt;
       if (this.hopT <= 0){ this.vy=-480; this.hopT=1.5; }
     }
+    // Gel hop-glides instead of walking, so it reads differently in motion.
+    if (this.kind === 'gel' && this.onGround){
+      this.bounceT -= dt;
+      if (this.bounceT <= 0){ this.vy = -360; this.bounceT = 0.85; }
+    }
     let sp = this.speed;
-    if (this.kind === 'guardian' && this.phase === 'warning') sp=0;
+    if (this.kind === 'charger'){
+      if (this.phase === 'charge' || this.cooldownT > 0) sp = 0;
+      else if (this.phase === 'dash') sp = this.dashSpeed;
+    }
+    if ((this.kind === 'guardian' || this.kind === 'turret') && this.phase === 'warning') sp=0;
     if (this.kind === 'shell' && this.state === 'live') sp = 300; // was 430, now more controllable
     if (this.kind === 'shell' && this.state === 'idle') sp = 0;
     this.vx = this.dir * sp;
@@ -2372,6 +2591,9 @@ class Projectile {
     const dir = this.vx > 0 ? 1 : -1;
     const fx = this.x + dir*this.r;
     if (tileSolidAt(lv, fx, this.y) || tileSolidAt(lv, fx, this.y-6) || tileSolidAt(lv, fx, this.y+6)){
+      // The only way to crack an armoured gem cache.
+      const vtx = Math.floor(fx/TILE), vty = Math.floor(this.y/TILE);
+      if (lv.get(vtx, vty) === T.VAULT) G.breakVault(vtx, vty);
       G.particles.spark(this.x + dir*this.r, this.y, '#fff', 5);
       AudioSys.sfx.hitWall();
       this.remove = true;
@@ -2420,16 +2642,18 @@ const Game = {
   level: null, mainLevel: null, bonusLevel: null, inBonus: false,
   player: null,
   enemies: [], items: [], shots: [], pops: [], enemyShots: [],
-  texts: [],
+  pendingEnemies: [], texts: [],
+  secretsFound: 0, secretTotal: 0,
   cam: { x: 0, y: 0 },
   shakeT: 0, shakeMag: 0, shakeDur: 1,
   checkX: START_TX,
-  readyT: 0, deathT: 0,
+  readyT: 0, deathT: 0, pausedFrom: null,
   clearPhase: 0, clearT: 0, flagScore: 0, timeBonus: 0,
   multiQ: 0, multiT: 0, lastMultiX: 0, lastMultiY: 0,
   particles: null,   // assigned in init()
   stompChain: 0, chainT: 0, trailT: 0,
   bonusLockT: 0,
+  hintT: 0,
   fade: null,
   mainItems: [],
 
@@ -2475,6 +2699,9 @@ const Game = {
           // Three distinct bosses: Copper Sentry, Obsidian Warden, Crown King.
           enemy.boss = Math.round(this.stage/5);
           enemy.hp = enemy.maxHp = [0,4,6,8][enemy.boss] || 4;
+        } else if (enemy.kind === 'turret'){
+          // Turrets are armour-plated mini-bosses: tougher on the last two tiers.
+          enemy.hp = enemy.maxHp = this.stage >= 12 ? 3 : 2;
         }
         this.enemies.push(enemy);
       }
@@ -2484,9 +2711,16 @@ const Game = {
       }
       if (s[5] === 'lurk') enemy.lurk = true;
       if (this.course.speedScale && enemy.speed) enemy.speed *= this.course.speedScale;
+      if (this.course.speedScale && enemy.dashSpeed) enemy.dashSpeed *= this.course.speedScale;
     }
-    // Predictable opening patrols make Stage 2 encounters learnable on retries.
-    if (this.stage >= 2) for (const enemy of this.enemies) enemy.dir = -1;
+    // Deterministic opening patrols: every course faces the same way on every
+    // attempt, and idle/plant timing is seeded instead of rolled, so retries are
+    // learnable rather than replaying a different encounter.
+    this.enemies.forEach((enemy, i) => {
+      enemy.dir = -1;
+      enemy.walkT = shash(this.stage, i, 11) * 10;
+      enemy.phaseT = 1 + shash(this.stage, i, 13);
+    });
     for (const g of this.level.gemSpawns){
       this.items.push(new Item('gem', g.tx*TILE + 11, g.ty*TILE + 11));
     }
@@ -2509,6 +2743,7 @@ const Game = {
     AudioSys.unlock();
     hideAllOverlays();
     document.body.classList.add('in-game');
+    document.body.classList.remove('ended');
     if (!carry){ this.score = 0; this.gems = 0; this.lives = 3; }
     this.checkX = START_TX;
     this.gateHintT = 0;
@@ -2517,8 +2752,12 @@ const Game = {
     this.inBonus = false;
     this.bonusLevel = new Level(BONUS_ROWS, true);
     this.mainItems = [];
+    this.pendingEnemies.length = 0;
+    this.hintT = 0;
     this.bonusLockT = 0;
     this.shakeT = 0;
+    this.secretsFound = 0;
+    this.secretTotal = this.mainLevel.hiddenCount + this.mainLevel.vaultCount;
     this.timeLeft = this.course.time;
     this.multiQ = 0;
     this.stompChain = 0; this.chainT = 0;
@@ -2540,9 +2779,17 @@ const Game = {
     this.level = this.mainLevel;
     this.inBonus = false;
     this.mainItems = [];
+    this.pendingEnemies.length = 0;
+    this.hintT = 0;
     this.bonusLockT = 0;
     this.timeLeft = this.course.time;
     this.multiQ = 0;
+    this.multiT = 0;
+    this.secretsFound = 0;
+    this.secretTotal = this.mainLevel.hiddenCount + this.mainLevel.vaultCount;
+    this.gateHintT = 0;
+    this.stompChain = 0; this.chainT = 0;
+    this.shakeT = 0;
     // Dying always costs your power: you resume small at the checkpoint.
     this.player.reset(this.checkX, 'small', GROUND_ROW);
     if (this.stage>=3) this.player.hurtT=1.5; // Safe checkpoint recovery, not a free attack boost.
@@ -2552,15 +2799,22 @@ const Game = {
     this.fade = null;
     this.particles.clear();
     this.texts.length = 0;
+    document.body.classList.remove('ended');
     this.state = 'READY';
     this.readyT = 1.0;
     this.inputClear();
+    // die() stops the music, so a respawn has to start it again.
+    AudioSys.startMusic();
     needRender = true;
   },
   toTitle(){
     this.stage = 1;
+    // Banking the run here keeps a quitting player's best score.
+    this.high = Math.max(this.high, this.score);
+    Store.set('high', this.high);
     hideAllOverlays();
     document.body.classList.remove('in-game');
+    document.body.classList.remove('ended');
     this.mainLevel = new Level(this.course.rows, false);
     this.level = this.mainLevel;
     this.bonusLevel = new Level(BONUS_ROWS, true);
@@ -2601,6 +2855,14 @@ const Game = {
         lv.bumps.set(tx*100 + ty, BUMP_DUR);
         AudioSys.sfx.bump();
       }
+    } else if (c === T.VAULT){
+      // Armoured: a head bump only clangs. Needs firepower.
+      lv.bumps.set(tx*100 + ty, BUMP_DUR);
+      AudioSys.sfx.thud();
+      if (this.hintT <= 0){
+        this.hintT = 1.4;
+        this.addText(tx*TILE + 24, ty*TILE - 8, 'ARMORED — SHOOT IT', '#cfe4f5', 14);
+      }
     } else if (QCODES.has(c)){
       lv.bumps.set(tx*100 + ty, BUMP_DUR);
       lv.set(tx, ty, T.USED);
@@ -2616,6 +2878,68 @@ const Game = {
     for (const it of this.items){
       if ((c === T.BRICK || QCODES.has(c)) && !it.remove && it.type === 'gem' && aabb(it, above)) this.collectItem(it);
     }
+  },
+  // Hidden blocks are intangible until Maro jumps into one: it then becomes a
+  // solid USED block and pays out a secret gem.
+  revealHidden(e, dt){
+    const lv = this.level;
+    if (e.vy >= 0) return;
+    // Sweep every row the head passes through this step, not just the row it
+    // lands in: a block sitting at head height would otherwise be skipped,
+    // because the projected row can already be past it on the first frame.
+    const y0 = Math.floor(e.y/TILE);
+    const y1 = Math.floor((e.y + e.vy*dt)/TILE);
+    const x0 = Math.floor(e.x/TILE), x1 = Math.floor((e.x + e.w - 0.01)/TILE);
+    for (let ty = Math.min(y0, y1); ty <= Math.max(y0, y1); ty++){
+      for (let tx = x0; tx <= x1; tx++){
+      if (lv.get(tx, ty) !== T.HIDDEN) continue;
+      // It becomes a ONE-WAY platform on purpose: a solid block would bonk the
+      // jump that revealed it (deadly over a ravine), whereas a ledge never
+      // blocks the jump and leaves a new foothold behind as the reward.
+      lv.set(tx, ty, T.PLATFORM);
+      lv.bumps.set(tx*100 + ty, BUMP_DUR);
+      // SEC tracks the course, so bonus-room finds stay off the main tally.
+      if (!this.inBonus) this.secretsFound++;
+      AudioSys.sfx.powerOut();
+      this.particles.spark(tx*TILE + 24, ty*TILE + 24, '#7ef0ff', 10);
+      this.addText(tx*TILE + 24, ty*TILE - 8, 'SECRET GEM!', '#7ef0ff', 15);
+      vib(12);
+      // Drop a catchable gem if there is air above; otherwise credit it outright.
+      if (lv.get(tx, ty-1) === T.EMPTY){
+        const gem = new Item('gem', tx*TILE + 11, (ty-1)*TILE + 11);
+        gem.vy = -180;
+        this.items.push(gem);
+      } else {
+        this.pops.push(new CoinPop(tx*TILE + 24, ty*TILE));
+        this.gems++; this.score += 500;
+      }
+      }
+    }
+  },
+  // Vault caches only crack to a fireball or a bowling shell — never a head bump.
+  // This is the course's Spark Bloom gate.
+  breakVault(tx, ty){
+    const lv = this.level;
+    if (lv.get(tx, ty) !== T.VAULT) return;
+    // A cache is the whole pillar, so one hit clears all of its tiles and
+    // scores a single secret rather than one per tile.
+    let top = ty, bot = ty;
+    while (lv.get(tx, top - 1) === T.VAULT) top--;
+    while (lv.get(tx, bot + 1) === T.VAULT) bot++;
+    for (let y = top; y <= bot; y++) lv.set(tx, y, T.EMPTY);
+    ty = top;
+    this.secretsFound++;
+    this.score += 500;
+    AudioSys.sfx.breakBlock();
+    this.particles.debris(tx*TILE + 24, ty*TILE + 24);
+    this.particles.spark(tx*TILE + 24, ty*TILE + 24, '#7ef0ff', 12);
+    this.shake(3, 0.2);
+    vib(18);
+    this.addText(tx*TILE + 24, ty*TILE - 8, 'CACHE!', '#7ef0ff', 17);
+    this.lastMultiX = tx*TILE + 24;
+    this.lastMultiY = ty*TILE - 6;
+    this.multiQ = 3;                 // three gems burst out of the cache
+    this.multiT = 0;
   },
   spawnContent(c){
     const bx = this.lastMultiX, by = this.lastMultiY;
@@ -2702,6 +3026,20 @@ const Game = {
     }
     e.hp=0;
     if(e.kind==='guardian'){ pts=1000+this.stage*100; this.enemyShots.length=0; }
+    // Stomping a gel splits it; fire and star damage dissolve it outright.
+    if (e.kind === 'gel' && e.gen < 1 && style === 'stomp' && this.enemies.length < 40){
+      for (const side of [-1, 1]){
+        const child = new Enemy('gel', e.x - 4 + (side > 0 ? 12 : 0), e.y + 2);
+        child.gen = e.gen + 1;
+        child.active = true;
+        child.dir = side;
+        child.vy = -300;
+        child.speed = e.speed * 1.35;
+        // Deferred so we never mutate this.enemies mid-iteration.
+        this.pendingEnemies.push(child);
+      }
+      this.addText(e.x + e.w/2, e.y - 10, 'SPLIT!', '#9fe870', 14);
+    }
     e.dead = true; e.deadT = 0;
     e.vy = -420;
     e.vx = (Math.random() < 0.5 ? -1 : 1) * 70;
@@ -2716,6 +3054,18 @@ const Game = {
   hitShot(s, e){
     s.remove = true;
     this.particles.spark(s.x, s.y, '#ffd23e', 6);
+    // A shielder's plate is facing the shot: it sparks off and does nothing.
+    if (e.kind === 'shielder'){
+      const fromFront = (s.vx > 0 && e.dir > 0) || (s.vx < 0 && e.dir < 0);
+      if (fromFront){
+        AudioSys.sfx.bounce();
+        this.particles.spark(s.x, s.y, '#cfe4f5', 6);
+        this.addText(e.x + e.w/2, e.y - 8, 'BLOCKED', '#cfe4f5', 13);
+        return;
+      }
+      this.defeatEnemy(e, 300, 'shot');
+      return;
+    }
     if (e.kind === 'walker') this.defeatEnemy(e, 200, 'shot');
     else if (e.kind === 'plant') this.defeatEnemy(e, 200, 'shot');
     else if (e.kind !== 'shell') this.defeatEnemy(e,200,'shot');
@@ -2739,7 +3089,8 @@ const Game = {
     if (p.hurtT > 0) return;
     const stomp = p.vy > 40 && p.prevBottom <= b.y + 14;
     if (stomp){
-      if (e.kind === 'plant'){
+      // Spiked crowns: plants and turrets punish a stomp instead of dying to it.
+      if (e.kind === 'plant' || e.kind === 'turret'){
         this.hurtPlayer(e);
         return;
       }
@@ -2810,6 +3161,8 @@ const Game = {
       this.high = Math.max(this.high, this.score);
       Store.set('high', this.high);
       this.state = 'GAMEOVER';
+      // Hide the on-screen pad behind the end panel; keep sound/fullscreen handy.
+      document.body.classList.add('ended');
       $('over-score').textContent = 'SCORE ' + pad6(this.score);
       $('over-hi').textContent = 'BEST ' + pad6(this.high);
       showOv('ov-over');
@@ -2869,6 +3222,9 @@ const Game = {
       this.level = this.mainLevel;
       this.inBonus = false;
       this.items = this.mainItems;
+      // Bolts were frozen mid-flight while you were inside; drop them so the
+      // course cannot shoot you the instant you step back out.
+      this.enemyShots.length = 0;
       this.player.reset(43, this.player.form, GROUND_ROW);
       this.cam.x = clamp(this.player.x - 320, 0, this.level.w*TILE - VIEW_W);
       this.cam.y = 0;
@@ -2894,6 +3250,7 @@ const Game = {
   finishClear(){
     if (this.state === 'CLEAR') return;
     this.state = 'CLEAR';
+    document.body.classList.add('ended');
     this.timeBonus = Math.ceil(this.timeLeft) * 50;
     this.score += this.timeBonus;
     this.high = Math.max(this.high, this.score);
@@ -2902,6 +3259,10 @@ const Game = {
       'FLAG BONUS&nbsp;&nbsp;' + pad6(this.flagScore) +
       '<br>TIME BONUS&nbsp;&nbsp;' + pad6(this.timeBonus) +
       '<br>GEMS&nbsp;&nbsp;×' + this.gems +
+      (this.secretTotal > 0
+        ? '<br>SECRETS&nbsp;&nbsp;' + Math.min(this.secretsFound, this.secretTotal) + ' / ' + this.secretTotal +
+          (this.secretsFound >= this.secretTotal ? ' ★' : '')
+        : '') +
       '<br><span class="total">TOTAL ' + pad6(this.score) + '</span>';
     const last = this.stage === TOTAL_STAGES;
     this.progress.unlocked=Math.max(this.progress.unlocked,Math.min(TOTAL_STAGES,this.stage+1));
@@ -3009,6 +3370,7 @@ const Game = {
       return;
     }
     if (this.bonusLockT > 0) this.bonusLockT -= dt;
+    if (this.hintT > 0) this.hintT -= dt;
     if (this.fade) this.updateFade(dt);
     if (this.state !== 'PLAYING') return;
 
@@ -3065,7 +3427,20 @@ const Game = {
             if (b.active && aabb(e, b)) this.defeatEnemy(o, 200, 'shell');
           }
         }
+        // A bowling shell cracks a vault cache just like a fireball does.
+        const aheadX = e.x + (e.dir > 0 ? e.w + 4 : -4);
+        const vty = Math.floor((e.y + e.h - 8)/TILE);
+        if (this.level.get(Math.floor(aheadX/TILE), vty) === T.VAULT){
+          this.breakVault(Math.floor(aheadX/TILE), vty);
+        }
       }
+    }
+
+    // Split gels land here, after every enemy pass has finished, so we never
+    // mutate this.enemies while it is being iterated.
+    if (this.pendingEnemies.length){
+      for (const e of this.pendingEnemies) this.enemies.push(e);
+      this.pendingEnemies.length = 0;
     }
 
     // items
@@ -3532,6 +3907,57 @@ function drawCampaignEnemy(e,x,y){
     R(9,14,3,3,'#183c43'); R(21,14,3,3,'#183c43');
     R(0,27-lift,10,5,'#24575a'); R(20,27-lift,10,5,'#24575a');
     if (e.onGround && e.hopT<0.35) R(11,3,8,3,'#ffe58c');
+  } else if (e.kind === 'charger'){
+    // Horned bull: crouches and glows while winding up, streaks while dashing.
+    const winding = e.phase === 'charge';
+    const dashing = e.phase === 'dash';
+    const lean = dashing ? (e.dir > 0 ? 4 : -4) : 0;
+    R(4+lean,26,11,6,'#5a3a1e'); R(24-lean,26,11,6,'#5a3a1e');
+    R(2,10,34,18,'#a35a2e'); R(6,14,26,10,'#c97a44');
+    if (winding) R(6,14,26,10,'#ff9d47');
+    R(28+e.dir*2,6,10,10,'#e8dcc0');          // horn, leads the charge
+    R(6,12,8,8,'#fff'); R(20,12,8,8,'#fff');
+    R(e.dir>0?10:8,14,4,4,'#2b1a0f'); R(e.dir>0?20:22,14,4,4,'#2b1a0f');
+    if (winding){
+      ctx.fillStyle='#ffe14d'; ctx.font='bold 20px monospace'; ctx.textAlign='center';
+      ctx.fillText('!', x+18, y-12); ctx.textAlign='left';
+    }
+    if (dashing){ R(0,18,6,4,'#ffd166'); R(32,18,6,4,'#ffd166'); }
+    for(let i=0;i<e.hp;i++) R(8+i*12,3,5,4,'#ffe089');
+  } else if (e.kind === 'shielder'){
+    // Armoured turtle with a bright plate on its front — the side that blocks.
+    const front = e.dir > 0 ? 26 : 0;
+    R(4,30,10,6,'#3b4a63'); R(26,30,10,6,'#3b4a63');
+    R(2,8,36,24,'#4a6fa5'); R(6,4,28,20,'#6f9ad0');
+    R(8,6,24,5,'#a8c8ee'); R(front,4,14,30,'#cfe4f5');   // the plate
+    R(front+3,8,8,8,'#ffffff'); R(front,20,14,4,'#8fa5cc');
+    R(e.dir>0?6:30,16,8,8,'#f4d7a7');
+    R(e.dir>0?8:32,18,3,3,'#2b1a0f');
+  } else if (e.kind === 'turret'){
+    // Rooted sentry: a spiked crown warns that stomping is a bad idea.
+    const warn = e.phase === 'warning';
+    R(2,28,32,6,'#2f3542'); R(4,12,28,18,'#5b6272');
+    R(6,14,24,14,'#7d8798'); R(9,18,18,7,'#2f3542');
+    for (let i=0;i<3;i++){                                  // spikes on top
+      const sx = 6 + i*10;
+      R(sx,4,4,9,'#d9dde3'); R(sx+1,1,2,4,'#ffffff');
+    }
+    R(e.dir>0?26:4,17,12,7,warn?'#ffe14d':'#ff6a5e');       // muzzle
+    R(12,22,12,4,'#3b4252');
+    if (warn){
+      ctx.fillStyle='#ffe14d'; ctx.font='bold 20px monospace'; ctx.textAlign='center';
+      ctx.fillText('!', x+18, y-16); ctx.textAlign='left';
+    }
+    for(let i=0;i<e.hp;i++) R(6+i*11,32,6,3,'#ffe089');
+  } else if (e.kind === 'gel'){
+    // Wobbling blob: lighter tint marks the children that spawn from a split.
+    const wob = Math.sin(e.walkT*9) > 0 ? 1 : 0;
+    const body = e.gen ? '#8ce0b4' : '#2fae7a', lite = e.gen ? '#c8f5df' : '#63d6a2';
+    R(2,4+wob,30,20,body); R(4,2+wob,26,6,body);
+    R(6,6+wob,22,12,lite); R(8,8+wob,8,5,'#eafff4');
+    R(10,12+wob,5,6,'#12352a'); R(20,12+wob,5,6,'#12352a');
+    R(e.dir>0?22:10,18+wob,5,3,'#12352a');
+    R(0,24,34,4,'#1f7d55');
   } else if (e.kind === 'beetle'){
     const step=Math.sin(e.walkT*10)>0?2:0;
     R(3,24,10,6,'#343d62'); R(26,24-step,9,6,'#343d62');
@@ -3709,6 +4135,20 @@ function drawHUD(){
   ctx.fillStyle = '#bcd0f5';
   ctx.fillText(name, 52, 56);
   drawDifficultyBadge(318, 52, (G.course.difficulty || 'ADVENTURE').toUpperCase());
+  // Secret tracker: only drawn on courses that actually hide something.
+  if (G.secretTotal > 0 && !G.inBonus){
+    const found = clamp(G.secretsFound, 0, G.secretTotal);
+    const label = 'SEC ' + found + '/' + G.secretTotal;
+    ctx.font = '800 13px "Courier New", monospace';
+    const sw = label.length*8 + 16;
+    ctx.fillStyle = 'rgba(10,20,40,.62)';
+    ctx.fillRect(472, 52, sw, 26);
+    ctx.strokeStyle = found >= G.secretTotal ? '#9fe870' : 'rgba(255,255,255,.35)';
+    ctx.lineWidth = 1;
+    ctx.strokeRect(472.5, 52.5, sw-1, 25);
+    ctx.fillStyle = found >= G.secretTotal ? '#9fe870' : '#ffd166';
+    ctx.fillText(label, 480, 56);
+  }
 
   const p = G.player;
   const state = p.invT > 0 ? 'star' : (p.form === 'shoot' ? 'shoot' : (p.form === 'big' ? 'big' : 'small'));
@@ -3855,7 +4295,7 @@ function updateStageUI(){
     // Each course's card carries its own accent so the menu mirrors the campaign art.
     if (!done) b.style.borderLeft='6px solid '+courseTheme(stage)[4];
     const stEl=$('stage-status-'+stage);
-    stEl.textContent=done?'✓ CLEARED':unlocked?(COURSES[stage-1].difficulty||'EXPLORER'):'LOCKED';
+    stEl.textContent=done?'✓ CLEARED':unlocked?(COURSES[stage-1].difficulty||'ADVENTURE'):'LOCKED';
     stEl.style.color=done?'#76c695':unlocked?(DIFF_COLORS[diff]||'#b7cce3'):'#b7cce3';
   }
 }
@@ -3865,8 +4305,11 @@ function updateToggles(){
   $('tg-sound').classList.toggle('on', Settings.sound);
   $('tg-vib').textContent = Settings.vibrate ? 'ON' : 'OFF';
   $('tg-vib').classList.toggle('on', Settings.vibrate);
-  $('tg-reduced').textContent = Settings.reduced ? 'ON' : 'OFF';
-  $('tg-reduced').classList.toggle('on', Settings.reduced);
+  // Standard quality always renders with reduced effects, so report the state
+  // the player will actually see and disable the override that cannot apply.
+  $('tg-reduced').disabled = Settings.quality === 'standard';
+  $('tg-reduced').textContent = Settings.effectsReduced ? 'ON' : 'OFF';
+  $('tg-reduced').classList.toggle('on', Settings.effectsReduced);
   $('sel-quality').value = Settings.quality;
   updateKeyboardUI();
   $('rg-op').value = Math.round(Settings.opacity*100);
@@ -3900,8 +4343,11 @@ function toggleFS(){
   resizeCanvas();
 }
 
+// Pausing is allowed during the short READY intro too, and resuming returns to
+// whichever of the two you paused from rather than always skipping the intro.
 function doPause(){
-  if (Game.state !== 'PLAYING') return;
+  if (Game.state !== 'PLAYING' && Game.state !== 'READY') return;
+  Game.pausedFrom = Game.state;
   Game.state = 'PAUSED';
   Game.inputClear();
   AudioSys.stopMusic();
@@ -3914,7 +4360,9 @@ function doResume(){
   if (Game.state !== 'PAUSED') return;
   hideOv('ov-pause');
   hideOv('ov-set');
-  Game.state = 'PLAYING';
+  Game.state = Game.pausedFrom === 'READY' ? 'READY' : 'PLAYING';
+  Game.pausedFrom = null;
+  document.body.classList.add('in-game');
   Game.inputClear();
   AudioSys.unlock();
   AudioSys.startMusic();
@@ -3968,6 +4416,7 @@ function wireUI(){
     vib(15);
   });
   on('tg-reduced', () => {
+    if (Settings.quality === 'standard') return;   // already forced on by quality
     Settings.reduced = !Settings.effectsReduced;
     Store.set('reduced', Settings.reduced);
     updateToggles();
@@ -4124,7 +4573,7 @@ function wireGlobal(){
   window.addEventListener('blur', () => {
     Input.clearAll();
     TouchUI.resetVisuals();
-    if (Game.state === 'PLAYING') doPause();
+    if (Game.state === 'PLAYING' || Game.state === 'READY') doPause();
   });
   window.addEventListener('resize', resizeCanvas);
   window.addEventListener('orientationchange', () => setTimeout(resizeCanvas, 100));

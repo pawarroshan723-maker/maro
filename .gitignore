@@ -1,0 +1,12 @@
+# Scratch harnesses and generated snapshots are not part of the game.
+# index.html is committed on purpose: it is the only file needed to play.
+/extracted.js
+/debug*.js
+/dbg_*.js
+/pitdebug.js
+/jumpdist.js
+/aitrace.js
+
+node_modules/
+*.log
+.DS_Store

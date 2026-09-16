@@ -36,6 +36,7 @@ const T = {
   Q_GEM:4, Q_GROW:5, Q_SHOT:6, Q_STAR:7, Q_LIFE:8, Q_MULTI:9, USED:10,
   PIPE_TL:11, PIPE_TR:12, PIPE_BL:13, PIPE_BR:14,
   PLATFORM:15, HAZARD:16, DOOR:17, FLAG:18, CHECK:19, BUILD:20, END_DOOR:21,
+  HIDDEN:22, VAULT:23,
 };
 const TILE_CHAR = {
   '#':T.GROUND, '%':T.DIRT, 'B':T.BRICK,
@@ -43,12 +44,14 @@ const TILE_CHAR = {
   '=':T.PLATFORM, '^':T.HAZARD,
   '(':T.PIPE_TL, ')':T.PIPE_TR, '[':T.PIPE_BL, ']':T.PIPE_BR,
   'D':T.DOOR, 'F':T.FLAG, 'K':T.CHECK, '*':T.BUILD, 'E':T.END_DOOR,
+  'h':T.HIDDEN, 'v':T.VAULT,
 };
-const SOLID = new Set([T.GROUND,T.DIRT,T.BRICK,T.Q_GEM,T.Q_GROW,T.Q_SHOT,T.Q_STAR,T.Q_LIFE,T.Q_MULTI,T.USED,T.PIPE_TL,T.PIPE_TR,T.PIPE_BL,T.PIPE_BR,T.BUILD]);
+// HIDDEN is deliberately absent: it is intangible until Maro jumps into it,
+// at which point it turns into a solid USED block.
+const SOLID = new Set([T.GROUND,T.DIRT,T.BRICK,T.Q_GEM,T.Q_GROW,T.Q_SHOT,T.Q_STAR,T.Q_LIFE,T.Q_MULTI,T.USED,T.PIPE_TL,T.PIPE_TR,T.PIPE_BL,T.PIPE_BR,T.BUILD,T.VAULT]);
 const QCODES = new Set([T.Q_GEM,T.Q_GROW,T.Q_SHOT,T.Q_STAR,T.Q_LIFE,T.Q_MULTI]);
 
-const LEVEL_NAME = 'SUNNY BLUFF';
-const LEVEL_TIME = 300;                // seconds per course
+const LEVEL_TIME = 300;                // placeholder until a course sets its own timer
 const START_TX = 2;
 const FLAG_TX = 152;
 const BUMP_DUR = 0.18;                 // mystery-block bump animation (s)

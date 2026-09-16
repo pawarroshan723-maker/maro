@@ -129,6 +129,10 @@ class Player {
   }
   unstick(){
     const lv = this.G.level;
+    // Only search for a free spot if Maro is actually embedded. Without this
+    // guard the first candidate ([0,-4]) is almost always clear, so every
+    // reset and form change nudged him 4px upward for no reason.
+    if (!rectSolid(lv, this.x, this.y, this.w, this.h)) return;
     const tries = [[0,-4],[0,-12],[0,-24],[4,0],[-4,0],[8,0],[-8,0],[0,-40],[12,-4],[-12,-4]];
     for (const [dx,dy] of tries){
       if (!rectSolid(lv, this.x+dx, this.y+dy, this.w, this.h)){
@@ -218,6 +222,9 @@ class Player {
 
     // move + collide
     this.prevBottom = this.y + this.h;
+    // Jumping into a hidden block reveals it before it turns solid, so the
+    // normal upward collision below stops Maro against it.
+    if (this.vy < 0) G.revealHidden(this, dt);
     moveAndCollide(lv, this, dt);
     if (this.ceilTy !== null){
       const t = ceilTileAt(lv, this, this.ceilTy);
@@ -256,11 +263,13 @@ class Enemy {
   constructor(kind, x, y){
     this.kind = kind;
     this.x = x; this.y = y; this.vx = 0; this.vy = 0;
-    this.dir = Math.random() < 0.5 ? -1 : 1;
+    // Spawn state is deterministic; spawnEntities() varies it per course so a
+    // retry always replays exactly the same encounter.
+    this.dir = -1;
     this.active = false; this.dead = false; this.deadT = 0; this.remove = false;
-    this.state = kind === 'shell' ? 'walk' : 'walk';
-    this.rise = 0; this.baseY = y; this.walkT = Math.random()*10;
-    this.phase = 'hidden'; this.phaseT = 1 + Math.random();
+    this.state = 'walk';
+    this.rise = 0; this.baseY = y; this.walkT = 0;
+    this.phase = 'hidden'; this.phaseT = 1.4;
     this.hp = 1; this.maxHp = 1; this.hitT = 0; this.hopT = 1.1;
     this.attackT = 1.6; this.warningT = 0;
     this.patrolMin = x-72; this.patrolMax = x+120;
@@ -274,6 +283,18 @@ class Enemy {
     else if (kind === 'bat'){ this.w=36; this.h=24; this.speed=64; }
     else if (kind === 'beetle'){ this.w=38; this.h=30; this.speed=35; this.hp=this.maxHp=2; }
     else if (kind === 'guardian'){ this.w=56; this.h=64; this.speed=38; this.hp=this.maxHp=3; this.phase='patrol'; }
+    // --- Gen-2 roster ---
+    // Charger: telegraphs, then dashes. Two hits so a single stomp won't do it.
+    else if (kind === 'charger'){ this.w=38; this.h=34; this.speed=46; this.hp=this.maxHp=2;
+      this.phase='patrol'; this.chargeT=0; this.dashT=0; this.cooldownT=0; this.dashSpeed=340; }
+    // Shielder: its plate eats fireballs head-on; stomp it or shoot its back.
+    else if (kind === 'shielder'){ this.w=40; this.h=36; this.speed=40; }
+    // Turret: rooted gun with a spiked crown. Stomping hurts — shoot it or
+    // bowl a shell into it. This is the Spark-Bloom gate.
+    else if (kind === 'turret'){ this.w=36; this.h=34; this.speed=0; this.hp=this.maxHp=2;
+      this.phase='patrol'; this.attackT=1.4; }
+    // Gel: stomping splits it. Fireballs dissolve it without a split.
+    else if (kind === 'gel'){ this.w=34; this.h=28; this.speed=54; this.gen=0; this.bounceT=0; }
     else { // plant
       this.w = 30; this.h = 26;
       this.baseY = y;               // pipe top (world y)
@@ -314,10 +335,65 @@ class Enemy {
   }
   fireBolt(G){
     if (G.enemyShots.filter(s=>!s.remove).length >= 6) return;
-    const dir = G.player.x < this.x ? -1 : 1;
+    // A telegraphed shot locks its direction when the warning starts, so
+    // side-stepping a bolt is a real answer instead of a homing coin-flip.
+    const dir = this.phase === 'warning' ? this.dir : (G.player.x < this.x ? -1 : 1);
     const spd = 185 + G.stage*6 + (this.boss >= 3 ? 40 : 0);
     G.enemyShots.push(new EnemyBolt(this.x+this.w/2+dir*36, this.y+this.h-18, dir, spd));
     AudioSys.sfx.shoot();
+  }
+  // Charger: patrol -> wind up (visible tell) -> dash -> recover. Jump it.
+  updateCharger(dt, G){
+    const p = G.player;
+    const dx = (p.x + p.w/2) - (this.x + this.w/2);
+    const dy = Math.abs((p.y + p.h) - (this.y + this.h));
+    if (this.phase === 'charge'){
+      this.chargeT -= dt;
+      this.vx = 0;
+      if (this.chargeT <= 0){
+        this.phase = 'dash';
+        this.dashT = 0.85;
+        this.dir = dx >= 0 ? 1 : -1;
+        AudioSys.sfx.shoot();
+      }
+      return;
+    }
+    if (this.phase === 'dash'){
+      this.dashT -= dt;
+      if (this.dashT <= 0 || this.onWall){
+        this.phase = 'patrol';
+        this.cooldownT = 1.15;
+      }
+      return;
+    }
+    if (this.cooldownT > 0){ this.cooldownT -= dt; this.vx = 0; return; }
+    if (Math.abs(dx) < 300 && dy < 70 && this.onGround){
+      this.phase = 'charge';
+      this.chargeT = 0.45;                 // long enough to read, short enough to threaten
+      AudioSys.sfx.bounce();
+      G.particles.spark(this.x + this.w/2, this.y + 6, '#ffd166', 5);
+    }
+  }
+  // Turret: rooted, telegraphs briefly, then fires. Stomp-proof by design.
+  updateTurret(dt, G){
+    const p = G.player;
+    const dx = (p.x + p.w/2) - (this.x + this.w/2);
+    const near = Math.abs(dx) < 430 && Math.abs((p.y + p.h) - (this.y + this.h)) < 96;
+    if (this.phase === 'warning'){
+      this.warningT -= dt;
+      if (this.warningT <= 0){
+        this.dir = dx >= 0 ? 1 : -1;
+        this.fireBolt(G);
+        this.phase = 'patrol';
+        this.attackT = 2.25;
+      }
+      return;
+    }
+    this.attackT -= dt;
+    if (this.attackT <= 0 && near){
+      this.phase = 'warning';
+      this.warningT = 0.45;
+    }
   }
   updateGuardian(dt, G){
     const v = this.boss || 1;
@@ -372,12 +448,23 @@ class Enemy {
     }
     if (this.kind === 'bat'){ this.updateBat(dt,G); return; }
     if (this.kind === 'guardian') this.updateGuardian(dt,G);
+    if (this.kind === 'charger') this.updateCharger(dt,G);
+    if (this.kind === 'turret') this.updateTurret(dt,G);
     if (this.kind === 'hopper' && this.onGround){
       this.hopT -= dt;
       if (this.hopT <= 0){ this.vy=-480; this.hopT=1.5; }
     }
+    // Gel hop-glides instead of walking, so it reads differently in motion.
+    if (this.kind === 'gel' && this.onGround){
+      this.bounceT -= dt;
+      if (this.bounceT <= 0){ this.vy = -360; this.bounceT = 0.85; }
+    }
     let sp = this.speed;
-    if (this.kind === 'guardian' && this.phase === 'warning') sp=0;
+    if (this.kind === 'charger'){
+      if (this.phase === 'charge' || this.cooldownT > 0) sp = 0;
+      else if (this.phase === 'dash') sp = this.dashSpeed;
+    }
+    if ((this.kind === 'guardian' || this.kind === 'turret') && this.phase === 'warning') sp=0;
     if (this.kind === 'shell' && this.state === 'live') sp = 300; // was 430, now more controllable
     if (this.kind === 'shell' && this.state === 'idle') sp = 0;
     this.vx = this.dir * sp;
@@ -500,6 +587,9 @@ class Projectile {
     const dir = this.vx > 0 ? 1 : -1;
     const fx = this.x + dir*this.r;
     if (tileSolidAt(lv, fx, this.y) || tileSolidAt(lv, fx, this.y-6) || tileSolidAt(lv, fx, this.y+6)){
+      // The only way to crack an armoured gem cache.
+      const vtx = Math.floor(fx/TILE), vty = Math.floor(this.y/TILE);
+      if (lv.get(vtx, vty) === T.VAULT) G.breakVault(vtx, vty);
       G.particles.spark(this.x + dir*this.r, this.y, '#fff', 5);
       AudioSys.sfx.hitWall();
       this.remove = true;

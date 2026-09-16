@@ -27,19 +27,19 @@ Stomp enemies from above or use fireballs. Kick stationary shells to hit other e
 | 2 | Sunset Ridge | Raised routes and short ravines |
 | 3 | Mosswood Trail | Jumping Hoppers and terraces |
 | 4 | Crystal Caverns | Flying Bats above the gem routes |
-| 5 | Copper Outpost | First Gate Guardian: 3 hits |
+| 5 | Copper Outpost | First Gate Guardian: 4 hits |
 | 6 | Coral Causeway | Armored Beetles: 2 hits |
 | 7 | Moonlit Grove | Thorn bypasses and pipe plants |
 | 8 | Frostfall Pass | Four-tile ravines and snowfall |
 | 9 | Thunder Heights | Faster mixed patrols |
-| 10 | Obsidian Keep | Second Gate Guardian: 4 hits |
+| 10 | Obsidian Keep | Second Gate Guardian: 6 hits |
 | 11 | Mirage Dunes | Tighter timing through mixed obstacles |
 | 12 | Clockwork Ascent | Terraces, thorns and airborne enemies |
 | 13 | Ember Chasm | Expert landings and ember scenery |
 | 14 | Eclipse Ridge | Fast patrols and fewer gap assists |
-| 15 | Crown Citadel | Final Gate Guardian: 5 hits |
+| 15 | Crown Citadel | Final Gate Guardian: 8 hits |
 
-Every course has a distinct deterministic tile layout, a bonus room, gems and power-ups. Stages 3–15 use separately arranged obstacle modules with stage-specific scenery, and a seeded per-stage flavor shifts the mystery-block columns, pipe heights and positions, patrol mixes and hidden extra one-way gem routes so no two courses line up the same way. Later courses progressively increase patrol speed, reduce the timer, widen ravines earlier (never beyond four tiles), and mix more enemy behaviors: armored beetles and extra patrols arrive sooner, thorn beds grow wider on the top tiers, and guardians strike faster with more hit points. Snow, rain, embers and the other weather effects are cosmetic; physics remain consistent.
+Every course has a distinct deterministic tile layout, a bonus room, gems and power-ups. Enemy opening patrols and idle timing are seeded too, so a retry replays the exact same encounter. Stages 3–15 use separately arranged obstacle modules with stage-specific scenery, and a seeded per-stage flavor shifts the mystery-block columns, pipe heights and positions, patrol mixes and hidden extra one-way gem routes so no two courses line up the same way. Two later modules add a **thorn gauntlet** (spike decks under a one-way high line) and a **vault chamber** (an armoured cache behind a turret, with a Spark Bloom block on the deck to crack it). Later courses progressively increase patrol speed, reduce the timer, widen ravines earlier (never beyond four tiles), and mix more enemy behaviors: armored beetles and extra patrols arrive sooner, thorn beds grow wider on the top tiers, and guardians strike faster with more hit points. Snow, rain, embers and the other weather effects are cosmetic; physics remain consistent.
 
 **Difficulty tiers:** each stage is badged TUTORIAL, ADVENTURE, CHALLENGING, EXPERT or MASTER on its intro card, HUD plate and Stage Select tile, so the ramp is always visible.
 
@@ -56,10 +56,22 @@ Every course has a distinct deterministic tile layout, a bonus room, gems and po
 - **Hopper:** pauses, flashes its forehead and leaps; stomp or shoot it.
 - **Bat:** flies a bounded, bobbing route; stomp or shoot it.
 - **Armored Beetle:** requires two separated hits. Its glowing shell marks show remaining health. Stomps, fireballs and moving shells damage it.
+- **Charger:** patrols slowly, then crouches and glows for a beat before committing to a fast dash. Two hits; jump it as it commits. Arrives on the harder tiers.
+- **Shielder:** wears a bright front plate that sparks fireballs straight off it. Stomp it, or shoot it in the back.
+- **Turret:** a rooted sentry with a spiked crown — stomping it *hurts*. It takes two fireballs (three on the last two tiers) or a bowling shell. This is the Spark Bloom gate: without firepower, go around.
+- **Gel:** a bouncing blob that splits into two faster halves when stomped. A fireball dissolves it whole, with no split.
 - **Gate Guardian:** patrols the arena and flashes for under a second (shorter on later courses) before firing a horizontal bolt. Jump bolts and stomp/shoot the guardian. Health bars show remaining hits. Only six hostile bolts can exist at once; bolts expire, hit walls, and are cleared on guardian defeat or stage reset.
 - **Lurker ambush:** from Stage 3 on, at least one enemy lies hidden in each course and bursts out when Maro steps close — a genuine jump-scare. More lurkers appear on higher tiers.
 
 Nova Star defeats regular enemies and absorbs hostile bolts, but bosses are immune to it — a guardian must be beaten with stomps and fireballs. Walker, shell and pipe-plant enemies remain throughout the adventure.
+
+## Secrets
+
+- **Hidden gem blocks** are invisible until Maro jumps into them. Revealing one turns it into a one-way ledge — so it never bonks the jump that found it — and pays out a secret gem. Every course hides three or four, always in validated, reachable air (never at head height, never under a ceiling).
+- **Armoured caches** are vault blocks that ignore head bumps entirely. Only a fireball or a bowling shell cracks one, and each cache releases three gems. They sit on raised decks, never on the walking corridor, so they can never wall a player in.
+- The **SEC n/total** counter under the HUD tracks both kinds for the current course, and the clear card reports how many you found. Finding them all marks the card with a ★.
+
+**Placement is validated at generation time.** Hidden blocks are only written where there is clear headroom, a clear column down to a standing surface and a surface within standing-jump range; ground enemies are dropped if they would spawn inside a pipe, a wall or a vault, or over a ravine.
 
 **Three distinct bosses:** the Copper Sentry (stage 5, single bolt, 4 hits), the horned Obsidian Warden (stage 10, two-bolt volleys, 6 hits) and the crowned King (stage 15, fast three-bolt volleys, 8 hits). Dying always returns Maro to small form at the checkpoint, so power is earned, not carried through death.
 
@@ -70,7 +82,7 @@ Pause, then open **Settings**:
 - **Keyboard → Default / Custom:** assign letters, numbers, arrows, Space or Shift to movement, crouching, jump and action. Duplicate assignments are rejected. Esc cancels capture; P, M and F stay reserved. Reset Custom Keys restores original primary bindings. Switching to Default does not erase custom assignments. Touch controls are unchanged.
 - **Quality → Standard:** 960×540 backing canvas with fewer effects.
 - **Quality → High:** 1920×1080 backing canvas with full effects, retaining the pixel-art style. A sustained low-FPS fallback can drop rendering to 1×; changing quality resets it.
-- **Reduced effects:** an independent override, also available in High mode.
+- **Reduced effects:** an independent override for High mode. Standard quality always renders with effects reduced, so the switch is disabled there and reads `ON`.
 
 Settings save locally when browser storage is available.
 
@@ -92,7 +104,7 @@ STAGE=15 GEOM_ONLY=1 node aiplay.js
 STAGE=15 node fuzz.js
 ```
 
-**Validation scope:** Terrain traversal deliberately disables enemies to test jump reachability. Combat tests separately cover the new enemies, armor, guardian health/finish gates, warning timing, projectile collisions and limits. Fuzz tests run with enemies enabled and exercise five input seeds across 60 simulated seconds per course. The baseline AI is not a complete strategy for expert combat or guardian fights.
+**Validation scope:** Terrain traversal deliberately disables enemies to test jump reachability. Combat tests separately cover the new enemies, armor, guardian health/finish gates, warning timing, projectile collisions and limits. The secrets section covers hidden-block reachability, reveal behaviour, the shielder's directional plate, turret stomp-immunity, the charger's telegraph and the gel split. Fuzz tests run with enemies enabled and exercise five input seeds across 60 simulated seconds per course. The baseline AI is not a complete strategy for expert combat or guardian fights.
 
 Additional smoke coverage includes all-stage unlocking, progress migration and reload, no Stage 16, life caps, bonus-room isolation, checkpoint recovery, custom controls, quality presets, sprite bounds, pipe seams, diamond expiry and castle entrances. Desktop Chromium checks exercised stage-selection locks, scrolling on a narrow viewport, custom keys, quality switching and new-stage rendering.
 

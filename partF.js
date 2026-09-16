@@ -11,16 +11,18 @@ const Game = {
   level: null, mainLevel: null, bonusLevel: null, inBonus: false,
   player: null,
   enemies: [], items: [], shots: [], pops: [], enemyShots: [],
-  texts: [],
+  pendingEnemies: [], texts: [],
+  secretsFound: 0, secretTotal: 0,
   cam: { x: 0, y: 0 },
   shakeT: 0, shakeMag: 0, shakeDur: 1,
   checkX: START_TX,
-  readyT: 0, deathT: 0,
+  readyT: 0, deathT: 0, pausedFrom: null,
   clearPhase: 0, clearT: 0, flagScore: 0, timeBonus: 0,
   multiQ: 0, multiT: 0, lastMultiX: 0, lastMultiY: 0,
   particles: null,   // assigned in init()
   stompChain: 0, chainT: 0, trailT: 0,
   bonusLockT: 0,
+  hintT: 0,
   fade: null,
   mainItems: [],
 
@@ -66,6 +68,9 @@ const Game = {
           // Three distinct bosses: Copper Sentry, Obsidian Warden, Crown King.
           enemy.boss = Math.round(this.stage/5);
           enemy.hp = enemy.maxHp = [0,4,6,8][enemy.boss] || 4;
+        } else if (enemy.kind === 'turret'){
+          // Turrets are armour-plated mini-bosses: tougher on the last two tiers.
+          enemy.hp = enemy.maxHp = this.stage >= 12 ? 3 : 2;
         }
         this.enemies.push(enemy);
       }
@@ -75,9 +80,16 @@ const Game = {
       }
       if (s[5] === 'lurk') enemy.lurk = true;
       if (this.course.speedScale && enemy.speed) enemy.speed *= this.course.speedScale;
+      if (this.course.speedScale && enemy.dashSpeed) enemy.dashSpeed *= this.course.speedScale;
     }
-    // Predictable opening patrols make Stage 2 encounters learnable on retries.
-    if (this.stage >= 2) for (const enemy of this.enemies) enemy.dir = -1;
+    // Deterministic opening patrols: every course faces the same way on every
+    // attempt, and idle/plant timing is seeded instead of rolled, so retries are
+    // learnable rather than replaying a different encounter.
+    this.enemies.forEach((enemy, i) => {
+      enemy.dir = -1;
+      enemy.walkT = shash(this.stage, i, 11) * 10;
+      enemy.phaseT = 1 + shash(this.stage, i, 13);
+    });
     for (const g of this.level.gemSpawns){
       this.items.push(new Item('gem', g.tx*TILE + 11, g.ty*TILE + 11));
     }
@@ -100,6 +112,7 @@ const Game = {
     AudioSys.unlock();
     hideAllOverlays();
     document.body.classList.add('in-game');
+    document.body.classList.remove('ended');
     if (!carry){ this.score = 0; this.gems = 0; this.lives = 3; }
     this.checkX = START_TX;
     this.gateHintT = 0;
@@ -108,8 +121,12 @@ const Game = {
     this.inBonus = false;
     this.bonusLevel = new Level(BONUS_ROWS, true);
     this.mainItems = [];
+    this.pendingEnemies.length = 0;
+    this.hintT = 0;
     this.bonusLockT = 0;
     this.shakeT = 0;
+    this.secretsFound = 0;
+    this.secretTotal = this.mainLevel.hiddenCount + this.mainLevel.vaultCount;
     this.timeLeft = this.course.time;
     this.multiQ = 0;
     this.stompChain = 0; this.chainT = 0;
@@ -131,9 +148,17 @@ const Game = {
     this.level = this.mainLevel;
     this.inBonus = false;
     this.mainItems = [];
+    this.pendingEnemies.length = 0;
+    this.hintT = 0;
     this.bonusLockT = 0;
     this.timeLeft = this.course.time;
     this.multiQ = 0;
+    this.multiT = 0;
+    this.secretsFound = 0;
+    this.secretTotal = this.mainLevel.hiddenCount + this.mainLevel.vaultCount;
+    this.gateHintT = 0;
+    this.stompChain = 0; this.chainT = 0;
+    this.shakeT = 0;
     // Dying always costs your power: you resume small at the checkpoint.
     this.player.reset(this.checkX, 'small', GROUND_ROW);
     if (this.stage>=3) this.player.hurtT=1.5; // Safe checkpoint recovery, not a free attack boost.
@@ -143,15 +168,22 @@ const Game = {
     this.fade = null;
     this.particles.clear();
     this.texts.length = 0;
+    document.body.classList.remove('ended');
     this.state = 'READY';
     this.readyT = 1.0;
     this.inputClear();
+    // die() stops the music, so a respawn has to start it again.
+    AudioSys.startMusic();
     needRender = true;
   },
   toTitle(){
     this.stage = 1;
+    // Banking the run here keeps a quitting player's best score.
+    this.high = Math.max(this.high, this.score);
+    Store.set('high', this.high);
     hideAllOverlays();
     document.body.classList.remove('in-game');
+    document.body.classList.remove('ended');
     this.mainLevel = new Level(this.course.rows, false);
     this.level = this.mainLevel;
     this.bonusLevel = new Level(BONUS_ROWS, true);
@@ -192,6 +224,14 @@ const Game = {
         lv.bumps.set(tx*100 + ty, BUMP_DUR);
         AudioSys.sfx.bump();
       }
+    } else if (c === T.VAULT){
+      // Armoured: a head bump only clangs. Needs firepower.
+      lv.bumps.set(tx*100 + ty, BUMP_DUR);
+      AudioSys.sfx.thud();
+      if (this.hintT <= 0){
+        this.hintT = 1.4;
+        this.addText(tx*TILE + 24, ty*TILE - 8, 'ARMORED — SHOOT IT', '#cfe4f5', 14);
+      }
     } else if (QCODES.has(c)){
       lv.bumps.set(tx*100 + ty, BUMP_DUR);
       lv.set(tx, ty, T.USED);
@@ -207,6 +247,68 @@ const Game = {
     for (const it of this.items){
       if ((c === T.BRICK || QCODES.has(c)) && !it.remove && it.type === 'gem' && aabb(it, above)) this.collectItem(it);
     }
+  },
+  // Hidden blocks are intangible until Maro jumps into one: it then becomes a
+  // solid USED block and pays out a secret gem.
+  revealHidden(e, dt){
+    const lv = this.level;
+    if (e.vy >= 0) return;
+    // Sweep every row the head passes through this step, not just the row it
+    // lands in: a block sitting at head height would otherwise be skipped,
+    // because the projected row can already be past it on the first frame.
+    const y0 = Math.floor(e.y/TILE);
+    const y1 = Math.floor((e.y + e.vy*dt)/TILE);
+    const x0 = Math.floor(e.x/TILE), x1 = Math.floor((e.x + e.w - 0.01)/TILE);
+    for (let ty = Math.min(y0, y1); ty <= Math.max(y0, y1); ty++){
+      for (let tx = x0; tx <= x1; tx++){
+      if (lv.get(tx, ty) !== T.HIDDEN) continue;
+      // It becomes a ONE-WAY platform on purpose: a solid block would bonk the
+      // jump that revealed it (deadly over a ravine), whereas a ledge never
+      // blocks the jump and leaves a new foothold behind as the reward.
+      lv.set(tx, ty, T.PLATFORM);
+      lv.bumps.set(tx*100 + ty, BUMP_DUR);
+      // SEC tracks the course, so bonus-room finds stay off the main tally.
+      if (!this.inBonus) this.secretsFound++;
+      AudioSys.sfx.powerOut();
+      this.particles.spark(tx*TILE + 24, ty*TILE + 24, '#7ef0ff', 10);
+      this.addText(tx*TILE + 24, ty*TILE - 8, 'SECRET GEM!', '#7ef0ff', 15);
+      vib(12);
+      // Drop a catchable gem if there is air above; otherwise credit it outright.
+      if (lv.get(tx, ty-1) === T.EMPTY){
+        const gem = new Item('gem', tx*TILE + 11, (ty-1)*TILE + 11);
+        gem.vy = -180;
+        this.items.push(gem);
+      } else {
+        this.pops.push(new CoinPop(tx*TILE + 24, ty*TILE));
+        this.gems++; this.score += 500;
+      }
+      }
+    }
+  },
+  // Vault caches only crack to a fireball or a bowling shell — never a head bump.
+  // This is the course's Spark Bloom gate.
+  breakVault(tx, ty){
+    const lv = this.level;
+    if (lv.get(tx, ty) !== T.VAULT) return;
+    // A cache is the whole pillar, so one hit clears all of its tiles and
+    // scores a single secret rather than one per tile.
+    let top = ty, bot = ty;
+    while (lv.get(tx, top - 1) === T.VAULT) top--;
+    while (lv.get(tx, bot + 1) === T.VAULT) bot++;
+    for (let y = top; y <= bot; y++) lv.set(tx, y, T.EMPTY);
+    ty = top;
+    this.secretsFound++;
+    this.score += 500;
+    AudioSys.sfx.breakBlock();
+    this.particles.debris(tx*TILE + 24, ty*TILE + 24);
+    this.particles.spark(tx*TILE + 24, ty*TILE + 24, '#7ef0ff', 12);
+    this.shake(3, 0.2);
+    vib(18);
+    this.addText(tx*TILE + 24, ty*TILE - 8, 'CACHE!', '#7ef0ff', 17);
+    this.lastMultiX = tx*TILE + 24;
+    this.lastMultiY = ty*TILE - 6;
+    this.multiQ = 3;                 // three gems burst out of the cache
+    this.multiT = 0;
   },
   spawnContent(c){
     const bx = this.lastMultiX, by = this.lastMultiY;
@@ -293,6 +395,20 @@ const Game = {
     }
     e.hp=0;
     if(e.kind==='guardian'){ pts=1000+this.stage*100; this.enemyShots.length=0; }
+    // Stomping a gel splits it; fire and star damage dissolve it outright.
+    if (e.kind === 'gel' && e.gen < 1 && style === 'stomp' && this.enemies.length < 40){
+      for (const side of [-1, 1]){
+        const child = new Enemy('gel', e.x - 4 + (side > 0 ? 12 : 0), e.y + 2);
+        child.gen = e.gen + 1;
+        child.active = true;
+        child.dir = side;
+        child.vy = -300;
+        child.speed = e.speed * 1.35;
+        // Deferred so we never mutate this.enemies mid-iteration.
+        this.pendingEnemies.push(child);
+      }
+      this.addText(e.x + e.w/2, e.y - 10, 'SPLIT!', '#9fe870', 14);
+    }
     e.dead = true; e.deadT = 0;
     e.vy = -420;
     e.vx = (Math.random() < 0.5 ? -1 : 1) * 70;
@@ -307,6 +423,18 @@ const Game = {
   hitShot(s, e){
     s.remove = true;
     this.particles.spark(s.x, s.y, '#ffd23e', 6);
+    // A shielder's plate is facing the shot: it sparks off and does nothing.
+    if (e.kind === 'shielder'){
+      const fromFront = (s.vx > 0 && e.dir > 0) || (s.vx < 0 && e.dir < 0);
+      if (fromFront){
+        AudioSys.sfx.bounce();
+        this.particles.spark(s.x, s.y, '#cfe4f5', 6);
+        this.addText(e.x + e.w/2, e.y - 8, 'BLOCKED', '#cfe4f5', 13);
+        return;
+      }
+      this.defeatEnemy(e, 300, 'shot');
+      return;
+    }
     if (e.kind === 'walker') this.defeatEnemy(e, 200, 'shot');
     else if (e.kind === 'plant') this.defeatEnemy(e, 200, 'shot');
     else if (e.kind !== 'shell') this.defeatEnemy(e,200,'shot');
@@ -330,7 +458,8 @@ const Game = {
     if (p.hurtT > 0) return;
     const stomp = p.vy > 40 && p.prevBottom <= b.y + 14;
     if (stomp){
-      if (e.kind === 'plant'){
+      // Spiked crowns: plants and turrets punish a stomp instead of dying to it.
+      if (e.kind === 'plant' || e.kind === 'turret'){
         this.hurtPlayer(e);
         return;
       }
@@ -401,6 +530,8 @@ const Game = {
       this.high = Math.max(this.high, this.score);
       Store.set('high', this.high);
       this.state = 'GAMEOVER';
+      // Hide the on-screen pad behind the end panel; keep sound/fullscreen handy.
+      document.body.classList.add('ended');
       $('over-score').textContent = 'SCORE ' + pad6(this.score);
       $('over-hi').textContent = 'BEST ' + pad6(this.high);
       showOv('ov-over');
@@ -460,6 +591,9 @@ const Game = {
       this.level = this.mainLevel;
       this.inBonus = false;
       this.items = this.mainItems;
+      // Bolts were frozen mid-flight while you were inside; drop them so the
+      // course cannot shoot you the instant you step back out.
+      this.enemyShots.length = 0;
       this.player.reset(43, this.player.form, GROUND_ROW);
       this.cam.x = clamp(this.player.x - 320, 0, this.level.w*TILE - VIEW_W);
       this.cam.y = 0;
@@ -485,6 +619,7 @@ const Game = {
   finishClear(){
     if (this.state === 'CLEAR') return;
     this.state = 'CLEAR';
+    document.body.classList.add('ended');
     this.timeBonus = Math.ceil(this.timeLeft) * 50;
     this.score += this.timeBonus;
     this.high = Math.max(this.high, this.score);
@@ -493,6 +628,10 @@ const Game = {
       'FLAG BONUS&nbsp;&nbsp;' + pad6(this.flagScore) +
       '<br>TIME BONUS&nbsp;&nbsp;' + pad6(this.timeBonus) +
       '<br>GEMS&nbsp;&nbsp;×' + this.gems +
+      (this.secretTotal > 0
+        ? '<br>SECRETS&nbsp;&nbsp;' + Math.min(this.secretsFound, this.secretTotal) + ' / ' + this.secretTotal +
+          (this.secretsFound >= this.secretTotal ? ' ★' : '')
+        : '') +
       '<br><span class="total">TOTAL ' + pad6(this.score) + '</span>';
     const last = this.stage === TOTAL_STAGES;
     this.progress.unlocked=Math.max(this.progress.unlocked,Math.min(TOTAL_STAGES,this.stage+1));
@@ -600,6 +739,7 @@ const Game = {
       return;
     }
     if (this.bonusLockT > 0) this.bonusLockT -= dt;
+    if (this.hintT > 0) this.hintT -= dt;
     if (this.fade) this.updateFade(dt);
     if (this.state !== 'PLAYING') return;
 
@@ -656,7 +796,20 @@ const Game = {
             if (b.active && aabb(e, b)) this.defeatEnemy(o, 200, 'shell');
           }
         }
+        // A bowling shell cracks a vault cache just like a fireball does.
+        const aheadX = e.x + (e.dir > 0 ? e.w + 4 : -4);
+        const vty = Math.floor((e.y + e.h - 8)/TILE);
+        if (this.level.get(Math.floor(aheadX/TILE), vty) === T.VAULT){
+          this.breakVault(Math.floor(aheadX/TILE), vty);
+        }
       }
+    }
+
+    // Split gels land here, after every enemy pass has finished, so we never
+    // mutate this.enemies while it is being iterated.
+    if (this.pendingEnemies.length){
+      for (const e of this.pendingEnemies) this.enemies.push(e);
+      this.pendingEnemies.length = 0;
     }
 
     // items
@@ -1123,6 +1276,57 @@ function drawCampaignEnemy(e,x,y){
     R(9,14,3,3,'#183c43'); R(21,14,3,3,'#183c43');
     R(0,27-lift,10,5,'#24575a'); R(20,27-lift,10,5,'#24575a');
     if (e.onGround && e.hopT<0.35) R(11,3,8,3,'#ffe58c');
+  } else if (e.kind === 'charger'){
+    // Horned bull: crouches and glows while winding up, streaks while dashing.
+    const winding = e.phase === 'charge';
+    const dashing = e.phase === 'dash';
+    const lean = dashing ? (e.dir > 0 ? 4 : -4) : 0;
+    R(4+lean,26,11,6,'#5a3a1e'); R(24-lean,26,11,6,'#5a3a1e');
+    R(2,10,34,18,'#a35a2e'); R(6,14,26,10,'#c97a44');
+    if (winding) R(6,14,26,10,'#ff9d47');
+    R(28+e.dir*2,6,10,10,'#e8dcc0');          // horn, leads the charge
+    R(6,12,8,8,'#fff'); R(20,12,8,8,'#fff');
+    R(e.dir>0?10:8,14,4,4,'#2b1a0f'); R(e.dir>0?20:22,14,4,4,'#2b1a0f');
+    if (winding){
+      ctx.fillStyle='#ffe14d'; ctx.font='bold 20px monospace'; ctx.textAlign='center';
+      ctx.fillText('!', x+18, y-12); ctx.textAlign='left';
+    }
+    if (dashing){ R(0,18,6,4,'#ffd166'); R(32,18,6,4,'#ffd166'); }
+    for(let i=0;i<e.hp;i++) R(8+i*12,3,5,4,'#ffe089');
+  } else if (e.kind === 'shielder'){
+    // Armoured turtle with a bright plate on its front — the side that blocks.
+    const front = e.dir > 0 ? 26 : 0;
+    R(4,30,10,6,'#3b4a63'); R(26,30,10,6,'#3b4a63');
+    R(2,8,36,24,'#4a6fa5'); R(6,4,28,20,'#6f9ad0');
+    R(8,6,24,5,'#a8c8ee'); R(front,4,14,30,'#cfe4f5');   // the plate
+    R(front+3,8,8,8,'#ffffff'); R(front,20,14,4,'#8fa5cc');
+    R(e.dir>0?6:30,16,8,8,'#f4d7a7');
+    R(e.dir>0?8:32,18,3,3,'#2b1a0f');
+  } else if (e.kind === 'turret'){
+    // Rooted sentry: a spiked crown warns that stomping is a bad idea.
+    const warn = e.phase === 'warning';
+    R(2,28,32,6,'#2f3542'); R(4,12,28,18,'#5b6272');
+    R(6,14,24,14,'#7d8798'); R(9,18,18,7,'#2f3542');
+    for (let i=0;i<3;i++){                                  // spikes on top
+      const sx = 6 + i*10;
+      R(sx,4,4,9,'#d9dde3'); R(sx+1,1,2,4,'#ffffff');
+    }
+    R(e.dir>0?26:4,17,12,7,warn?'#ffe14d':'#ff6a5e');       // muzzle
+    R(12,22,12,4,'#3b4252');
+    if (warn){
+      ctx.fillStyle='#ffe14d'; ctx.font='bold 20px monospace'; ctx.textAlign='center';
+      ctx.fillText('!', x+18, y-16); ctx.textAlign='left';
+    }
+    for(let i=0;i<e.hp;i++) R(6+i*11,32,6,3,'#ffe089');
+  } else if (e.kind === 'gel'){
+    // Wobbling blob: lighter tint marks the children that spawn from a split.
+    const wob = Math.sin(e.walkT*9) > 0 ? 1 : 0;
+    const body = e.gen ? '#8ce0b4' : '#2fae7a', lite = e.gen ? '#c8f5df' : '#63d6a2';
+    R(2,4+wob,30,20,body); R(4,2+wob,26,6,body);
+    R(6,6+wob,22,12,lite); R(8,8+wob,8,5,'#eafff4');
+    R(10,12+wob,5,6,'#12352a'); R(20,12+wob,5,6,'#12352a');
+    R(e.dir>0?22:10,18+wob,5,3,'#12352a');
+    R(0,24,34,4,'#1f7d55');
   } else if (e.kind === 'beetle'){
     const step=Math.sin(e.walkT*10)>0?2:0;
     R(3,24,10,6,'#343d62'); R(26,24-step,9,6,'#343d62');
@@ -1300,6 +1504,20 @@ function drawHUD(){
   ctx.fillStyle = '#bcd0f5';
   ctx.fillText(name, 52, 56);
   drawDifficultyBadge(318, 52, (G.course.difficulty || 'ADVENTURE').toUpperCase());
+  // Secret tracker: only drawn on courses that actually hide something.
+  if (G.secretTotal > 0 && !G.inBonus){
+    const found = clamp(G.secretsFound, 0, G.secretTotal);
+    const label = 'SEC ' + found + '/' + G.secretTotal;
+    ctx.font = '800 13px "Courier New", monospace';
+    const sw = label.length*8 + 16;
+    ctx.fillStyle = 'rgba(10,20,40,.62)';
+    ctx.fillRect(472, 52, sw, 26);
+    ctx.strokeStyle = found >= G.secretTotal ? '#9fe870' : 'rgba(255,255,255,.35)';
+    ctx.lineWidth = 1;
+    ctx.strokeRect(472.5, 52.5, sw-1, 25);
+    ctx.fillStyle = found >= G.secretTotal ? '#9fe870' : '#ffd166';
+    ctx.fillText(label, 480, 56);
+  }
 
   const p = G.player;
   const state = p.invT > 0 ? 'star' : (p.form === 'shoot' ? 'shoot' : (p.form === 'big' ? 'big' : 'small'));
@@ -1446,7 +1664,7 @@ function updateStageUI(){
     // Each course's card carries its own accent so the menu mirrors the campaign art.
     if (!done) b.style.borderLeft='6px solid '+courseTheme(stage)[4];
     const stEl=$('stage-status-'+stage);
-    stEl.textContent=done?'✓ CLEARED':unlocked?(COURSES[stage-1].difficulty||'EXPLORER'):'LOCKED';
+    stEl.textContent=done?'✓ CLEARED':unlocked?(COURSES[stage-1].difficulty||'ADVENTURE'):'LOCKED';
     stEl.style.color=done?'#76c695':unlocked?(DIFF_COLORS[diff]||'#b7cce3'):'#b7cce3';
   }
 }
@@ -1456,8 +1674,11 @@ function updateToggles(){
   $('tg-sound').classList.toggle('on', Settings.sound);
   $('tg-vib').textContent = Settings.vibrate ? 'ON' : 'OFF';
   $('tg-vib').classList.toggle('on', Settings.vibrate);
-  $('tg-reduced').textContent = Settings.reduced ? 'ON' : 'OFF';
-  $('tg-reduced').classList.toggle('on', Settings.reduced);
+  // Standard quality always renders with reduced effects, so report the state
+  // the player will actually see and disable the override that cannot apply.
+  $('tg-reduced').disabled = Settings.quality === 'standard';
+  $('tg-reduced').textContent = Settings.effectsReduced ? 'ON' : 'OFF';
+  $('tg-reduced').classList.toggle('on', Settings.effectsReduced);
   $('sel-quality').value = Settings.quality;
   updateKeyboardUI();
   $('rg-op').value = Math.round(Settings.opacity*100);
@@ -1491,8 +1712,11 @@ function toggleFS(){
   resizeCanvas();
 }
 
+// Pausing is allowed during the short READY intro too, and resuming returns to
+// whichever of the two you paused from rather than always skipping the intro.
 function doPause(){
-  if (Game.state !== 'PLAYING') return;
+  if (Game.state !== 'PLAYING' && Game.state !== 'READY') return;
+  Game.pausedFrom = Game.state;
   Game.state = 'PAUSED';
   Game.inputClear();
   AudioSys.stopMusic();
@@ -1505,7 +1729,9 @@ function doResume(){
   if (Game.state !== 'PAUSED') return;
   hideOv('ov-pause');
   hideOv('ov-set');
-  Game.state = 'PLAYING';
+  Game.state = Game.pausedFrom === 'READY' ? 'READY' : 'PLAYING';
+  Game.pausedFrom = null;
+  document.body.classList.add('in-game');
   Game.inputClear();
   AudioSys.unlock();
   AudioSys.startMusic();
@@ -1559,6 +1785,7 @@ function wireUI(){
     vib(15);
   });
   on('tg-reduced', () => {
+    if (Settings.quality === 'standard') return;   // already forced on by quality
     Settings.reduced = !Settings.effectsReduced;
     Store.set('reduced', Settings.reduced);
     updateToggles();
@@ -1715,7 +1942,7 @@ function wireGlobal(){
   window.addEventListener('blur', () => {
     Input.clearAll();
     TouchUI.resetVisuals();
-    if (Game.state === 'PLAYING') doPause();
+    if (Game.state === 'PLAYING' || Game.state === 'READY') doPause();
   });
   window.addEventListener('resize', resizeCanvas);
   window.addEventListener('orientationchange', () => setTimeout(resizeCanvas, 100));

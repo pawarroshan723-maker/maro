@@ -35,6 +35,8 @@ button{ font-family:inherit; cursor:pointer; -webkit-tap-highlight-color:transpa
 /* ---------- touch controls ---------- */
 #touch-ui{ position:fixed; inset:0; z-index:20; display:none; pointer-events:none; }
 body.in-game #touch-ui{ display:block; }
+/* Game-over / course-clear panels cover the pad; sound and fullscreen stay. */
+body.ended #touch-ui{ display:none; }
 #touch-ui .cluster{
   position:absolute; bottom:calc(14px + var(--safe-b));
   display:flex; gap:16px; align-items:flex-end; pointer-events:none;
@@ -155,6 +157,8 @@ body.in-game #sysbar{ display:flex; }
 .key-bind.listening{ border-color:var(--gold); color:var(--gold); }
 .tog{ width:92px; margin:0; padding:8px 0; min-height:44px; font-size:15px; }
 .tog.on{ background:#2e7d32; border-color:#4caf50; }
+.tog:disabled{ opacity:.5; cursor:not-allowed; }
+button:disabled{ cursor:not-allowed; }
 input[type=range]{ width:200px; accent-color:var(--accent); }
 .big-red{ color:#ff6a5e !important; }
 .big-gold{ color:var(--gold) !important; }

@@ -61,7 +61,7 @@
         <button type="button" class="btn stage-card" id="stage-14"><span class="stage-number">14</span><strong>ECLIPSE RIDGE</strong><small id="stage-status-14">LOCKED</small></button>
         <button type="button" class="btn stage-card" id="stage-15"><span class="stage-number">15</span><strong>CROWN CITADEL</strong><small id="stage-status-15">LOCKED</small></button>
       </div>
-      <p class="setting-help">Stages 1–5: Adventure · 6–10: Challenge · 11–15: Expert<br>Guardians on 5, 10 and 15. Use Next Stage after a clear to carry your lives, gems, score and form.</p>
+      <p class="setting-help">Stage 1: Tutorial · 2–4: Adventure · 5–8: Challenging · 9–12: Expert · 13–15: Master<br>Guardians on 5, 10 and 15. Use Next Stage after a clear to carry your lives, gems, score and form.</p>
       <button type="button" class="btn" id="btn-stages-back">BACK</button>
     </div>
   </div>
@@ -86,6 +86,13 @@
         <li>Hoppers jump; bats fly. Both can be stomped or shot.</li>
         <li>Armored beetles need two hits. Guardians on stages 5, 10 and 15 guard the finish.</li>
         <li>Guardians flash before firing. Jump their bolts, then stomp or shoot. Nova Star defeats any enemy.</li>
+        <li>Chargers crouch and glow, then dash. Jump them as they commit.</li>
+        <li>Shielders block fireballs head-on — stomp them, or shoot them in the back.</li>
+        <li>Turrets have spiked crowns: stomping hurts. Shoot them or bowl a shell in.</li>
+        <li>Gels split in two when stomped, but a fireball dissolves them whole.</li>
+        <li>Hidden gem blocks are invisible. Jump into thin air to reveal them.</li>
+        <li>Armoured caches ignore head bumps. Crack them with Spark Bloom for three gems.</li>
+        <li>The SEC counter in the HUD tracks the secrets in the current course.</li>
         <li>Clear each stage to unlock the next. Every third clear awards a life, up to nine.</li>
       </ul>
       <button type="button" class="btn btn-big" id="btn-tut-go">TAP TO PLAY</button>
@@ -97,7 +104,7 @@
     <div class="panel">
       <h2>PAUSED</h2>
       <button type="button" class="btn btn-big" id="btn-resume">RESUME</button>
-      <button type="button" class="btn" id="btn-restart">RESTART COURSE</button>
+      <button type="button" class="btn" id="btn-restart">RESTART FROM CHECKPOINT</button>
       <button type="button" class="btn" id="btn-settings">SETTINGS</button>
       <button type="button" class="btn" id="btn-to-title">TITLE SCREEN</button>
     </div>
@@ -112,7 +119,7 @@
       <div class="set-row">Touch opacity <input id="rg-op" type="range" min="20" max="100" value="85" aria-label="Touch control opacity"></div>
       <div class="set-row">Reduced effects <button type="button" class="btn tog" id="tg-reduced" aria-label="Toggle reduced effects">OFF</button></div>
       <div class="set-row"><label for="sel-quality">Graphics quality</label><select id="sel-quality"><option value="standard">Standard</option><option value="high">High</option></select></div>
-      <p class="setting-help" id="quality-help">High: sharper rendering and full effects. Standard: lighter rendering and fewer effects.</p>
+      <p class="setting-help" id="quality-help">High: sharper rendering and full effects. Standard: lighter rendering — it always keeps effects reduced, so the Reduced effects switch below only applies in High.</p>
       <div class="set-row"><label for="sel-controls">Keyboard controls</label><select id="sel-controls"><option value="default">Default</option><option value="custom">Custom</option></select></div>
       <p class="setting-help" id="default-keys">Move: A/D or ←/→ · Crouch: S/↓ · Jump: Space/W/Z/↑ · Run/shoot: Shift/X</p>
       <div id="custom-keys" hidden>

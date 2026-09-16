@@ -8,7 +8,8 @@ const Particles = {
     }
   },
   spawn(o){
-    const p = this.pool[this.idx++ % MAX_PARTICLES];
+    this.idx = (this.idx + 1) % MAX_PARTICLES;
+    const p = this.pool[this.idx];
     p.on = true;
     p.x = o.x; p.y = o.y;
     p.vx = o.vx || 0; p.vy = o.vy || 0;
@@ -305,6 +306,24 @@ function buildTiles(){
     qf.push(c);
   }
   t.qframes = qf;
+
+  // armoured gem cache — only a fireball or a bowling shell can crack it
+  c = cv(TILE,TILE); x = g2(c);
+  x.fillStyle = '#2c3348'; x.fillRect(0,0,48,48);
+  x.fillStyle = '#404b66'; x.fillRect(3,3,42,42);
+  x.fillStyle = '#565f7d'; x.fillRect(6,6,36,36);
+  x.fillStyle = '#7c86a8'; x.fillRect(6,6,36,4); x.fillRect(6,6,4,36);
+  x.fillStyle = '#20263a'; x.fillRect(6,38,36,4); x.fillRect(38,6,4,36);
+  // rivets
+  x.fillStyle = '#98a3c4';
+  for (const [rx,ry] of [[10,10],[34,10],[10,34],[34,34]]) x.fillRect(rx,ry,4,4);
+  // gem emblem behind bars
+  x.fillStyle = '#59d6ff';
+  x.beginPath(); x.moveTo(24,16); x.lineTo(32,24); x.lineTo(24,32); x.lineTo(16,24); x.closePath(); x.fill();
+  x.fillStyle = '#eaffff'; x.fillRect(20,20,5,4);
+  x.fillStyle = '#151a28';
+  x.fillRect(20,14,3,20); x.fillRect(26,14,3,20);
+  t[T.VAULT] = c;
 
   // used block
   c = cv(TILE,TILE); x = g2(c);
@@ -643,6 +662,47 @@ const D10 = '..........';
 const G10 = '##########';
 function R(...c){ return c.join(''); }
 
+// Drops hidden gem blocks into open air only.
+//
+// A hidden block has to be *reachable* to be a secret rather than a bug: it
+// needs headroom above, a clean run-up below (otherwise the jump that would
+// reveal it bonks a ceiling first) and solid ground somewhere underneath to
+// jump from. Every candidate is validated before it is written, and the search
+// is seeded so the same course always hides its gems in the same places.
+// Works on both string rows (hand-authored courses) and array rows (generated).
+function hideGemsInAir(rows, count, seed){
+  const h = rows.length, w = rows[0].length;
+  const cell = (x, y) => (x >= 0 && x < w && y >= 0 && y < h) ? (rows[y][x] || '.') : '#';
+  const isSolid = (x, y) => SOLID.has(TILE_CHAR[cell(x, y)] || T.EMPTY);
+  // The surface Maro would stand on in this column: the topmost solid tile
+  // that has two clear rows above it (a big Maro needs both).
+  const standRow = (x) => {
+    for (let r = 0; r < h; r++){
+      if (isSolid(x, r) && !isSolid(x, r-1) && !isSolid(x, r-2)) return r;
+    }
+    return -1;
+  };
+  let placed = 0;
+  for (let attempt = 0; attempt < 600 && placed < count; attempt++){
+    const x = 5 + Math.floor(shash(seed, attempt, 7) * (w - 10));
+    const y = 3 + Math.floor(shash(seed, attempt, 13) * 3);      // rows 3-5
+    if (cell(x, y) !== '.') continue;
+    const sr = standRow(x);
+    // Needs a real jump to reach, not merely head height when standing.
+    if (sr < 0 || sr - y < 3) continue;
+    // Clear air from just under the block down to the standing surface, plus
+    // headroom above, so the jump that reveals it can actually be made.
+    let open = true;
+    for (let r = y + 1; r < sr && open; r++) if (cell(x, r) !== '.') open = false;
+    for (let d = 1; d <= 3 && open; d++) if (cell(x, y - d) !== '.') open = false;
+    if (!open) continue;
+    if (typeof rows[y] === 'string') rows[y] = rows[y].slice(0, x) + 'h' + rows[y].slice(x + 1);
+    else rows[y][x] = 'h';
+    placed++;
+  }
+  return placed;
+}
+
 // Level design — Sunny Bluff (170 cols, 12 rows)
 // Pits are intentionally forgiving so both human and simple AI can clear them.
 // Pit1: 28-31 (4 tiles)  Pit2: 66-69 (4 tiles)  Pit3: 107-109 (3 tiles)
@@ -694,9 +754,15 @@ const BONUS_ROWS = [
   '*' + '......DD........' + '*',
   '******************',
 ];
+// Two blind-jump secrets: a gem only shows itself if Maro jumps into nothing.
+hideGemsInAir(BONUS_ROWS, 2, 211);
 
 // [type, tileX, pipeTopRow?]
 // Balanced for accessibility and beauty: fewer enemies, beautiful spacing, no vertical pipe cut
+// Stage 1 secrets: three hidden gem blocks, each validated to hang in reachable
+// open air with a clean run-up and solid ground beneath.
+hideGemsInAir(MAIN_ROWS, 3, 101);
+
 const ENEMY_SPAWNS = [
   ['walker', 20],          // first room (19-27): the stomp lesson - beautiful start
   ['walker', 72],          // zone 70-104 - open area
@@ -729,6 +795,13 @@ const STAGE2_ROWS = (() => {
   put(156,2,'F'); put(156,3,'F');
   for (let y=4;y<10;y++) put(155,y,y===4?'****':'******');
   put(155,8,'E'); put(155,9,'E');
+  // Stage 2 secrets: two hidden blocks, plus an armoured cache on the flats
+  // past the Spark Bloom block — the first course that can actually open one.
+  hideGemsInAir(rows, 2, 307);
+  // The cache sits ON the raised deck at row 8, never on the walking corridor:
+  // a vault is unbreakable by bumping, so it must never be able to wall a
+  // player in — and the ground route below stays two tiles clear.
+  put(123,7,'v');
   return rows.map(row => row.join(''));
 })();
 const STAGE2_ENEMIES = [
@@ -751,15 +824,15 @@ const CAMPAIGN_BLUEPRINTS = [
   ['CRYSTAL CAVERNS',  'crystal', [2,0,6,1,5], 'Bats patrol the upper routes. Watch their flight path.'],
   ['COPPER OUTPOST',   'copper',  [1,4,5,2,6], 'First guardian: dodge its glowing bolts, then stomp or shoot.'],
   ['CORAL CAUSEWAY',   'coral',   [2,6,0,4,5], 'Armored beetles take two hits. Their shell lights show health.'],
-  ['MOONLIT GROVE',    'moon',    [4,0,3,5,2], 'Use the high route above the thorns.'],
-  ['FROSTFALL PASS',   'frost',   [1,5,4,0,6], 'Wider ravines ahead. Run before jumping; physics stay familiar.'],
-  ['THUNDER HEIGHTS',  'storm',   [2,3,6,4,5], 'Faster patrols and airborne enemies share the route.'],
-  ['OBSIDIAN KEEP',    'obsidian',[4,2,5,6,4], 'The second guardian fires faster. Wait for its warning flash.'],
-  ['MIRAGE DUNES',     'dunes',   [0,3,6,2,5], 'Take the gem routes for supplies before the final push.'],
-  ['CLOCKWORK ASCENT', 'clock',   [5,4,2,3,6], 'Mix short hops and full jumps through the clockwork terraces.'],
-  ['EMBER CHASM',      'ember',   [3,2,6,5,3], 'Thorns and ravines demand careful landings.'],
-  ['ECLIPSE RIDGE',    'eclipse', [4,5,2,6,1], 'The fastest patrols guard the road to the crown.'],
-  ['CROWN CITADEL',    'crown',   [5,4,6,3,4], 'Final guardian: five hits. Defeat it to free the Gem Kingdom!'],
+  ['MOONLIT GROVE',    'moon',    [4,0,3,8,2], 'Use the high route above the thorns. A cache sits on the deck.'],
+  ['FROSTFALL PASS',   'frost',   [1,5,7,0,6], 'Wider ravines ahead. Run before jumping; physics stay familiar.'],
+  ['THUNDER HEIGHTS',  'storm',   [2,3,6,4,8], 'Faster patrols and airborne enemies share the route.'],
+  ['OBSIDIAN KEEP',    'obsidian',[7,2,5,6,4], 'The second guardian fires faster. Wait for its warning flash.'],
+  ['MIRAGE DUNES',     'dunes',   [0,3,6,2,7], 'Take the gem routes for supplies before the final push.'],
+  ['CLOCKWORK ASCENT', 'clock',   [5,4,8,3,6], 'Mix short hops and full jumps through the clockwork terraces.'],
+  ['EMBER CHASM',      'ember',   [3,7,6,5,8], 'Thorns and ravines demand careful landings.'],
+  ['ECLIPSE RIDGE',    'eclipse', [7,5,2,8,1], 'The fastest patrols guard the road to the crown.'],
+  ['CROWN CITADEL',    'crown',   [8,4,7,3,4], 'Final guardian: eight hits and three-bolt volleys. Free the Gem Kingdom!'],
 ];
 const COURSE_THEMES = {
   grove:   ['#256976','#c4e1a5','#6ba68f','#376957','#ffeab2'],
@@ -1030,6 +1103,8 @@ function buildCampaignCourse(stage, blueprint){
   // because that is the widest a running jump can clear.
   const gapWidth = stage < 6 ? 3 : 4;
   const gap = (x) => {
+    // Safety net: never punch a ravine out from under a checkpoint or the arena.
+    if (checkpoints.some(cx => cx >= x - 1 && cx <= x + gapWidth)) return;
     gaps.push({x,width:gapWidth});
     for (let y=10;y<12;y++) put(x,y,'.'.repeat(gapWidth));
     if (stage < 6) put(x-1,8,'==');
@@ -1068,6 +1143,23 @@ function buildCampaignCourse(stage, blueprint){
       // Pipe gauntlet: three pipes of shifting height, no ravine to rest on.
       pipe(x+11,8); pipe(x+16, vary(61)>0.5?7:8); pipe(x+21,8);
       gems(x+14,6,2); gems(x+19,6,2);
+    } else if (type === 7){
+      // Thorn gauntlet: spike beds on the deck, a one-way high line above, and
+      // hidden blocks paying out only to players who take the risky route.
+      put(x+11,9,'####'); put(x+15,9,'^^'); put(x+17,9,'####');
+      put(x+12,6,'====='); put(x+18,5,'===');
+      gems(x+12,5,5);
+      gap(x+21);
+    } else if (type === 8){
+      // Vault chamber: an armoured cache behind a turret. Cracking it needs
+      // Spark Bloom or a bowling shell, and the ground fireball reaches it.
+      put(x+11,9,'#####');
+      put(x+13,8,'v'); put(x+13,9,'v');
+      put(x+17,9,'####');
+      // The ? block on the deck hands out the Spark Bloom the cache demands.
+      put(x+20,7,'S'); gems(x+19,6,3);
+      gems(x+11,8,5);
+      enemies.push(['turret',x+22,10]);
     } else {
       const p2 = x+18+(vary(19)>0.5?1:0);
       pipe(x+11, vary(23)>0.6?7:8); pipe(p2,8);
@@ -1075,10 +1167,16 @@ function buildCampaignCourse(stage, blueprint){
     }
     // Enemy rotation is seeded per stage, not a fixed parity pattern.
     const r = vary(29);
-    const kind = stage >= 5 && r > 0.5 ? 'beetle' : (r > 0.25 ? 'hopper' : 'walker');
+    let kind;
+    if (stage >= 9 && r > 0.82) kind = 'shielder';       // needs a flank or a stomp
+    else if (stage >= 7 && r > 0.62) kind = 'charger';   // telegraphed dash
+    else if (stage >= 5 && r > 0.42) kind = 'beetle';
+    else if (r > 0.25) kind = 'hopper';
+    else kind = 'walker';
     enemies.push([kind,x+8,10,x+6,x+10]);
     enemies.push([vary(31)>0.5?'shell':'walker',x+25,10,x+24,x+25]);
     if (stage >= 11 && vary(37) > 0.4) enemies.push(['beetle',x+6,10,x+6,x+8]);
+    if (stage >= 8 && vary(59) > 0.62) enemies.push(['gel',x+22,10,x+20,x+24]);
     if (stage >= 3 && i < Math.min(5,Math.floor((stage-1)/2))){
       enemies.push(['bat',x+15,5,x+11,x+20]);
     }
@@ -1101,14 +1199,29 @@ function buildCampaignCourse(stage, blueprint){
     enemies.push(['guardian',145,10,141,150]);
     put(139,7,'S'); gems(138,6,5);
   } else { put(140,7,'+'); gems(139,6,4); }
-  for (let i=enemies.length-1;i>=0;i--){
-    if (enemies[i][0] !== 'guardian' && checkpoints.some(x=>Math.abs(x-enemies[i][1])<4)) enemies.splice(i,1);
-  }
   for (let y=2;y<10;y++) put(152,y,'F');
   for (let y=2;y<4;y++) put(156,y,'F');
   for (let y=4;y<10;y++) put(155,y,y===4?'****':'******');
   put(155,8,'E'); put(155,9,'E'); gems(147,9,3);
-  return {name,theme,tip,rows:rows.map(row=>row.join('')),enemies,gaps,checkpoints,
+
+  const grid = rows.map(row => row.join(''));
+  // Hidden gems: more of them on the harder tiers, always in validated air.
+  hideGemsInAir(grid, stage >= 10 ? 4 : 3, stage * 977);
+  // Safety net: every ground enemy must start on solid footing with clear air
+  // above it. Anything that would spawn inside a pipe, a wall or a vault — or
+  // over a ravine — is dropped rather than left stuck in the scenery.
+  const solidCell = (tx, ty) => {
+    if (tx < 0 || tx >= 170 || ty < 0 || ty >= grid.length) return true;
+    return SOLID.has(TILE_CHAR[grid[ty][tx]] || T.EMPTY);
+  };
+  for (let i=enemies.length-1;i>=0;i--){
+    const col = enemies[i][1];
+    if (enemies[i][0] !== 'guardian' && checkpoints.some(x=>Math.abs(x-col)<4)){ enemies.splice(i,1); continue; }
+    const groundRow = enemies[i][2] === undefined ? GROUND_ROW : enemies[i][2];
+    if (groundRow !== GROUND_ROW) continue;      // flyers are placed in open air
+    if (!solidCell(col,10) || solidCell(col,9) || solidCell(col,8)) enemies.splice(i,1);
+  }
+  return {name,theme,tip,rows:grid,enemies,gaps,checkpoints,
     time:Math.max(195,300-stage*7), speedScale:1+(stage-2)*0.052,
     difficulty:stage<=4?'ADVENTURE':stage<=8?'CHALLENGING':stage<=12?'EXPERT':'MASTER'};
 }
@@ -1167,6 +1280,7 @@ class Level {
     for (const r of rows) if (r.length > this.w) this.w = r.length;
     this.tiles = new Uint8Array(this.w * this.h);
     this.gemSpawns = [];
+    this.hiddenCount = 0; this.vaultCount = 0;
     for (let y = 0; y < this.h; y++){
       const row = rows[y];
       for (let x = 0; x < this.w; x++){
@@ -1174,17 +1288,21 @@ class Level {
         let code = T.EMPTY;
         if (TILE_CHAR[ch]) code = TILE_CHAR[ch];
         if (ch === 'o') this.gemSpawns.push({ tx:x, ty:y });
+        if (code === T.HIDDEN) this.hiddenCount++;
+        // A cache is a vertical pillar of vault tiles; count it once, at its top.
+        if (code === T.VAULT && this.tiles[(y-1)*this.w + x] !== T.VAULT) this.vaultCount++;
         this.tiles[y*this.w + x] = code;
       }
     }
     this.bumps = new Map();   // key (tx*100+ty) -> time left
-    this.flagTop = -1; this.flagBottom = -1;
-    this.checkTop = -1; this.checkBottom = -1;
-    for (let y = 0; y < this.h; y++){
+    // Top row of the first flag / checkpoint pole — level-integrity metadata
+    // asserted by the smoke suite.
+    this.flagTop = -1; this.checkTop = -1;
+    for (let y = 0; y < this.h && (this.flagTop < 0 || this.checkTop < 0); y++){
       for (let x = 0; x < this.w; x++){
         const c = this.tiles[y*this.w + x];
-        if (c === T.FLAG){ if (this.flagTop < 0) this.flagTop = y; this.flagBottom = y; }
-        if (c === T.CHECK){ if (this.checkTop < 0) this.checkTop = y; this.checkBottom = y; }
+        if (c === T.FLAG && this.flagTop < 0) this.flagTop = y;
+        if (c === T.CHECK && this.checkTop < 0) this.checkTop = y;
       }
     }
   }

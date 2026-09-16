@@ -11,8 +11,9 @@ rescue, all storage behind `try/catch`, all audio behind a user-gesture unlock.
 traversal + input fuzz) both pass.
 
 The problems I found are almost entirely **state-machine and documentation bugs**,
-not engine bugs. Eight are fixed below; six I left alone because they're design
-calls that need your sign-off.
+not engine bugs. **All 15 are now fixed.** Originally eight were fixed and six were
+flagged for sign-off; the second pass fixed those six too, so nothing outstanding
+remains.
 
 ---
 
@@ -76,41 +77,47 @@ Master**. Text corrected.
 
 ---
 
-## Found, not changed — your call
+## Fixed in the second pass (originally flagged for sign-off)
 
-### 9. Hostile bolts freeze in bonus rooms instead of clearing
-`enterBonus()` keeps `enemyShots` alive but frozen, so you can exit back into a
-bolt already in flight at close range. This is **intentional and covered by a
-smoke assertion** ("guardian bolts freeze in bonus rooms"), so I left it. If you
-want it gone, clear `this.enemyShots` in `exitBonus()` — but update that test, or
-it becomes vacuous (`[].every(...)` is always true).
+### 9. Hostile bolts froze in bonus rooms and resumed on exit
+You could step out of a bonus room straight into a guardian bolt already in flight.
+`exitBonus()` now clears `enemyShots` **as you return**, so the bolts still hang
+frozen (and visible) while you're inside — the existing *"guardian bolts freeze in
+bonus rooms"* assertion still exercises real bolts rather than passing vacuously on
+an empty array. Verified both halves.
 
-### 10. `extracted.js` is a stale 94 KB artifact
-It's an old snapshot of the game script. The live script is 150 KB and nothing in
-the repo reads `extracted.js`. Same story for `debug1–9.js`, `dbg_power.js`,
-`pitdebug.js`, `jumpdist.js` and `aitrace.js` — undocumented scratch harnesses
-sitting next to the documented ones (`aiplay.js`, `fuzz.js`, `campaign-check.js`).
-Recommend deleting them and adding a `.gitignore`.
+### 10. Stale artifacts and scratch harnesses deleted
+`extracted.js` was an old 94 KB snapshot of a now-150 KB script that nothing read.
+`debug1–9.js`, `dbg_power.js`, `pitdebug.js`, `jumpdist.js` and `aitrace.js` were
+worse than clutter: **every one of them hardcodes `/home/user/game/index.html`**,
+a path that doesn't exist in this repo, so they all crash on launch. All 14 deleted,
+and a `.gitignore` now keeps that class of file out. The documented dev tools
+(`build.js`, `smoke.js`, `campaign-check.js`, `aiplay.js`, `fuzz.js`) are untouched.
 
-### 11. `Level.flagTop / flagBottom / checkTop / checkBottom`
-Computed on every level build but read only by `smoke.js:659`, never by the game.
-Cheap, and the test depends on them — keep or drop deliberately.
+### 11. Dead level fields trimmed
+`Level` computed four pole-extent fields; only `flagTop` was ever read, and only by
+`smoke.js:659`. The two `*Bottom` fields are gone; `flagTop`/`checkTop` are kept as
+level-integrity metadata, now with an early exit once both are found.
 
-### 12. `Particles.idx` grows unbounded
-`this.pool[this.idx++ % MAX_PARTICLES]`. Correct forever in practice, but
-`this.idx = (this.idx + 1) % MAX_PARTICLES` costs nothing.
+### 12. `Particles.idx` no longer grows unbounded
+`this.pool[this.idx++ % MAX_PARTICLES]` → `this.idx = (this.idx + 1) % MAX_PARTICLES`.
 
-### 13. Can't pause during the 1.2 s `READY` intro
-`doPause()` requires `PLAYING`, but the `visibilitychange` handler tries to pause
-on `PLAYING || READY` — so tabbing away during the intro does not pause.
+### 13. You can now pause during the 1.2 s intro
+`doPause()` accepted only `PLAYING`, yet the `visibilitychange` handler asked it to
+pause on `PLAYING || READY` — so tabbing away mid-intro silently didn't pause.
+It now pauses from either, remembers which, and `doResume()` returns you to
+`READY` rather than skipping the rest of the intro. The `blur` handler matches.
 
-### 14. Touch pad stays visible behind end-of-run overlays
-`body.in-game` is only removed in `toTitle()`, so on GAME OVER and COURSE CLEAR the
-on-screen pad renders behind the (higher z-index) overlay panel.
+### 14. Touch pad no longer shows through end-of-run panels
+`body.in-game` was only cleared by `toTitle()`, so the pad rendered behind the
+GAME OVER and COURSE CLEAR overlays. Added a separate `body.ended` class that hides
+only `#touch-ui` — **sound and fullscreen stay reachable** on those screens, which
+removing `in-game` outright would have broken.
 
-### 15. Pause → "RESTART COURSE" keeps score and lives
-It calls `restartLevel()`, not `startGame()`, so it's a checkpoint restart rather
-than a fresh run. Probably intended, but the label doesn't say so.
+### 15. Pause → restart button relabelled
+It calls `restartLevel()`, not `startGame()`, so it's a checkpoint restart that
+keeps score and lives. Behaviour is unchanged (it's sensible); the button now reads
+**RESTART FROM CHECKPOINT** so it isn't mistaken for a fresh run.
 
 ---
 
@@ -123,4 +130,9 @@ node campaign-check.js     # All 15 stages passed terrain, fuzz and regression v
 ```
 
 No engine, collision, level-generation or rendering behaviour was touched — only
-the state machine, settings UI, spawn determinism and documentation.
+the state machine, settings UI, spawn determinism, repo hygiene and documentation.
+
+The six second-pass fixes were each confirmed by a targeted headless probe
+(bolt freeze-then-clear, pause/resume from both `READY` and `PLAYING`, the `ended`
+class on both end panels, and the particle ring index) as well as by the two
+existing suites.

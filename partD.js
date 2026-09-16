@@ -8,7 +8,8 @@ const Particles = {
     }
   },
   spawn(o){
-    const p = this.pool[this.idx++ % MAX_PARTICLES];
+    this.idx = (this.idx + 1) % MAX_PARTICLES;
+    const p = this.pool[this.idx];
     p.on = true;
     p.x = o.x; p.y = o.y;
     p.vx = o.vx || 0; p.vy = o.vy || 0;
@@ -1178,13 +1179,14 @@ class Level {
       }
     }
     this.bumps = new Map();   // key (tx*100+ty) -> time left
-    this.flagTop = -1; this.flagBottom = -1;
-    this.checkTop = -1; this.checkBottom = -1;
-    for (let y = 0; y < this.h; y++){
+    // Top row of the first flag / checkpoint pole — level-integrity metadata
+    // asserted by the smoke suite.
+    this.flagTop = -1; this.checkTop = -1;
+    for (let y = 0; y < this.h && (this.flagTop < 0 || this.checkTop < 0); y++){
       for (let x = 0; x < this.w; x++){
         const c = this.tiles[y*this.w + x];
-        if (c === T.FLAG){ if (this.flagTop < 0) this.flagTop = y; this.flagBottom = y; }
-        if (c === T.CHECK){ if (this.checkTop < 0) this.checkTop = y; this.checkBottom = y; }
+        if (c === T.FLAG && this.flagTop < 0) this.flagTop = y;
+        if (c === T.CHECK && this.checkTop < 0) this.checkTop = y;
       }
     }
   }

@@ -35,6 +35,8 @@ button{ font-family:inherit; cursor:pointer; -webkit-tap-highlight-color:transpa
 /* ---------- touch controls ---------- */
 #touch-ui{ position:fixed; inset:0; z-index:20; display:none; pointer-events:none; }
 body.in-game #touch-ui{ display:block; }
+/* Game-over / course-clear panels cover the pad; sound and fullscreen stay. */
+body.ended #touch-ui{ display:none; }
 #touch-ui .cluster{
   position:absolute; bottom:calc(14px + var(--safe-b));
   display:flex; gap:16px; align-items:flex-end; pointer-events:none;

@@ -15,7 +15,7 @@ const Game = {
   cam: { x: 0, y: 0 },
   shakeT: 0, shakeMag: 0, shakeDur: 1,
   checkX: START_TX,
-  readyT: 0, deathT: 0,
+  readyT: 0, deathT: 0, pausedFrom: null,
   clearPhase: 0, clearT: 0, flagScore: 0, timeBonus: 0,
   multiQ: 0, multiT: 0, lastMultiX: 0, lastMultiY: 0,
   particles: null,   // assigned in init()
@@ -106,6 +106,7 @@ const Game = {
     AudioSys.unlock();
     hideAllOverlays();
     document.body.classList.add('in-game');
+    document.body.classList.remove('ended');
     if (!carry){ this.score = 0; this.gems = 0; this.lives = 3; }
     this.checkX = START_TX;
     this.gateHintT = 0;
@@ -153,6 +154,7 @@ const Game = {
     this.fade = null;
     this.particles.clear();
     this.texts.length = 0;
+    document.body.classList.remove('ended');
     this.state = 'READY';
     this.readyT = 1.0;
     this.inputClear();
@@ -167,6 +169,7 @@ const Game = {
     Store.set('high', this.high);
     hideAllOverlays();
     document.body.classList.remove('in-game');
+    document.body.classList.remove('ended');
     this.mainLevel = new Level(this.course.rows, false);
     this.level = this.mainLevel;
     this.bonusLevel = new Level(BONUS_ROWS, true);
@@ -416,6 +419,8 @@ const Game = {
       this.high = Math.max(this.high, this.score);
       Store.set('high', this.high);
       this.state = 'GAMEOVER';
+      // Hide the on-screen pad behind the end panel; keep sound/fullscreen handy.
+      document.body.classList.add('ended');
       $('over-score').textContent = 'SCORE ' + pad6(this.score);
       $('over-hi').textContent = 'BEST ' + pad6(this.high);
       showOv('ov-over');
@@ -475,6 +480,9 @@ const Game = {
       this.level = this.mainLevel;
       this.inBonus = false;
       this.items = this.mainItems;
+      // Bolts were frozen mid-flight while you were inside; drop them so the
+      // course cannot shoot you the instant you step back out.
+      this.enemyShots.length = 0;
       this.player.reset(43, this.player.form, GROUND_ROW);
       this.cam.x = clamp(this.player.x - 320, 0, this.level.w*TILE - VIEW_W);
       this.cam.y = 0;
@@ -500,6 +508,7 @@ const Game = {
   finishClear(){
     if (this.state === 'CLEAR') return;
     this.state = 'CLEAR';
+    document.body.classList.add('ended');
     this.timeBonus = Math.ceil(this.timeLeft) * 50;
     this.score += this.timeBonus;
     this.high = Math.max(this.high, this.score);
@@ -1509,8 +1518,11 @@ function toggleFS(){
   resizeCanvas();
 }
 
+// Pausing is allowed during the short READY intro too, and resuming returns to
+// whichever of the two you paused from rather than always skipping the intro.
 function doPause(){
-  if (Game.state !== 'PLAYING') return;
+  if (Game.state !== 'PLAYING' && Game.state !== 'READY') return;
+  Game.pausedFrom = Game.state;
   Game.state = 'PAUSED';
   Game.inputClear();
   AudioSys.stopMusic();
@@ -1523,7 +1535,9 @@ function doResume(){
   if (Game.state !== 'PAUSED') return;
   hideOv('ov-pause');
   hideOv('ov-set');
-  Game.state = 'PLAYING';
+  Game.state = Game.pausedFrom === 'READY' ? 'READY' : 'PLAYING';
+  Game.pausedFrom = null;
+  document.body.classList.add('in-game');
   Game.inputClear();
   AudioSys.unlock();
   AudioSys.startMusic();
@@ -1734,7 +1748,7 @@ function wireGlobal(){
   window.addEventListener('blur', () => {
     Input.clearAll();
     TouchUI.resetVisuals();
-    if (Game.state === 'PLAYING') doPause();
+    if (Game.state === 'PLAYING' || Game.state === 'READY') doPause();
   });
   window.addEventListener('resize', resizeCanvas);
   window.addEventListener('orientationchange', () => setTimeout(resizeCanvas, 100));

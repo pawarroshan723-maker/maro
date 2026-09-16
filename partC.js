@@ -47,8 +47,7 @@ const TILE_CHAR = {
 const SOLID = new Set([T.GROUND,T.DIRT,T.BRICK,T.Q_GEM,T.Q_GROW,T.Q_SHOT,T.Q_STAR,T.Q_LIFE,T.Q_MULTI,T.USED,T.PIPE_TL,T.PIPE_TR,T.PIPE_BL,T.PIPE_BR,T.BUILD]);
 const QCODES = new Set([T.Q_GEM,T.Q_GROW,T.Q_SHOT,T.Q_STAR,T.Q_LIFE,T.Q_MULTI]);
 
-const LEVEL_NAME = 'SUNNY BLUFF';
-const LEVEL_TIME = 300;                // seconds per course
+const LEVEL_TIME = 300;                // placeholder until a course sets its own timer
 const START_TX = 2;
 const FLAG_TX = 152;
 const BUMP_DUR = 0.18;                 // mystery-block bump animation (s)

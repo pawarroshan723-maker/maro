@@ -76,8 +76,14 @@ const Game = {
       if (s[5] === 'lurk') enemy.lurk = true;
       if (this.course.speedScale && enemy.speed) enemy.speed *= this.course.speedScale;
     }
-    // Predictable opening patrols make Stage 2 encounters learnable on retries.
-    if (this.stage >= 2) for (const enemy of this.enemies) enemy.dir = -1;
+    // Deterministic opening patrols: every course faces the same way on every
+    // attempt, and idle/plant timing is seeded instead of rolled, so retries are
+    // learnable rather than replaying a different encounter.
+    this.enemies.forEach((enemy, i) => {
+      enemy.dir = -1;
+      enemy.walkT = shash(this.stage, i, 11) * 10;
+      enemy.phaseT = 1 + shash(this.stage, i, 13);
+    });
     for (const g of this.level.gemSpawns){
       this.items.push(new Item('gem', g.tx*TILE + 11, g.ty*TILE + 11));
     }
@@ -134,6 +140,10 @@ const Game = {
     this.bonusLockT = 0;
     this.timeLeft = this.course.time;
     this.multiQ = 0;
+    this.multiT = 0;
+    this.gateHintT = 0;
+    this.stompChain = 0; this.chainT = 0;
+    this.shakeT = 0;
     // Dying always costs your power: you resume small at the checkpoint.
     this.player.reset(this.checkX, 'small', GROUND_ROW);
     if (this.stage>=3) this.player.hurtT=1.5; // Safe checkpoint recovery, not a free attack boost.
@@ -146,10 +156,15 @@ const Game = {
     this.state = 'READY';
     this.readyT = 1.0;
     this.inputClear();
+    // die() stops the music, so a respawn has to start it again.
+    AudioSys.startMusic();
     needRender = true;
   },
   toTitle(){
     this.stage = 1;
+    // Banking the run here keeps a quitting player's best score.
+    this.high = Math.max(this.high, this.score);
+    Store.set('high', this.high);
     hideAllOverlays();
     document.body.classList.remove('in-game');
     this.mainLevel = new Level(this.course.rows, false);
@@ -1446,7 +1461,7 @@ function updateStageUI(){
     // Each course's card carries its own accent so the menu mirrors the campaign art.
     if (!done) b.style.borderLeft='6px solid '+courseTheme(stage)[4];
     const stEl=$('stage-status-'+stage);
-    stEl.textContent=done?'✓ CLEARED':unlocked?(COURSES[stage-1].difficulty||'EXPLORER'):'LOCKED';
+    stEl.textContent=done?'✓ CLEARED':unlocked?(COURSES[stage-1].difficulty||'ADVENTURE'):'LOCKED';
     stEl.style.color=done?'#76c695':unlocked?(DIFF_COLORS[diff]||'#b7cce3'):'#b7cce3';
   }
 }
@@ -1456,8 +1471,11 @@ function updateToggles(){
   $('tg-sound').classList.toggle('on', Settings.sound);
   $('tg-vib').textContent = Settings.vibrate ? 'ON' : 'OFF';
   $('tg-vib').classList.toggle('on', Settings.vibrate);
-  $('tg-reduced').textContent = Settings.reduced ? 'ON' : 'OFF';
-  $('tg-reduced').classList.toggle('on', Settings.reduced);
+  // Standard quality always renders with reduced effects, so report the state
+  // the player will actually see and disable the override that cannot apply.
+  $('tg-reduced').disabled = Settings.quality === 'standard';
+  $('tg-reduced').textContent = Settings.effectsReduced ? 'ON' : 'OFF';
+  $('tg-reduced').classList.toggle('on', Settings.effectsReduced);
   $('sel-quality').value = Settings.quality;
   updateKeyboardUI();
   $('rg-op').value = Math.round(Settings.opacity*100);
@@ -1559,6 +1577,7 @@ function wireUI(){
     vib(15);
   });
   on('tg-reduced', () => {
+    if (Settings.quality === 'standard') return;   // already forced on by quality
     Settings.reduced = !Settings.effectsReduced;
     Store.set('reduced', Settings.reduced);
     updateToggles();

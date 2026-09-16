@@ -27,19 +27,19 @@ Stomp enemies from above or use fireballs. Kick stationary shells to hit other e
 | 2 | Sunset Ridge | Raised routes and short ravines |
 | 3 | Mosswood Trail | Jumping Hoppers and terraces |
 | 4 | Crystal Caverns | Flying Bats above the gem routes |
-| 5 | Copper Outpost | First Gate Guardian: 3 hits |
+| 5 | Copper Outpost | First Gate Guardian: 4 hits |
 | 6 | Coral Causeway | Armored Beetles: 2 hits |
 | 7 | Moonlit Grove | Thorn bypasses and pipe plants |
 | 8 | Frostfall Pass | Four-tile ravines and snowfall |
 | 9 | Thunder Heights | Faster mixed patrols |
-| 10 | Obsidian Keep | Second Gate Guardian: 4 hits |
+| 10 | Obsidian Keep | Second Gate Guardian: 6 hits |
 | 11 | Mirage Dunes | Tighter timing through mixed obstacles |
 | 12 | Clockwork Ascent | Terraces, thorns and airborne enemies |
 | 13 | Ember Chasm | Expert landings and ember scenery |
 | 14 | Eclipse Ridge | Fast patrols and fewer gap assists |
-| 15 | Crown Citadel | Final Gate Guardian: 5 hits |
+| 15 | Crown Citadel | Final Gate Guardian: 8 hits |
 
-Every course has a distinct deterministic tile layout, a bonus room, gems and power-ups. Stages 3–15 use separately arranged obstacle modules with stage-specific scenery, and a seeded per-stage flavor shifts the mystery-block columns, pipe heights and positions, patrol mixes and hidden extra one-way gem routes so no two courses line up the same way. Later courses progressively increase patrol speed, reduce the timer, widen ravines earlier (never beyond four tiles), and mix more enemy behaviors: armored beetles and extra patrols arrive sooner, thorn beds grow wider on the top tiers, and guardians strike faster with more hit points. Snow, rain, embers and the other weather effects are cosmetic; physics remain consistent.
+Every course has a distinct deterministic tile layout, a bonus room, gems and power-ups. Enemy opening patrols and idle timing are seeded too, so a retry replays the exact same encounter. Stages 3–15 use separately arranged obstacle modules with stage-specific scenery, and a seeded per-stage flavor shifts the mystery-block columns, pipe heights and positions, patrol mixes and hidden extra one-way gem routes so no two courses line up the same way. Later courses progressively increase patrol speed, reduce the timer, widen ravines earlier (never beyond four tiles), and mix more enemy behaviors: armored beetles and extra patrols arrive sooner, thorn beds grow wider on the top tiers, and guardians strike faster with more hit points. Snow, rain, embers and the other weather effects are cosmetic; physics remain consistent.
 
 **Difficulty tiers:** each stage is badged TUTORIAL, ADVENTURE, CHALLENGING, EXPERT or MASTER on its intro card, HUD plate and Stage Select tile, so the ramp is always visible.
 
@@ -70,7 +70,7 @@ Pause, then open **Settings**:
 - **Keyboard → Default / Custom:** assign letters, numbers, arrows, Space or Shift to movement, crouching, jump and action. Duplicate assignments are rejected. Esc cancels capture; P, M and F stay reserved. Reset Custom Keys restores original primary bindings. Switching to Default does not erase custom assignments. Touch controls are unchanged.
 - **Quality → Standard:** 960×540 backing canvas with fewer effects.
 - **Quality → High:** 1920×1080 backing canvas with full effects, retaining the pixel-art style. A sustained low-FPS fallback can drop rendering to 1×; changing quality resets it.
-- **Reduced effects:** an independent override, also available in High mode.
+- **Reduced effects:** an independent override for High mode. Standard quality always renders with effects reduced, so the switch is disabled there and reads `ON`.
 
 Settings save locally when browser storage is available.
 

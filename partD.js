@@ -759,7 +759,7 @@ const CAMPAIGN_BLUEPRINTS = [
   ['CLOCKWORK ASCENT', 'clock',   [5,4,2,3,6], 'Mix short hops and full jumps through the clockwork terraces.'],
   ['EMBER CHASM',      'ember',   [3,2,6,5,3], 'Thorns and ravines demand careful landings.'],
   ['ECLIPSE RIDGE',    'eclipse', [4,5,2,6,1], 'The fastest patrols guard the road to the crown.'],
-  ['CROWN CITADEL',    'crown',   [5,4,6,3,4], 'Final guardian: five hits. Defeat it to free the Gem Kingdom!'],
+  ['CROWN CITADEL',    'crown',   [5,4,6,3,4], 'Final guardian: eight hits and three-bolt volleys. Free the Gem Kingdom!'],
 ];
 const COURSE_THEMES = {
   grove:   ['#256976','#c4e1a5','#6ba68f','#376957','#ffeab2'],

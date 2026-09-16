@@ -155,6 +155,8 @@ body.in-game #sysbar{ display:flex; }
 .key-bind.listening{ border-color:var(--gold); color:var(--gold); }
 .tog{ width:92px; margin:0; padding:8px 0; min-height:44px; font-size:15px; }
 .tog.on{ background:#2e7d32; border-color:#4caf50; }
+.tog:disabled{ opacity:.5; cursor:not-allowed; }
+button:disabled{ cursor:not-allowed; }
 input[type=range]{ width:200px; accent-color:var(--accent); }
 .big-red{ color:#ff6a5e !important; }
 .big-gold{ color:var(--gold) !important; }
@@ -250,7 +252,7 @@ input[type=range]{ width:200px; accent-color:var(--accent); }
         <button type="button" class="btn stage-card" id="stage-14"><span class="stage-number">14</span><strong>ECLIPSE RIDGE</strong><small id="stage-status-14">LOCKED</small></button>
         <button type="button" class="btn stage-card" id="stage-15"><span class="stage-number">15</span><strong>CROWN CITADEL</strong><small id="stage-status-15">LOCKED</small></button>
       </div>
-      <p class="setting-help">Stages 1–5: Adventure · 6–10: Challenge · 11–15: Expert<br>Guardians on 5, 10 and 15. Use Next Stage after a clear to carry your lives, gems, score and form.</p>
+      <p class="setting-help">Stage 1: Tutorial · 2–4: Adventure · 5–8: Challenging · 9–12: Expert · 13–15: Master<br>Guardians on 5, 10 and 15. Use Next Stage after a clear to carry your lives, gems, score and form.</p>
       <button type="button" class="btn" id="btn-stages-back">BACK</button>
     </div>
   </div>
@@ -301,7 +303,7 @@ input[type=range]{ width:200px; accent-color:var(--accent); }
       <div class="set-row">Touch opacity <input id="rg-op" type="range" min="20" max="100" value="85" aria-label="Touch control opacity"></div>
       <div class="set-row">Reduced effects <button type="button" class="btn tog" id="tg-reduced" aria-label="Toggle reduced effects">OFF</button></div>
       <div class="set-row"><label for="sel-quality">Graphics quality</label><select id="sel-quality"><option value="standard">Standard</option><option value="high">High</option></select></div>
-      <p class="setting-help" id="quality-help">High: sharper rendering and full effects. Standard: lighter rendering and fewer effects.</p>
+      <p class="setting-help" id="quality-help">High: sharper rendering and full effects. Standard: lighter rendering — it always keeps effects reduced, so the Reduced effects switch below only applies in High.</p>
       <div class="set-row"><label for="sel-controls">Keyboard controls</label><select id="sel-controls"><option value="default">Default</option><option value="custom">Custom</option></select></div>
       <p class="setting-help" id="default-keys">Move: A/D or ←/→ · Crouch: S/↓ · Jump: Space/W/Z/↑ · Run/shoot: Shift/X</p>
       <div id="custom-keys" hidden>
@@ -401,8 +403,7 @@ const TILE_CHAR = {
 const SOLID = new Set([T.GROUND,T.DIRT,T.BRICK,T.Q_GEM,T.Q_GROW,T.Q_SHOT,T.Q_STAR,T.Q_LIFE,T.Q_MULTI,T.USED,T.PIPE_TL,T.PIPE_TR,T.PIPE_BL,T.PIPE_BR,T.BUILD]);
 const QCODES = new Set([T.Q_GEM,T.Q_GROW,T.Q_SHOT,T.Q_STAR,T.Q_LIFE,T.Q_MULTI]);
 
-const LEVEL_NAME = 'SUNNY BLUFF';
-const LEVEL_TIME = 300;                // seconds per course
+const LEVEL_TIME = 300;                // placeholder until a course sets its own timer
 const START_TX = 2;
 const FLAG_TX = 152;
 const BUMP_DUR = 0.18;                 // mystery-block bump animation (s)
@@ -1426,7 +1427,7 @@ const CAMPAIGN_BLUEPRINTS = [
   ['CLOCKWORK ASCENT', 'clock',   [5,4,2,3,6], 'Mix short hops and full jumps through the clockwork terraces.'],
   ['EMBER CHASM',      'ember',   [3,2,6,5,3], 'Thorns and ravines demand careful landings.'],
   ['ECLIPSE RIDGE',    'eclipse', [4,5,2,6,1], 'The fastest patrols guard the road to the crown.'],
-  ['CROWN CITADEL',    'crown',   [5,4,6,3,4], 'Final guardian: five hits. Defeat it to free the Gem Kingdom!'],
+  ['CROWN CITADEL',    'crown',   [5,4,6,3,4], 'Final guardian: eight hits and three-bolt volleys. Free the Gem Kingdom!'],
 ];
 const COURSE_THEMES = {
   grove:   ['#256976','#c4e1a5','#6ba68f','#376957','#ffeab2'],
@@ -2128,11 +2129,13 @@ class Enemy {
   constructor(kind, x, y){
     this.kind = kind;
     this.x = x; this.y = y; this.vx = 0; this.vy = 0;
-    this.dir = Math.random() < 0.5 ? -1 : 1;
+    // Spawn state is deterministic; spawnEntities() varies it per course so a
+    // retry always replays exactly the same encounter.
+    this.dir = -1;
     this.active = false; this.dead = false; this.deadT = 0; this.remove = false;
-    this.state = kind === 'shell' ? 'walk' : 'walk';
-    this.rise = 0; this.baseY = y; this.walkT = Math.random()*10;
-    this.phase = 'hidden'; this.phaseT = 1 + Math.random();
+    this.state = 'walk';
+    this.rise = 0; this.baseY = y; this.walkT = 0;
+    this.phase = 'hidden'; this.phaseT = 1.4;
     this.hp = 1; this.maxHp = 1; this.hitT = 0; this.hopT = 1.1;
     this.attackT = 1.6; this.warningT = 0;
     this.patrolMin = x-72; this.patrolMax = x+120;
@@ -2485,8 +2488,14 @@ const Game = {
       if (s[5] === 'lurk') enemy.lurk = true;
       if (this.course.speedScale && enemy.speed) enemy.speed *= this.course.speedScale;
     }
-    // Predictable opening patrols make Stage 2 encounters learnable on retries.
-    if (this.stage >= 2) for (const enemy of this.enemies) enemy.dir = -1;
+    // Deterministic opening patrols: every course faces the same way on every
+    // attempt, and idle/plant timing is seeded instead of rolled, so retries are
+    // learnable rather than replaying a different encounter.
+    this.enemies.forEach((enemy, i) => {
+      enemy.dir = -1;
+      enemy.walkT = shash(this.stage, i, 11) * 10;
+      enemy.phaseT = 1 + shash(this.stage, i, 13);
+    });
     for (const g of this.level.gemSpawns){
       this.items.push(new Item('gem', g.tx*TILE + 11, g.ty*TILE + 11));
     }
@@ -2543,6 +2552,10 @@ const Game = {
     this.bonusLockT = 0;
     this.timeLeft = this.course.time;
     this.multiQ = 0;
+    this.multiT = 0;
+    this.gateHintT = 0;
+    this.stompChain = 0; this.chainT = 0;
+    this.shakeT = 0;
     // Dying always costs your power: you resume small at the checkpoint.
     this.player.reset(this.checkX, 'small', GROUND_ROW);
     if (this.stage>=3) this.player.hurtT=1.5; // Safe checkpoint recovery, not a free attack boost.
@@ -2555,10 +2568,15 @@ const Game = {
     this.state = 'READY';
     this.readyT = 1.0;
     this.inputClear();
+    // die() stops the music, so a respawn has to start it again.
+    AudioSys.startMusic();
     needRender = true;
   },
   toTitle(){
     this.stage = 1;
+    // Banking the run here keeps a quitting player's best score.
+    this.high = Math.max(this.high, this.score);
+    Store.set('high', this.high);
     hideAllOverlays();
     document.body.classList.remove('in-game');
     this.mainLevel = new Level(this.course.rows, false);
@@ -3855,7 +3873,7 @@ function updateStageUI(){
     // Each course's card carries its own accent so the menu mirrors the campaign art.
     if (!done) b.style.borderLeft='6px solid '+courseTheme(stage)[4];
     const stEl=$('stage-status-'+stage);
-    stEl.textContent=done?'✓ CLEARED':unlocked?(COURSES[stage-1].difficulty||'EXPLORER'):'LOCKED';
+    stEl.textContent=done?'✓ CLEARED':unlocked?(COURSES[stage-1].difficulty||'ADVENTURE'):'LOCKED';
     stEl.style.color=done?'#76c695':unlocked?(DIFF_COLORS[diff]||'#b7cce3'):'#b7cce3';
   }
 }
@@ -3865,8 +3883,11 @@ function updateToggles(){
   $('tg-sound').classList.toggle('on', Settings.sound);
   $('tg-vib').textContent = Settings.vibrate ? 'ON' : 'OFF';
   $('tg-vib').classList.toggle('on', Settings.vibrate);
-  $('tg-reduced').textContent = Settings.reduced ? 'ON' : 'OFF';
-  $('tg-reduced').classList.toggle('on', Settings.reduced);
+  // Standard quality always renders with reduced effects, so report the state
+  // the player will actually see and disable the override that cannot apply.
+  $('tg-reduced').disabled = Settings.quality === 'standard';
+  $('tg-reduced').textContent = Settings.effectsReduced ? 'ON' : 'OFF';
+  $('tg-reduced').classList.toggle('on', Settings.effectsReduced);
   $('sel-quality').value = Settings.quality;
   updateKeyboardUI();
   $('rg-op').value = Math.round(Settings.opacity*100);
@@ -3968,6 +3989,7 @@ function wireUI(){
     vib(15);
   });
   on('tg-reduced', () => {
+    if (Settings.quality === 'standard') return;   // already forced on by quality
     Settings.reduced = !Settings.effectsReduced;
     Store.set('reduced', Settings.reduced);
     updateToggles();

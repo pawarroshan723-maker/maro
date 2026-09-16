@@ -256,11 +256,13 @@ class Enemy {
   constructor(kind, x, y){
     this.kind = kind;
     this.x = x; this.y = y; this.vx = 0; this.vy = 0;
-    this.dir = Math.random() < 0.5 ? -1 : 1;
+    // Spawn state is deterministic; spawnEntities() varies it per course so a
+    // retry always replays exactly the same encounter.
+    this.dir = -1;
     this.active = false; this.dead = false; this.deadT = 0; this.remove = false;
-    this.state = kind === 'shell' ? 'walk' : 'walk';
-    this.rise = 0; this.baseY = y; this.walkT = Math.random()*10;
-    this.phase = 'hidden'; this.phaseT = 1 + Math.random();
+    this.state = 'walk';
+    this.rise = 0; this.baseY = y; this.walkT = 0;
+    this.phase = 'hidden'; this.phaseT = 1.4;
     this.hp = 1; this.maxHp = 1; this.hitT = 0; this.hopT = 1.1;
     this.attackT = 1.6; this.warningT = 0;
     this.patrolMin = x-72; this.patrolMax = x+120;

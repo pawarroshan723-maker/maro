@@ -734,28 +734,32 @@ const STAGE2_ROWS = (() => {
 const STAGE2_ENEMIES = [
   ['walker',14], ['walker',40], ['shell',64], ['walker',73],
   ['plant',88,7], ['walker',106], ['shell',112], ['walker',135], ['shell',142],
+  ['hopper',47],
 ];
 const COURSES = [
-  { name:'SUNNY BLUFF', rows:MAIN_ROWS, enemies:ENEMY_SPAWNS, time:300 },
-  { name:'SUNSET RIDGE', rows:STAGE2_ROWS, enemies:STAGE2_ENEMIES, time:320 },
+  // Stage 1 stays the on-ramp: same seven-lesson layout, slightly livelier patrols.
+  { name:'SUNNY BLUFF', theme:'sunny', rows:MAIN_ROWS, enemies:ENEMY_SPAWNS, time:270, speedScale:1.06,
+    difficulty:'TUTORIAL' },
+  { name:'SUNSET RIDGE', theme:'sunset', rows:STAGE2_ROWS, enemies:STAGE2_ENEMIES, time:285, speedScale:1.12,
+    difficulty:'ADVENTURE' },
 ];
 
 // Hand-arranged module sequences: every course is deterministic and replayable.
 // All gaps are at most four tiles; early courses provide generous bridge assists.
 const CAMPAIGN_BLUEPRINTS = [
-  ['MOSSWOOD TRAIL',   'grove',   [0,1,2,0,1], 'Hoppers leap after a short pause. Stomp from above.'],
-  ['CRYSTAL CAVERNS',  'crystal', [2,0,4,1,2], 'Bats patrol the upper routes. Watch their flight path.'],
-  ['COPPER OUTPOST',   'copper',  [1,4,0,2,1], 'First guardian: dodge its glowing bolts, then stomp or shoot.'],
-  ['CORAL CAUSEWAY',   'coral',   [2,1,0,4,2], 'Armored beetles take two hits. Their shell lights show health.'],
-  ['MOONLIT GROVE',    'moon',    [4,0,3,1,2], 'Use the high route above the thorns.'],
-  ['FROSTFALL PASS',   'frost',   [1,2,4,0,2], 'Wider ravines ahead. Run before jumping; physics stay familiar.'],
-  ['THUNDER HEIGHTS',  'storm',   [2,3,1,4,2], 'Faster patrols and airborne enemies share the route.'],
-  ['OBSIDIAN KEEP',    'obsidian',[4,2,3,1,4], 'The second guardian fires faster. Wait for its warning flash.'],
-  ['MIRAGE DUNES',     'dunes',   [0,3,4,2,1], 'Take the gem routes for supplies before the final push.'],
-  ['CLOCKWORK ASCENT', 'clock',   [1,4,2,3,1], 'Mix short hops and full jumps through the clockwork terraces.'],
-  ['EMBER CHASM',      'ember',   [3,2,4,1,3], 'Thorns and ravines demand careful landings.'],
-  ['ECLIPSE RIDGE',    'eclipse', [4,3,2,4,1], 'The fastest patrols guard the road to the crown.'],
-  ['CROWN CITADEL',    'crown',   [3,4,2,3,4], 'Final guardian: five hits. Defeat it to free the Gem Kingdom!'],
+  ['MOSSWOOD TRAIL',   'grove',   [0,5,2,6,1], 'Hoppers leap after a short pause. Stomp from above.'],
+  ['CRYSTAL CAVERNS',  'crystal', [2,0,6,1,5], 'Bats patrol the upper routes. Watch their flight path.'],
+  ['COPPER OUTPOST',   'copper',  [1,4,5,2,6], 'First guardian: dodge its glowing bolts, then stomp or shoot.'],
+  ['CORAL CAUSEWAY',   'coral',   [2,6,0,4,5], 'Armored beetles take two hits. Their shell lights show health.'],
+  ['MOONLIT GROVE',    'moon',    [4,0,3,5,2], 'Use the high route above the thorns.'],
+  ['FROSTFALL PASS',   'frost',   [1,5,4,0,6], 'Wider ravines ahead. Run before jumping; physics stay familiar.'],
+  ['THUNDER HEIGHTS',  'storm',   [2,3,6,4,5], 'Faster patrols and airborne enemies share the route.'],
+  ['OBSIDIAN KEEP',    'obsidian',[4,2,5,6,4], 'The second guardian fires faster. Wait for its warning flash.'],
+  ['MIRAGE DUNES',     'dunes',   [0,3,6,2,5], 'Take the gem routes for supplies before the final push.'],
+  ['CLOCKWORK ASCENT', 'clock',   [5,4,2,3,6], 'Mix short hops and full jumps through the clockwork terraces.'],
+  ['EMBER CHASM',      'ember',   [3,2,6,5,3], 'Thorns and ravines demand careful landings.'],
+  ['ECLIPSE RIDGE',    'eclipse', [4,5,2,6,1], 'The fastest patrols guard the road to the crown.'],
+  ['CROWN CITADEL',    'crown',   [5,4,6,3,4], 'Final guardian: five hits. Defeat it to free the Gem Kingdom!'],
 ];
 const COURSE_THEMES = {
   grove:   ['#256976','#c4e1a5','#6ba68f','#376957','#ffeab2'],
@@ -771,20 +775,266 @@ const COURSE_THEMES = {
   ember:   ['#512c4b','#f7a371','#9e6267','#573e5d','#ffdc88'],
   eclipse: ['#181f3c','#886992','#585477','#30324f','#f3bfd6'],
   crown:   ['#3c295f','#db92a5','#8c6b9c','#4c4269','#ffe49c'],
+  sunny:   ['#4fb3f6','#d9f2ff','#9fd8c8','#7cc96f','#ffe680'],
+  sunset:  ['#514779','#ffd2a0','#87759e','#594e79','#ffe8aa'],
 };
+
+// ---------------------------------------------------------------------------
+// Per-stage landmark skylines.
+//
+// Every one of the 15 courses draws its own silhouette into a tiling mid-ground
+// strip, so no two stages share a backdrop. Motifs are authored in a local space
+// whose origin sits on the strip baseline (y = 0, up is negative) and are then
+// placed five times across the strip, mirrored and height-varied per instance.
+// ---------------------------------------------------------------------------
+const MID_W = 1600, MID_H = 220;
+// [silhouette body, lit accent] — tuned to contrast each course's own sky.
+const STAGE_MOTIF_PALETTE = [
+  ['#6fbf9a','#f7f2dc'],  //  1 Sunny Bluff    — hills and a windmill
+  ['#71628b','#ffd2a0'],  //  2 Sunset Ridge   — banded mesas
+  ['#3f7a5c','#a8e08a'],  //  3 Mosswood Trail — broad canopy trees
+  ['#6a63b0','#c3b0ff'],  //  4 Crystal Caverns — crystal spires
+  ['#a5705f','#f5c07a'],  //  5 Copper Outpost — crenellated watchtowers
+  ['#4f97a8','#a8ecdc'],  //  6 Coral Causeway — coral arches and bubbles
+  ['#3d4470','#a8b4e8'],  //  7 Moonlit Grove  — cypress and fireflies
+  ['#8fb4d4','#eaf6ff'],  //  8 Frostfall Pass — icy peaks and frosted pines
+  ['#4c6076','#c8dcf0'],  //  9 Thunder Heights— pylons and lightning
+  ['#3b3352','#c0a0d8'],  // 10 Obsidian Keep  — fortress wall and towers
+  ['#b98a63','#f5dca0'],  // 11 Mirage Dunes   — dunes, cacti, an obelisk
+  ['#5f6b8a','#d8c498'],  // 12 Clockwork Ascent — gears and a clock tower
+  ['#6d3f52','#f09060'],  // 13 Ember Chasm    — basalt columns and a vent
+  ['#3a3560','#b098e0'],  // 14 Eclipse Ridge  — leaning monoliths
+  ['#5a4480','#f0cc78'],  // 15 Crown Citadel  — castle spires and banners
+];
+const STAGE_MOTIF_DRAW = [
+  // 1 — rolling hills and a working windmill
+  (body,accent,X)=>{
+    X.fillStyle=body;
+    for(const [dx,r] of [[-80,58],[10,78],[100,50]]){ X.beginPath(); X.arc(dx,0,r,Math.PI,0); X.fill(); }
+    X.fillStyle=accent;
+    X.beginPath(); X.moveTo(-120,0); X.lineTo(-102,0); X.lineTo(-108,-64); X.lineTo(-114,-64); X.closePath(); X.fill();
+    X.strokeStyle=accent; X.lineWidth=5;
+    for(let q=0;q<4;q++){ const a=q*Math.PI/2+0.5;
+      X.beginPath(); X.moveTo(-111,-64); X.lineTo(-111+Math.cos(a)*26,-64+Math.sin(a)*26); X.stroke(); }
+    X.lineWidth=1;
+  },
+  // 2 — flat-topped mesas with sediment bands
+  (body,accent,X)=>{
+    X.fillStyle=body;
+    const mesa=(dx,w,h)=>{ X.beginPath(); X.moveTo(dx-w/2,0); X.lineTo(dx-w/2+14,-h);
+      X.lineTo(dx+w/2-14,-h); X.lineTo(dx+w/2,0); X.closePath(); X.fill(); };
+    mesa(-58,124,88); mesa(62,152,64);
+    X.fillStyle=accent;
+    X.fillRect(-110,-54,100,7); X.fillRect(-108,-32,96,6);
+  },
+  // 3 — broadleaf canopy trees on visible trunks
+  (body,accent,X)=>{
+    X.fillStyle=accent;
+    for(const dx of [-92,-20,62]) X.fillRect(dx-6,-58,12,58);
+    X.fillStyle=body;
+    for(const [dx,r,dy] of [[-92,34,-66],[-20,46,-76],[62,30,-60]]){ X.beginPath(); X.arc(dx,dy,r,0,6.2832); X.fill(); }
+  },
+  // 4 — faceted crystal spires with accent shard highlights
+  (body,accent,X)=>{
+    X.fillStyle=body;
+    const spire=(dx,w,h)=>{ X.beginPath(); X.moveTo(dx-w/2,0); X.lineTo(dx,-h); X.lineTo(dx+w/2,0); X.closePath(); X.fill(); };
+    spire(-88,46,96); spire(-24,60,142); spire(50,42,86); spire(100,30,58);
+    X.fillStyle=accent;
+    X.beginPath(); X.moveTo(-24,-142); X.lineTo(-6,-44); X.lineTo(-24,-44); X.closePath(); X.fill();
+    X.beginPath(); X.moveTo(50,-86); X.lineTo(62,-30); X.lineTo(50,-30); X.closePath(); X.fill();
+  },
+  // 5 — crenellated watchtowers flying a banner
+  (body,accent,X)=>{
+    X.fillStyle=body;
+    const tower=(dx,w,h)=>{ X.fillRect(dx-w/2,-h,w,h);
+      for(let i=0;i<Math.floor(w/12);i++) X.fillRect(dx-w/2+i*12,-h-9,7,9); };
+    tower(-70,56,98); tower(40,72,72);
+    X.fillStyle=accent;
+    X.fillRect(-74,-116,4,44);
+    X.beginPath(); X.moveTo(-70,-116); X.lineTo(-42,-108); X.lineTo(-70,-100); X.closePath(); X.fill();
+  },
+  // 6 — coral arches with rising bubble clusters
+  (body,accent,X)=>{
+    X.strokeStyle=body; X.lineWidth=14; X.lineCap='round';
+    for(const [dx,r] of [[-78,34],[-10,44],[70,28]]){ X.beginPath(); X.arc(dx,0,r,Math.PI,0); X.stroke(); }
+    X.lineWidth=1; X.lineCap='butt';
+    X.fillStyle=accent;
+    for(const [dx,dy,r] of [[-42,-122,5],[8,-152,4],[58,-112,6],[92,-142,3]]){ X.beginPath(); X.arc(dx,dy,r,0,6.2832); X.fill(); }
+  },
+  // 7 — slender cypress silhouettes with fireflies
+  (body,accent,X)=>{
+    X.fillStyle=body;
+    const cy=(dx,h,w)=>{ X.beginPath(); X.moveTo(dx-w,0);
+      X.quadraticCurveTo(dx-w*0.72,-h*0.55,dx,-h);
+      X.quadraticCurveTo(dx+w*0.72,-h*0.55,dx+w,0); X.closePath(); X.fill(); };
+    cy(-84,122,20); cy(-16,152,24); cy(60,104,18);
+    X.fillStyle=accent;
+    for(const [dx,dy] of [[-50,-92],[20,-132],[86,-70]]){ X.beginPath(); X.arc(dx,dy,3,0,6.2832); X.fill(); }
+  },
+  // 8 — sharp icy peaks, snowcaps and frosted pines
+  (body,accent,X)=>{
+    X.fillStyle=body;
+    const peak=(dx,w,h)=>{ X.beginPath(); X.moveTo(dx-w/2,0); X.lineTo(dx,-h); X.lineTo(dx+w/2,0); X.closePath(); X.fill(); };
+    peak(-74,112,112); peak(34,152,86);
+    X.fillStyle=accent;
+    X.beginPath(); X.moveTo(-74,-112); X.lineTo(-50,-58); X.lineTo(-98,-58); X.closePath(); X.fill();
+    X.beginPath(); X.moveTo(34,-86); X.lineTo(52,-46); X.lineTo(16,-46); X.closePath(); X.fill();
+    X.fillStyle=body;
+    const pine=(dx,h)=>{ X.beginPath(); X.moveTo(dx-16,0); X.lineTo(dx,-h); X.lineTo(dx+16,0); X.closePath(); X.fill(); };
+    pine(-126,64); pine(106,58);
+  },
+  // 9 — lattice pylons with a struck lightning channel
+  (body,accent,X)=>{
+    X.strokeStyle=body; X.lineWidth=6;
+    const pylon=(dx,h)=>{
+      X.beginPath(); X.moveTo(dx-22,0); X.lineTo(dx-8,-h); X.lineTo(dx+8,-h); X.lineTo(dx+22,0); X.stroke();
+      for(let i=1;i<=3;i++){ const y=-h*i/3.4, w=22-14*i/3.4;
+        X.beginPath(); X.moveTo(dx-w,y); X.lineTo(dx+w,y); X.stroke(); }
+      X.beginPath(); X.moveTo(dx-34,-h); X.lineTo(dx+34,-h); X.stroke();
+    };
+    pylon(-64,120); pylon(58,96);
+    X.lineWidth=1;
+    X.fillStyle=accent;
+    X.beginPath(); X.moveTo(6,-156); X.lineTo(-8,-122); X.lineTo(0,-122); X.lineTo(-12,-90);
+    X.lineTo(10,-128); X.lineTo(2,-128); X.closePath(); X.fill();
+  },
+  // 10 — fortress curtain wall, battlements and roofed towers
+  (body,accent,X)=>{
+    X.fillStyle=body;
+    X.fillRect(-120,-58,240,58);
+    for(let i=0;i<10;i++) X.fillRect(-120+i*24,-70,14,12);
+    const tower=(dx,w,h)=>{ X.fillRect(dx-w/2,-h,w,h);
+      X.beginPath(); X.moveTo(dx-w/2-4,-h); X.lineTo(dx,-h-30); X.lineTo(dx+w/2+4,-h); X.closePath(); X.fill(); };
+    tower(-88,42,106); tower(84,48,122);
+    X.fillStyle=accent;
+    X.fillRect(-93,-74,9,15); X.fillRect(80,-86,9,15);
+  },
+  // 11 — wind-carved dunes, cacti and a lone obelisk
+  (body,accent,X)=>{
+    X.fillStyle=body;
+    X.beginPath(); X.moveTo(-130,0);
+    X.quadraticCurveTo(-70,-60,0,-30); X.quadraticCurveTo(70,-4,130,0); X.closePath(); X.fill();
+    X.fillStyle=accent;
+    const cactus=(dx,h)=>{ X.fillRect(dx-5,-h,10,h);
+      X.fillRect(dx-20,-h*0.66,15,8); X.fillRect(dx-20,-h*0.66,8,-h*0.22);
+      X.fillRect(dx+5,-h*0.5,15,8);   X.fillRect(dx+12,-h*0.5,8,-h*0.2); };
+    cactus(-94,64); cactus(80,52);
+    X.beginPath(); X.moveTo(6,-98); X.lineTo(22,-98); X.lineTo(18,0); X.lineTo(10,0); X.closePath(); X.fill();
+  },
+  // 12 — meshing gears beside a clock tower
+  (body,accent,X)=>{
+    X.fillStyle=body;
+    const gear=(dx,dy,r,teeth)=>{
+      X.beginPath(); X.arc(dx,dy,r*0.62,0,6.2832); X.fill();
+      for(let i=0;i<teeth;i++){ const a=i*6.2832/teeth;
+        X.save(); X.translate(dx+Math.cos(a)*r*0.62,dy+Math.sin(a)*r*0.62); X.rotate(a);
+        X.fillRect(-6,-6,15,12); X.restore(); }
+      X.fillStyle=accent; X.beginPath(); X.arc(dx,dy,r*0.22,0,6.2832); X.fill(); X.fillStyle=body;
+    };
+    gear(-76,-58,46,10); gear(24,-98,62,12);
+    X.fillRect(86,-122,30,122);
+    X.fillStyle=accent; X.beginPath(); X.arc(101,-134,20,0,6.2832); X.fill();
+    X.strokeStyle=body; X.lineWidth=3;
+    X.beginPath(); X.moveTo(101,-134); X.lineTo(101,-148); X.moveTo(101,-134); X.lineTo(112,-130); X.stroke();
+    X.lineWidth=1;
+  },
+  // 13 — hexagonal basalt columns over a glowing vent
+  (body,accent,X)=>{
+    const cols=[[-112,72],[-88,98],[-64,64],[42,88],[66,112],[90,70]];
+    X.fillStyle=body;
+    for(const [dx,h] of cols) X.fillRect(dx-11,-h,22,h);
+    X.fillStyle=accent;
+    for(const [dx,h] of cols) X.fillRect(dx-11,-h,22,6);
+    X.beginPath(); X.arc(-12,-4,26,Math.PI,0); X.fill();
+  },
+  // 14 — leaning monoliths with glowing bands
+  (body,accent,X)=>{
+    X.fillStyle=body;
+    const mono=(dx,w,h,tilt)=>{ X.save(); X.translate(dx,0); X.rotate(tilt);
+      X.fillRect(-w/2,-h,w,h); X.restore(); };
+    mono(-90,26,104,-0.05); mono(-24,30,142,0.03); mono(52,24,88,-0.02); mono(106,20,66,0.06);
+    X.fillStyle=accent;
+    X.fillRect(-40,-142,31,7); X.fillRect(-104,-104,27,6); X.fillRect(40,-88,25,6);
+  },
+  // 15 — the crown castle: spires, banners and a gatehouse
+  (body,accent,X)=>{
+    X.fillStyle=body;
+    X.fillRect(-120,-72,240,72);
+    for(let i=0;i<10;i++) X.fillRect(-120+i*24,-84,14,12);
+    const spire=(dx,w,h)=>{
+      X.fillStyle=body; X.fillRect(dx-w/2,-h,w,h);
+      X.beginPath(); X.moveTo(dx-w/2-5,-h); X.lineTo(dx,-h-38); X.lineTo(dx+w/2+5,-h); X.closePath(); X.fill();
+      X.strokeStyle=accent; X.lineWidth=3;
+      X.beginPath(); X.moveTo(dx,-h-38); X.lineTo(dx,-h-58); X.stroke(); X.lineWidth=1;
+      X.fillStyle=accent;
+      X.beginPath(); X.moveTo(dx,-h-58); X.lineTo(dx+20,-h-52); X.lineTo(dx,-h-46); X.closePath(); X.fill();
+    };
+    spire(-92,38,118); spire(0,52,150); spire(92,38,118);
+    X.fillStyle=accent;
+    X.beginPath(); X.arc(0,-72,9,Math.PI,0); X.fill();
+    X.fillRect(-9,-72,18,72);
+  },
+];
+function buildStageMid(stage){
+  const c = cv(MID_W, MID_H), X = g2(c);
+  const idx = clamp(stage,1,15) - 1;
+  const [body,accent] = STAGE_MOTIF_PALETTE[idx];
+  const draw = STAGE_MOTIF_DRAW[idx];
+  [90,410,730,1050,1370].forEach((x,k)=>{
+    X.save();
+    X.translate(x, MID_H);
+    if (k % 2) X.scale(-1,1);                    // mirror alternate instances
+    X.scale(1, 0.86 + ((k*7)%4)*0.07);           // vary heights per instance
+    draw(body,accent,X);
+    X.restore();
+  });
+  return c;
+}
+
+// Per-stage ambient atmosphere. Every course carries its own weather; the motion
+// is purely cosmetic and thins out automatically under Reduced Effects.
+// kind: fall | rise | drift | rain | twinkle
+const STAGE_FX = [
+  { kind:'rise',    colors:['#fff3b8','#ffffff'], n:22, spd:14,  sway:16, size:2 }, //  1 pollen motes
+  { kind:'drift',   colors:['#ffc489','#ffe0b8'], n:20, spd:11,  sway:8,  size:2 }, //  2 sunset dust
+  { kind:'fall',    colors:['#a8e08a','#ffd98a'], n:18, spd:26,  sway:26, size:3 }, //  3 falling leaves
+  { kind:'twinkle', colors:['#d9faff','#c3b0ff'], n:26, spd:0,   sway:0,  size:2 }, //  4 crystal sparkle
+  { kind:'rise',    colors:['#f5c07a','#c9a06a'], n:20, spd:18,  sway:10, size:2 }, //  5 forge soot
+  { kind:'rise',    colors:['#d8fff4','#ffffff'], n:20, spd:30,  sway:12, size:3 }, //  6 rising bubbles
+  { kind:'drift',   colors:['#ffe98a','#fff6c0'], n:16, spd:9,   sway:14, size:2 }, //  7 fireflies
+  { kind:'fall',    colors:['#e5f8ff','#ffffff'], n:28, spd:22,  sway:14, size:2 }, //  8 snowfall
+  { kind:'rain',    colors:['#cfe4f5','#eaf4ff'], n:30, spd:340, sway:40, size:2 }, //  9 storm rain
+  { kind:'fall',    colors:['#c0a0d8','#8a7aa8'], n:20, spd:16,  sway:12, size:2 }, // 10 drifting ash
+  { kind:'drift',   colors:['#ffe9b8','#f5d090'], n:24, spd:44,  sway:10, size:2 }, // 11 blowing sand
+  { kind:'rise',    colors:['#e8e0d0','#ffffff'], n:18, spd:24,  sway:16, size:3 }, // 12 steam puffs
+  { kind:'rise',    colors:['#ffc489','#ff9060'], n:28, spd:34,  sway:18, size:2 }, // 13 rising embers
+  { kind:'fall',    colors:['#b098e0','#7a6aa8'], n:20, spd:14,  sway:10, size:2 }, // 14 shadow motes
+  { kind:'fall',    colors:['#ffe49c','#ffd0e0'], n:26, spd:30,  sway:22, size:3 }, // 15 crown confetti
+];
+// Deterministic 0..1 hash so every (stage, module) gets its own stable flavor.
+function shash(a, b, c){
+  let n = (a*374761393 + b*668265263 + c*2246822519) | 0;
+  n = Math.imul(n ^ (n >>> 13), 1274126177);
+  n = (n ^ (n >>> 16)) >>> 0;
+  return n / 4294967295;
+}
+
 function buildCampaignCourse(stage, blueprint){
   const [name,theme,modules,tip] = blueprint;
   const rows = Array.from({length:12}, (_,y) => Array(170).fill(y>=10?'#':'.'));
   const enemies = [], gaps = [], checkpoints = [60,112];
   const put = (x,y,text) => { for (let n=0;n<text.length;n++) rows[y][x+n] = text[n]; };
   const gems = (x,y,n) => { for (let i=0;i<n;i++) if (rows[y][x+i] === '.') rows[y][x+i]='o'; };
-  const gapWidth = stage < 8 ? 3 : 4;
+  // Difficulty ramp: full-width ravines arrive two courses earlier than before,
+  // and bridge assists are withdrawn sooner. Four tiles stays the hard ceiling
+  // because that is the widest a running jump can clear.
+  const gapWidth = stage < 6 ? 3 : 4;
   const gap = (x) => {
     gaps.push({x,width:gapWidth});
     for (let y=10;y<12;y++) put(x,y,'.'.repeat(gapWidth));
-    if (stage < 8) put(x-1,8,'==');
+    if (stage < 6) put(x-1,8,'==');
     // Later assists remain optional: the four-tile ground jump is also possible.
-    else if (stage % 2 === 0) put(x,8,'==');
+    else if (stage % 4 === 0) put(x,8,'==');
     gems(x-1,6,gapWidth+2);
   };
   const pipe = (x,top) => {
@@ -793,27 +1043,54 @@ function buildCampaignCourse(stage, blueprint){
   };
   modules.forEach((type,i) => {
     const x = 8+i*26;
-    put(x+3,7,i===0?'BGB':i===2?'BSB':i===4?'BIB':i===1?'BMB':'B?B');
-    gems(x+3,6,3); gems(x,9,3);
-    if (type === 0){ pipe(x+12,8); gap(x+20); }
+    // Per-(stage,module) flavor so layouts, patrols and hazards shift course to course.
+    const vary = (salt) => shash(stage + salt*57, i + salt*11, stage*i + salt);
+    // Overhead mystery cluster: jitter its column so blocks never line up twice.
+    const bo = Math.floor(vary(11)*3);
+    put(x+3+bo,7,i===0?'BGB':i===2?'BSB':i===4?'BIB':i===1?'BMB':'B?B');
+    gems(x+3+bo,6,3); gems(x,9,3);
+    // Mid+ courses hang an extra one-way gem route overhead on many modules.
+    if (stage >= 6 && vary(13) > 0.5){ put(x+8,5,'==='); gems(x+8,4,3); }
+    if (type === 0){ pipe(x+12+(vary(17)>0.5?1:0),8); gap(x+20); }
     else if (type === 1){
       put(x+11,9,'######'); put(x+13,8,'##'); gems(x+11,7,6); gap(x+20);
     } else if (type === 2){
       gap(x+14); put(x+11,8,'=='); put(x+17,7,'==='); gems(x+17,6,3);
     } else if (type === 3){
-      put(x+14,9,stage>=12?'^^':'^'); put(x+12,7,'====='); gems(x+12,6,5);
+      // Thorn beds grow a tile wider on the two hardest tiers of the campaign.
+      put(x+14,9,stage>=13?'^^^':stage>=10?'^^':'^'); put(x+12,7,'====='); gems(x+12,6,5);
+    } else if (type === 5){
+      // Staircase climb: three rising steps crowned by a leap over the ravine.
+      put(x+11,9,'###'); put(x+14,8,'###'); put(x+17,7,'###');
+      gems(x+11,8,3); gems(x+14,7,3); gems(x+17,6,3);
+      gap(x+21);
+    } else if (type === 6){
+      // Pipe gauntlet: three pipes of shifting height, no ravine to rest on.
+      pipe(x+11,8); pipe(x+16, vary(61)>0.5?7:8); pipe(x+21,8);
+      gems(x+14,6,2); gems(x+19,6,2);
     } else {
-      pipe(x+11,8); pipe(x+18,8);
-      if (stage >= 7 && i % 2 === 0) enemies.push(['plant',x+18,8]);
+      const p2 = x+18+(vary(19)>0.5?1:0);
+      pipe(x+11, vary(23)>0.6?7:8); pipe(p2,8);
+      if (stage >= 6 && i % 2 === 0) enemies.push(['plant',p2,8]);
     }
-    // Protected patrol pockets: never on a pit, spike, checkpoint, or pipe.
-    const kind = stage >= 6 && i % 2 === 1 ? 'beetle' : (i % 2 === 0 ? 'hopper' : 'walker');
+    // Enemy rotation is seeded per stage, not a fixed parity pattern.
+    const r = vary(29);
+    const kind = stage >= 5 && r > 0.5 ? 'beetle' : (r > 0.25 ? 'hopper' : 'walker');
     enemies.push([kind,x+8,10,x+6,x+10]);
-    enemies.push([i%2===0?'shell':'walker',x+25,10,x+24,x+25]);
-    if (stage >= 4 && i < Math.min(5,Math.floor((stage-2)/2))){
+    enemies.push([vary(31)>0.5?'shell':'walker',x+25,10,x+24,x+25]);
+    if (stage >= 11 && vary(37) > 0.4) enemies.push(['beetle',x+6,10,x+6,x+8]);
+    if (stage >= 3 && i < Math.min(5,Math.floor((stage-1)/2))){
       enemies.push(['bat',x+15,5,x+11,x+20]);
     }
+    if (stage >= 12) enemies.push(['bat',x+21,4,x+17,x+24]);
+    // Surprise: a hidden lurker springs out when Maro steps close. More on later tiers.
+    if (stage >= 4 && vary(41) > (0.78 - stage*0.02)) enemies.push([vary(43)>0.5?'hopper':'walker',x+10,10,x+9,x+11,'lurk']);
   });
+  // Every course from stage 3 onward keeps at least one hidden ambusher.
+  if (stage >= 3 && !enemies.some(e => e[5] === 'lurk')){
+    const bx = 8 + 2*26;
+    enemies.push(['hopper', bx+10, 10, bx+9, bx+11, 'lurk']);
+  }
   // The bonus doorway and its return position stay clear on every course.
   put(42,9,'D');
   for (const x of checkpoints) for (let y=7;y<10;y++) put(x,y,'K');
@@ -832,8 +1109,8 @@ function buildCampaignCourse(stage, blueprint){
   for (let y=4;y<10;y++) put(155,y,y===4?'****':'******');
   put(155,8,'E'); put(155,9,'E'); gems(147,9,3);
   return {name,theme,tip,rows:rows.map(row=>row.join('')),enemies,gaps,checkpoints,
-    time:Math.max(250,325-stage*5), speedScale:1+(stage-2)*0.035,
-    difficulty:stage<=5?'ADVENTURE':stage<=10?'CHALLENGING':'EXPERT'};
+    time:Math.max(195,300-stage*7), speedScale:1+(stage-2)*0.052,
+    difficulty:stage<=4?'ADVENTURE':stage<=8?'CHALLENGING':stage<=12?'EXPERT':'MASTER'};
 }
 for (let i=0;i<CAMPAIGN_BLUEPRINTS.length;i++) COURSES.push(buildCampaignCourse(i+3,CAMPAIGN_BLUEPRINTS[i]));
 COURSES[0].tip = 'Learn the jumps, collect gems and reach the castle.';
@@ -847,27 +1124,38 @@ function loadCampaignProgress(raw, oldStage2){
   return {unlocked,cleared};
 }
 
+// Theme palette for any course, including the two hand-authored opening stages.
+function courseTheme(stage){
+  const course = COURSES[clamp(stage,1,TOTAL_STAGES) - 1];
+  return COURSE_THEMES[(course && course.theme) || 'sunny'] || COURSE_THEMES.sunny;
+}
+
 // Cache only the current later-stage backdrop, rather than 13 full canvas sets.
 function courseBackdrop(stage){
-  if (stage === 1) return ASSETS.bg;
-  if (stage === 2) return ASSETS.sunset;
-  if (ASSETS.courseBackdrop && ASSETS.courseBackdrop.stage === stage) return ASSETS.courseBackdrop;
-  const [top,bottom,far,near,sun] = COURSE_THEMES[COURSES[stage-1].theme];
-  const bg = {stage,sky:cv(VIEW_W,VIEW_H)};
-  const x = g2(bg.sky), grad = x.createLinearGradient(0,0,0,VIEW_H);
-  grad.addColorStop(0,top); grad.addColorStop(1,bottom);
-  x.fillStyle = grad; x.fillRect(0,0,VIEW_W,VIEW_H);
-  x.fillStyle = sun; x.beginPath(); x.arc(790,170,46,0,Math.PI*2); x.fill();
-  if ([4,7,10,14,15].includes(stage)){
-    x.fillStyle = '#e6e4ff';
-    for (let i=0;i<36;i++) x.fillRect((i*137+stage*19)%940,28+(i*73)%250,i%3===0?3:2,2);
+  let bg;
+  if (stage === 1) bg = ASSETS.bg;
+  else if (stage === 2) bg = ASSETS.sunset;
+  else if (ASSETS.courseBackdrop && ASSETS.courseBackdrop.stage === stage) bg = ASSETS.courseBackdrop;
+  else {
+    const [top,bottom,far,near,sun] = COURSE_THEMES[COURSES[stage-1].theme];
+    bg = {stage,sky:cv(VIEW_W,VIEW_H)};
+    const x = g2(bg.sky), grad = x.createLinearGradient(0,0,0,VIEW_H);
+    grad.addColorStop(0,top); grad.addColorStop(1,bottom);
+    x.fillStyle = grad; x.fillRect(0,0,VIEW_W,VIEW_H);
+    x.fillStyle = sun; x.beginPath(); x.arc(790,170,46,0,Math.PI*2); x.fill();
+    if ([4,7,10,14,15].includes(stage)){
+      x.fillStyle = '#e6e4ff';
+      for (let i=0;i<36;i++) x.fillRect((i*137+stage*19)%940,28+(i*73)%250,i%3===0?3:2,2);
+    }
+    for (const [name,color] of [['far',far],['near',near]]){
+      const source=ASSETS.bg[name], layer=cv(source.width,source.height), px=g2(layer);
+      px.drawImage(source,0,0); px.globalCompositeOperation='source-atop';
+      px.fillStyle=color; px.fillRect(0,0,layer.width,layer.height); bg[name]=layer;
+    }
+    ASSETS.courseBackdrop=bg;
   }
-  for (const [name,color] of [['far',far],['near',near]]){
-    const source=ASSETS.bg[name], layer=cv(source.width,source.height), px=g2(layer);
-    px.drawImage(source,0,0); px.globalCompositeOperation='source-atop';
-    px.fillStyle=color; px.fillRect(0,0,layer.width,layer.height); bg[name]=layer;
-  }
-  ASSETS.courseBackdrop=bg;
+  // Each course carries its own landmark strip between the hill layers.
+  if (!bg.mid) bg.mid = buildStageMid(stage);
   return bg;
 }
 

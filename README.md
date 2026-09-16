@@ -39,7 +39,11 @@ Stomp enemies from above or use fireballs. Kick stationary shells to hit other e
 | 14 | Eclipse Ridge | Fast patrols and fewer gap assists |
 | 15 | Crown Citadel | Final Gate Guardian: 5 hits |
 
-Every course has a distinct deterministic tile layout, a bonus room, gems and power-ups. Stages 3–15 use separately arranged obstacle modules with stage-specific scenery. Later courses progressively increase patrol speed, reduce the timer, widen ravines (never beyond four tiles), and mix more enemy behaviors. Snow and ember effects are cosmetic; physics remain consistent.
+Every course has a distinct deterministic tile layout, a bonus room, gems and power-ups. Stages 3–15 use separately arranged obstacle modules with stage-specific scenery, and a seeded per-stage flavor shifts the mystery-block columns, pipe heights and positions, patrol mixes and hidden extra one-way gem routes so no two courses line up the same way. Later courses progressively increase patrol speed, reduce the timer, widen ravines earlier (never beyond four tiles), and mix more enemy behaviors: armored beetles and extra patrols arrive sooner, thorn beds grow wider on the top tiers, and guardians strike faster with more hit points. Snow, rain, embers and the other weather effects are cosmetic; physics remain consistent.
+
+**Difficulty tiers:** each stage is badged TUTORIAL, ADVENTURE, CHALLENGING, EXPERT or MASTER on its intro card, HUD plate and Stage Select tile, so the ramp is always visible.
+
+**Per-stage art:** every course draws its own landmark skyline — windmills on Sunny Bluff, crystal spires, watchtowers, coral arches, gears, monoliths and the golden Crown Citadel — plus its own ambient weather. The HUD frames each stage's name in its own palette with a numbered crest, and every stage opens with a themed intro card.
 
 **Progression:** Clear a stage and choose **Next Stage** to carry score, gems, lives and form onward. Each new stage starts with a fresh timer and checkpoint. Every third clear awards a life, capped at nine. Stage 15 ends the campaign.
 
@@ -52,9 +56,12 @@ Every course has a distinct deterministic tile layout, a bonus room, gems and po
 - **Hopper:** pauses, flashes its forehead and leaps; stomp or shoot it.
 - **Bat:** flies a bounded, bobbing route; stomp or shoot it.
 - **Armored Beetle:** requires two separated hits. Its glowing shell marks show remaining health. Stomps, fireballs and moving shells damage it.
-- **Gate Guardian:** patrols the arena and flashes for 0.85 seconds before firing a horizontal bolt. Jump bolts and stomp/shoot the guardian. Health bars show remaining hits. Only six hostile bolts can exist at once; bolts expire, hit walls, and are cleared on guardian defeat or stage reset.
+- **Gate Guardian:** patrols the arena and flashes for under a second (shorter on later courses) before firing a horizontal bolt. Jump bolts and stomp/shoot the guardian. Health bars show remaining hits. Only six hostile bolts can exist at once; bolts expire, hit walls, and are cleared on guardian defeat or stage reset.
+- **Lurker ambush:** from Stage 3 on, at least one enemy lies hidden in each course and bursts out when Maro steps close — a genuine jump-scare. More lurkers appear on higher tiers.
 
-Nova Star defeats any enemy, including guardians, and absorbs hostile bolts. Walker, shell and pipe-plant enemies remain throughout the adventure.
+Nova Star defeats regular enemies and absorbs hostile bolts, but bosses are immune to it — a guardian must be beaten with stomps and fireballs. Walker, shell and pipe-plant enemies remain throughout the adventure.
+
+**Three distinct bosses:** the Copper Sentry (stage 5, single bolt, 4 hits), the horned Obsidian Warden (stage 10, two-bolt volleys, 6 hits) and the crowned King (stage 15, fast three-bolt volleys, 8 hits). Dying always returns Maro to small form at the checkpoint, so power is earned, not carried through death.
 
 ## Controls and graphics settings
 

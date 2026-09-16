@@ -265,6 +265,8 @@ class Enemy {
     this.attackT = 1.6; this.warningT = 0;
     this.patrolMin = x-72; this.patrolMax = x+120;
     this.boundedPatrol = false;
+    this.lurk = false; this.revealed = false;
+    this.boss = 0; this.volley = 0; this.volleyT = 0;
     // Tuned for accessibility: slower walkers, shells less aggressive
     if (kind === 'walker'){ this.w = 34; this.h = 34; this.speed = 42; }
     else if (kind === 'shell'){ this.w = 36; this.h = 30; this.speed = 38; }
@@ -279,6 +281,7 @@ class Enemy {
     }
   }
   box(){
+    if (this.lurk && !this.revealed) return { x:this.x, y:this.y, w:this.w, h:this.h, active:false };
     if (this.kind === 'plant'){
       return { x:this.x, y:this.baseY - 10 - this.rise*24, w:this.w, h:20 + this.rise*8, active:this.rise > 0.35 };
     }
@@ -309,21 +312,33 @@ class Enemy {
     if (this.x+this.w > this.patrolMax){ this.x=this.patrolMax-this.w; this.dir=-1; }
     this.y = this.baseY + Math.sin(this.walkT*2.4)*24;
   }
+  fireBolt(G){
+    if (G.enemyShots.filter(s=>!s.remove).length >= 6) return;
+    const dir = G.player.x < this.x ? -1 : 1;
+    const spd = 185 + G.stage*6 + (this.boss >= 3 ? 40 : 0);
+    G.enemyShots.push(new EnemyBolt(this.x+this.w/2+dir*36, this.y+this.h-18, dir, spd));
+    AudioSys.sfx.shoot();
+  }
   updateGuardian(dt, G){
+    const v = this.boss || 1;
     const near = Math.abs((G.player.x+G.player.w/2)-(this.x+this.w/2)) < 440;
     this.attackT -= dt;
+    // Finish a bolt volley on a jump rhythm (Warden 2, King 3).
+    if (this.volley > 0){
+      this.volleyT -= dt;
+      if (this.volleyT <= 0){ this.volley--; this.volleyT = 0.42; this.fireBolt(G); }
+    }
     if (this.phase === 'warning'){
       this.warningT -= dt;
       if (this.warningT <= 0){
-        if (near && G.enemyShots.filter(s=>!s.remove).length < 6){
-          const dir = G.player.x < this.x ? -1 : 1;
-          G.enemyShots.push(new EnemyBolt(this.x+this.w/2+dir*36,this.y+this.h-18,dir,160+G.stage*4));
-          AudioSys.sfx.shoot();
-        }
-        this.phase='patrol'; this.attackT=Math.max(1.25,2.8-G.stage*0.06);
+        this.fireBolt(G);
+        this.volley = v - 1; this.volleyT = 0;
+        this.phase='patrol';
+        this.attackT = Math.max(0.95, 2.35 - G.stage*0.07) - (v >= 3 ? 0.35 : 0);
       }
     } else if (this.attackT<=0 && near){
-      this.phase='warning'; this.warningT=0.85; this.vx=0;
+      // Guardians telegraph less generously on later courses, but never below 0.6s.
+      this.phase='warning'; this.warningT=Math.max(0.6,0.9-G.stage*0.012); this.vx=0;
     }
   }
   update(dt, G){
@@ -332,6 +347,16 @@ class Enemy {
     if (!this.active){
       if (this.x > cam - 140 && this.x < cam + 1100) this.active = true;
       else return;
+    }
+    // Lurkers stay hidden until Maro is close, then burst out as a jump-scare.
+    if (this.lurk && !this.revealed){
+      const p = G.player;
+      if (Math.abs((p.x+p.w/2)-(this.x+this.w/2)) < 120 && Math.abs((p.y+p.h/2)-(this.y+this.h/2)) < 130){
+        this.revealed = true;
+        AudioSys.sfx.bounce();
+        G.shake(2, 0.15);
+        if (this.kind === 'hopper') this.vy = -430;
+      } else return;
     }
     if (this.dead){
       this.deadT += dt;

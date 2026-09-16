@@ -62,13 +62,18 @@ const Game = {
       else {
         const enemy=new Enemy(s[0],s[1]*TILE,(s[2]||GROUND_ROW)*TILE);
         enemy.x += (TILE-enemy.w)/2; enemy.y -= enemy.h; enemy.baseY=enemy.y;
-        if(enemy.kind==='guardian') enemy.hp=enemy.maxHp=2+this.stage/5;
+        if(enemy.kind==='guardian'){
+          // Three distinct bosses: Copper Sentry, Obsidian Warden, Crown King.
+          enemy.boss = Math.round(this.stage/5);
+          enemy.hp = enemy.maxHp = [0,4,6,8][enemy.boss] || 4;
+        }
         this.enemies.push(enemy);
       }
       const enemy=this.enemies[this.enemies.length-1];
       if (s[3] !== undefined){
         enemy.patrolMin=s[3]*TILE; enemy.patrolMax=(s[4]+1)*TILE; enemy.boundedPatrol=true;
       }
+      if (s[5] === 'lurk') enemy.lurk = true;
       if (this.course.speedScale && enemy.speed) enemy.speed *= this.course.speedScale;
     }
     // Predictable opening patrols make Stage 2 encounters learnable on retries.
@@ -129,7 +134,8 @@ const Game = {
     this.bonusLockT = 0;
     this.timeLeft = this.course.time;
     this.multiQ = 0;
-    this.player.reset(this.checkX, this.player.form, GROUND_ROW);
+    // Dying always costs your power: you resume small at the checkpoint.
+    this.player.reset(this.checkX, 'small', GROUND_ROW);
     if (this.stage>=3) this.player.hurtT=1.5; // Safe checkpoint recovery, not a free attack boost.
     this.spawnEntities();
     this.cam.x = clamp(this.player.x - 320, 0, this.level.w*TILE - VIEW_W);
@@ -319,7 +325,8 @@ const Game = {
   },
   playerVsEnemy(e, b){
     const p = this.player;
-    if (p.invT > 0){ this.defeatEnemy(e, e.kind === 'walker' ? 100 : 200, 'crush'); return; }
+    // Star mows down normal foes, but bosses must be fought for real.
+    if (p.invT > 0){ if (e.kind !== 'guardian') this.defeatEnemy(e, e.kind === 'walker' ? 100 : 200, 'crush'); return; }
     if (p.hurtT > 0) return;
     const stomp = p.vy > 40 && p.prevBottom <= b.y + 14;
     if (stomp){
@@ -872,23 +879,58 @@ function drawStrip(img, y, par, camX){
   }
 }
 
+// Per-stage ambient weather. Deterministic: particle i is derived from its index,
+// so a stage looks identical on every visit and replays cleanly.
+function drawStageFX(stage, camX){
+  const fx = STAGE_FX[clamp(stage,1,15) - 1];
+  if (!fx) return;
+  const n = Settings.effectsReduced ? Math.max(6, Math.floor(fx.n*0.4)) : fx.n;
+  const t = gameT;
+  for (let i=0;i<n;i++){
+    const col = fx.colors[i % fx.colors.length];
+    let sx, sy;
+    if (fx.kind === 'twinkle'){
+      sx = mod(i*131 - camX*0.12, VIEW_W);
+      sy = 40 + (i*97) % (VIEW_H-140);
+      ctx.globalAlpha = 0.35 + 0.65*Math.abs(Math.sin(t*2.2 + i));
+      ctx.fillStyle = col; ctx.fillRect(sx, sy, fx.size, fx.size);
+      ctx.globalAlpha = 1;
+      continue;
+    }
+    if (fx.kind === 'rain'){
+      sx = mod(i*97 + t*fx.sway - camX*0.25, VIEW_W);
+      sy = mod(i*61 + t*fx.spd, VIEW_H);
+      ctx.globalAlpha = 0.5; ctx.strokeStyle = col; ctx.lineWidth = 1;
+      ctx.beginPath(); ctx.moveTo(sx, sy); ctx.lineTo(sx-4, sy+13); ctx.stroke();
+      ctx.globalAlpha = 1;
+      continue;
+    }
+    if (fx.kind === 'drift'){
+      sx = mod(i*83 + t*fx.spd + Math.sin(t*1.4 + i)*fx.sway - camX*0.1, VIEW_W);
+      sy = 90 + (i*67) % (VIEW_H-220) + Math.sin(t*1.1 + i*0.7)*10;
+      ctx.globalAlpha = 0.45 + 0.55*Math.abs(Math.sin(t*2.6 + i*1.3));   // blinking
+      ctx.fillStyle = col; ctx.fillRect(sx, sy, fx.size, fx.size);
+      ctx.globalAlpha = 1;
+      continue;
+    }
+    const dir = fx.kind === 'rise' ? -1 : 1;
+    sx = mod(i*83 + Math.sin(t*0.9 + i)*fx.sway - camX*0.1, VIEW_W);
+    sy = mod(i*59 + dir*t*fx.spd, VIEW_H);
+    ctx.fillStyle = col; ctx.fillRect(sx, sy, fx.size, fx.size);
+  }
+}
+
 function drawScene(camX, camY){
   const G = Game;
   const backdrop = courseBackdrop(G.stage);
   ctx.drawImage(backdrop.sky, 0, 0);
-  if([8,13,15].includes(G.stage)){
-    ctx.fillStyle=G.stage===8?'#e5f8ff':'#ffc489';
-    for(let i=0;i<(Settings.effectsReduced?10:28);i++){
-      const sx=mod(i*83+gameT*(G.stage===8?9:-12)-camX*0.1,VIEW_W);
-      const sy=mod(i*59+gameT*(G.stage===8?22:-16),VIEW_H);
-      ctx.fillRect(sx,sy,2,2);
-    }
-  }
+  drawStageFX(G.stage, camX);
   for (const cl of ASSETS.bg.clouds){
     const sx = mod(cl.x - camX*0.25, VIEW_W + 260) - 130;
     ctx.drawImage(cl.img, Math.round(sx), cl.y);
   }
   drawStrip(backdrop.far, 248, 0.15, camX);
+  if (backdrop.mid) drawStrip(backdrop.mid, 262, 0.28, camX);   // per-stage landmarks
   drawStrip(backdrop.near, 336, 0.42, camX);
 
   const lv = G.level;
@@ -1089,23 +1131,32 @@ function drawCampaignEnemy(e,x,y){
     R(e.dir>0?24:4,16,10,8,'#dceac4'); R(e.dir>0?29:5,17,3,4,'#23364a');
     for(let i=0;i<e.hp;i++) R(10+i*12,10,5,4,'#ffe089');
   } else {
+    const v = e.boss || 1;
+    const armor = ['#62436a','#3a3350','#4c3a70'][v-1];
+    const chest = ['#b96f68','#6a5a8a','#c9a24a'][v-1];
+    const helm  = ['#765377','#2e2a44','#5a4480'][v-1];
+    const trim  = ['#e2aa63','#9a8ac0','#ffd166'][v-1];
     R(5,53,17,11,'#302d49'); R(34,53,17,11,'#302d49');
-    R(5,18,46,38,'#62436a'); R(10,20,36,30,'#b96f68');
+    R(5,18,46,38,armor); R(10,20,36,30,chest);
     R(18,28,20,20,'#f6bc75'); R(23,31,10,12,e.phase==='warning'?'#fff4b4':'#8b5470');
-    R(9,4,38,22,'#765377'); R(12,7,32,14,'#f4d7a7');
-    R(4,0,9,10,'#e2aa63'); R(43,0,9,10,'#e2aa63');
+    R(9,4,38,22,helm); R(12,7,32,14,'#f4d7a7');
+    R(4,0,9,10,trim); R(43,0,9,10,trim);
     R(15,10,8,5,'#302d49'); R(33,10,8,5,'#302d49');
-    R(0,27,9,23,'#765377'); R(47,27,9,23,'#765377');
+    R(0,27,9,23,helm); R(47,27,9,23,helm);
+    if (v === 2){ R(2,-8,6,10,trim); R(48,-8,6,10,trim); }            // Warden horns
+    if (v === 3){ R(14,-10,28,8,trim); R(14,-16,5,8,trim);            // King crown
+                  R(25,-18,6,10,trim); R(37,-16,5,8,trim); }
     if(e.phase==='warning'){
       ctx.fillStyle='#ffe089'; ctx.font='bold 22px monospace'; ctx.textAlign='center';
-      ctx.fillText('!',x+28,y-22); ctx.textAlign='left';
+      ctx.fillText('!',x+28,y-30); ctx.textAlign='left';
     }
-    R(0,-12,56,6,'#302d49'); R(1,-11,54*e.hp/e.maxHp,4,'#f4b86d');
+    R(0,-26,56,6,'#302d49'); R(1,-25,54*e.hp/e.maxHp,4,'#f4b86d');
   }
   ctx.globalAlpha=1;
 }
 
 function drawEnemy(e, camX, camY){
+  if (e.lurk && !e.revealed) return;   // hidden ambushers are invisible until they spring
   const x = Math.round(e.x - camX), y = Math.round(e.y - camY);
   const kind = (xx, yy) => {
     if (e.kind === 'walker') drawWalker(e, xx, yy);
@@ -1183,6 +1234,47 @@ function hudValue(txt, x, y, col){
   ctx.fillText(txt, x, y);
 }
 
+// Difficulty tiers read from the course data, each with its own signal colour.
+const DIFF_COLORS = {
+  TUTORIAL:'#9fe870', ADVENTURE:'#8fd0ff', CHALLENGING:'#ffd166',
+  EXPERT:'#ff9d6e', MASTER:'#ff6a8a',
+};
+
+// Themed plate + numbered crest that frames the course name in the stage palette.
+function drawCoursePlate(x, y, w, h, theme, stage){
+  const top = theme[0], far = theme[2], sun = theme[4];
+  ctx.fillStyle = 'rgba(10,20,40,.66)';
+  ctx.fillRect(x, y, w, h);
+  ctx.globalAlpha = 0.35; ctx.fillStyle = top; ctx.fillRect(x, y, w, h); ctx.globalAlpha = 1;
+  ctx.strokeStyle = sun; ctx.lineWidth = 1;
+  ctx.strokeRect(x+0.5, y+0.5, w-1, h-1);
+  ctx.fillStyle = far; ctx.fillRect(x, y+h-3, w, 3);
+  ctx.fillStyle = sun;
+  ctx.beginPath();
+  ctx.moveTo(x+16, y+8); ctx.lineTo(x+29, y+8); ctx.lineTo(x+29, y+19);
+  ctx.lineTo(x+22.5, y+27); ctx.lineTo(x+16, y+19);
+  ctx.closePath(); ctx.fill();
+  ctx.fillStyle = 'rgba(10,20,40,.85)';
+  ctx.font = '800 11px "Courier New", monospace';
+  ctx.textAlign = 'center';
+  ctx.fillText(String(stage), x+22.5, y+10);
+  ctx.textAlign = 'left';
+}
+
+function drawDifficultyBadge(x, y, label){
+  const fg = DIFF_COLORS[label] || DIFF_COLORS.ADVENTURE;
+  ctx.font = '800 12px "Courier New", monospace';
+  const w = Math.max(58, label.length*8 + 18);
+  ctx.fillStyle = 'rgba(10,20,40,.78)';
+  ctx.fillRect(x, y, w, 22);
+  ctx.strokeStyle = fg; ctx.lineWidth = 1;
+  ctx.strokeRect(x+0.5, y+0.5, w-1, 21);
+  ctx.fillStyle = fg;
+  ctx.textAlign = 'center';
+  ctx.fillText(label, x + w/2, y+5);
+  ctx.textAlign = 'left';
+}
+
 function drawHUD(){
   const G = Game;
   hudLabel('SCORE', 20, 8);
@@ -1201,11 +1293,13 @@ function drawHUD(){
   ctx.font = '700 14px "Courier New", monospace';
   ctx.textAlign = 'left';
   ctx.textBaseline = 'top';
-  ctx.fillStyle = 'rgba(10,20,40,.75)';
   const name = (G.inBonus ? 'SECRET ROOM' : G.stage + '/'+TOTAL_STAGES+' · ' + G.course.name);
-  ctx.fillText(name, 21, 57);
+  drawCoursePlate(14, 48, 222, 34, courseTheme(G.stage), G.stage);
+  ctx.fillStyle = 'rgba(10,20,40,.75)';
+  ctx.fillText(name, 53, 57);
   ctx.fillStyle = '#bcd0f5';
-  ctx.fillText(name, 20, 56);
+  ctx.fillText(name, 52, 56);
+  drawDifficultyBadge(318, 52, (G.course.difficulty || 'ADVENTURE').toUpperCase());
 
   const p = G.player;
   const state = p.invT > 0 ? 'star' : (p.form === 'shoot' ? 'shoot' : (p.form === 'big' ? 'big' : 'small'));
@@ -1226,19 +1320,51 @@ function drawHUD(){
 }
 
 function drawReady(){
+  const G = Game;
+  const theme = courseTheme(G.stage);
+  const top = theme[0], far = theme[2], near = theme[3], sun = theme[4];
+  const x = 180, y = 148, w = 600, h = 216;
   ctx.textAlign = 'center';
   ctx.textBaseline = 'top';
-  ctx.font = '900 46px "Courier New", monospace';
-  ctx.fillStyle = 'rgba(10,20,40,.8)';
-  ctx.fillText(Game.course.name, 481, 196);
-  ctx.fillStyle = '#ffe14d';
-  ctx.fillText(Game.course.name, 480, 194);
-  ctx.font = '800 26px "Courier New", monospace';
+
+  // Card body in the course's own palette, with a double themed border.
+  const grad = ctx.createLinearGradient(0, y, 0, y+h);
+  grad.addColorStop(0, top); grad.addColorStop(1, near);
+  ctx.globalAlpha = 0.82; ctx.fillStyle = grad; ctx.fillRect(x, y, w, h); ctx.globalAlpha = 1;
+  ctx.fillStyle = 'rgba(10,20,40,.45)'; ctx.fillRect(x, y, w, h);
+  ctx.strokeStyle = sun; ctx.lineWidth = 3; ctx.strokeRect(x+1.5, y+1.5, w-3, h-3);
+  ctx.strokeStyle = far; ctx.lineWidth = 1; ctx.strokeRect(x+7.5, y+7.5, w-15, h-15);
+  ctx.fillStyle = sun;
+  for (const [cx,cy] of [[x+14,y+14],[x+w-14,y+14],[x+14,y+h-14],[x+w-14,y+h-14]]) ctx.fillRect(cx-4,cy-4,8,8);
+
+  // stage pill
+  const pill = 'STAGE ' + G.stage + ' / ' + TOTAL_STAGES;
+  ctx.font = '800 18px "Courier New", monospace';
+  const pw = pill.length*11 + 28;
+  ctx.fillStyle = 'rgba(10,20,40,.8)'; ctx.fillRect(480-pw/2, y+22, pw, 28);
+  ctx.strokeStyle = sun; ctx.lineWidth = 1; ctx.strokeRect(480-pw/2+0.5, y+22.5, pw-1, 27);
+  ctx.fillStyle = sun; ctx.fillText(pill, 480, y+27);
+
+  // course name
+  ctx.font = '900 44px "Courier New", monospace';
+  ctx.fillStyle = 'rgba(10,20,40,.85)';
+  ctx.fillText(G.course.name, 481, y+63);
+  ctx.fillStyle = sun;
+  ctx.fillText(G.course.name, 480, y+61);
+
+  // difficulty tier + course briefing
+  const diff = (G.course.difficulty || 'ADVENTURE').toUpperCase();
+  ctx.font = '800 16px "Courier New", monospace';
+  ctx.fillStyle = DIFF_COLORS[diff] || DIFF_COLORS.ADVENTURE;
+  ctx.fillText('\u25C6 ' + diff + ' \u25C6', 480, y+118);
+  ctx.font = '700 14px "Courier New", monospace';
+  ctx.fillStyle = '#dce8ff';
+  ctx.fillText(G.course.tip || '', 480, y+146);
+
+  ctx.font = '800 24px "Courier New", monospace';
   ctx.globalAlpha = 0.6 + 0.4*Math.sin(gameT*6);
-  ctx.fillStyle = '#fff';
-  ctx.fillText('STAGE '+Game.stage+' / '+TOTAL_STAGES+' — GET READY!', 480, 262);
-  ctx.globalAlpha=1; ctx.font='700 14px monospace';
-  ctx.fillText(Game.course.tip || '',480,310);
+  ctx.fillStyle = '#ffffff';
+  ctx.fillText('GET READY!', 480, y+176);
   ctx.globalAlpha = 1;
   ctx.textAlign = 'left';
 }
@@ -1313,10 +1439,15 @@ function updateStageUI(){
   $('stage-progress').textContent=Game.progress.cleared.length+' / '+TOTAL_STAGES+' stages cleared · Unlocked stages start a fresh run.';
   for(let stage=1;stage<=TOTAL_STAGES;stage++){
     const b=$('stage-'+stage), unlocked=stage<=Game.progress.unlocked, done=Game.progress.cleared.includes(stage);
+    const diff=(COURSES[stage-1].difficulty||'ADVENTURE').toUpperCase();
     b.disabled=!unlocked;
     b.classList.toggle('cleared',done);
     b.setAttribute('aria-label','Stage '+stage+': '+COURSES[stage-1].name+(done?', cleared':unlocked?', unlocked':', locked'));
-    $('stage-status-'+stage).textContent=done?'✓ CLEARED':unlocked?(COURSES[stage-1].difficulty||'EXPLORER'):'LOCKED';
+    // Each course's card carries its own accent so the menu mirrors the campaign art.
+    if (!done) b.style.borderLeft='6px solid '+courseTheme(stage)[4];
+    const stEl=$('stage-status-'+stage);
+    stEl.textContent=done?'✓ CLEARED':unlocked?(COURSES[stage-1].difficulty||'EXPLORER'):'LOCKED';
+    stEl.style.color=done?'#76c695':unlocked?(DIFF_COLORS[diff]||'#b7cce3'):'#b7cce3';
   }
 }
 
